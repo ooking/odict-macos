@@ -12,6 +12,7 @@ final class LookupModel: ObservableObject {
     @Published private(set) var captureStatus: String?
     @Published private(set) var captureIsBusy = false
     @Published private(set) var recent: [String]
+    @Published private(set) var recentTranslations: [String: String]
     @Published var focusRequest = UUID()
     @Published var acceptsSearchFocus = true
     private let dictionary: DictionaryServing
@@ -27,7 +28,9 @@ final class LookupModel: ObservableObject {
     init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore()) {
         self.dictionary = dictionary
         self.history = history
-        recent = history.load()
+        let saved = history.load()
+        recent = saved
+        recentTranslations = history.loadTranslations(for: saved)
     }
 
     func editQuery(_ text: String, composing: Bool) {
@@ -140,7 +143,7 @@ final class LookupModel: ObservableObject {
         message = nil
         if let current = entry, current.word.caseInsensitiveCompare(word) == .orderedSame {
             isLoading = false
-            if remember { rememberWord(current.word) }
+            if remember { rememberEntry(current) }
             return
         }
         entry = nil
@@ -156,7 +159,7 @@ final class LookupModel: ObservableObject {
                 let result = try await dictionary.entry(word)
                 guard !Task.isCancelled, token == detailRevision else { return }
                 entry = result
-                if rememberPreview { rememberWord(result.word) }
+                if rememberPreview { rememberEntry(result) }
             } catch {
                 guard !Task.isCancelled, token == detailRevision else { return }
                 message = error.localizedDescription
@@ -190,7 +193,7 @@ final class LookupModel: ObservableObject {
                         let result = try await dictionary.entry(text)
                         guard !Task.isCancelled, token == revision else { return }
                         entry = result
-                        rememberWord(result.word)
+                        rememberEntry(result)
                     } catch DictionaryError.notFound {
                         let results = try await dictionary.search(text, translation: false)
                         guard !Task.isCancelled, token == revision else { return }
@@ -209,12 +212,41 @@ final class LookupModel: ObservableObject {
         text.unicodeScalars.contains { (0x3400...0x9FFF).contains($0.value) }
     }
 
-    private func rememberWord(_ word: String) { recent = history.remember(word, in: recent) }
+    private func rememberEntry(_ entry: Entry) {
+        recent = history.remember(entry.word, in: recent)
+        recentTranslations = recentTranslations.filter { recent.contains($0.key) }
+        recentTranslations[entry.word] = RecentWordsStore.summary(entry.translation ?? "")
+        history.saveTranslations(recentTranslations, for: recent)
+    }
+
+    // The history view owns this task: leaving it cancels the sequential backfill.
+    // Never retain fetched entries or change history order while filling old records.
+    func fillRecentTranslations() async {
+        let token = revision
+        let missing = recent.filter { recentTranslations[$0] == nil }
+        for word in missing {
+            guard !Task.isCancelled, token == revision, recent.contains(word) else { return }
+            do {
+                let result = try await dictionary.entry(word)
+                guard !Task.isCancelled, token == revision, recent.contains(word) else { return }
+                recentTranslations[word] = RecentWordsStore.summary(result.translation ?? "")
+                history.saveTranslations(recentTranslations, for: recent)
+            } catch DictionaryError.notFound {
+                guard !Task.isCancelled, token == revision, recent.contains(word) else { return }
+                recentTranslations[word] = ""
+                history.saveTranslations(recentTranslations, for: recent)
+            } catch {
+                // Stop on service/auth/rate-limit errors; normal lookup stays usable.
+                return
+            }
+        }
+    }
 
     func pronounce(_ word: String) { pronunciation.speak(word) }
 
     func clearHistory() {
         recent = []
+        recentTranslations = [:]
         history.clear()
     }
 

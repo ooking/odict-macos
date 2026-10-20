@@ -178,10 +178,11 @@ struct LookupView: View {
                 .padding(.horizontal, 10)
             VStack(spacing: 4) {
                 ForEach(model.recent, id: \.self) { word in
-                    RecentWordRow(word: word) { model.lookup(word) }
+                    RecentWordRow(word: word, translation: model.recentTranslations[word]) { model.lookup(word) }
                 }
             }
         }
+        .task { await model.fillRecentTranslations() }
     }
 
     private func entryContent(_ entry: Entry) -> some View {
@@ -239,6 +240,7 @@ struct LookupView: View {
 
 private struct RecentWordRow: View {
     let word: String
+    let translation: String?
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovered = false
@@ -250,12 +252,20 @@ private struct RecentWordRow: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(hovered ? .accentColor : secondaryInk)
                     .frame(width: 24, height: 24)
-                Text(word)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 8)
+                HStack(alignment: .top, spacing: 12) {
+                    Text(word)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(translation.map { $0.isEmpty ? "暂无释义" : $0 } ?? "待补充释义")
+                        .font(.system(size: 12))
+                        .foregroundColor(secondaryInk)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .multilineTextAlignment(.trailing)
+                }
+                .lineLimit(2)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: "arrow.up.left")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(secondaryInk)
@@ -272,7 +282,7 @@ private struct RecentWordRow: View {
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
-        .help("查询 \(word)")
+        .help([word, translation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n"))
     }
 }
 
