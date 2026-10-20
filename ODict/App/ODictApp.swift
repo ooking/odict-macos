@@ -6,6 +6,7 @@ extension KeyboardShortcuts.Name {
     static let toggleDictionary = Self("toggleDictionary")
     static let selectedTextLookup = Self("selectedTextLookup")
     static let screenshotLookup = Self("screenshotLookup")
+    static let toggleHoverLookup = Self("toggleHoverLookup")
 }
 
 @main

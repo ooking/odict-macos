@@ -92,6 +92,11 @@ final class ApplicationCoordinator: NSObject {
         KeyboardShortcuts.onKeyUp(for: .toggleDictionary) { [weak self] in self?.toggleLookup() }
         KeyboardShortcuts.onKeyUp(for: .selectedTextLookup) { [weak self] in self?.startSelection() }
         KeyboardShortcuts.onKeyUp(for: .screenshotLookup) { [weak self] in self?.startScreenshot() }
+        KeyboardShortcuts.onKeyUp(for: .toggleHoverLookup) {
+            let defaults = UserDefaults.standard
+            defaults.set(!defaults.bool(forKey: HoverLookupController.preferenceKey), forKey: HoverLookupController.preferenceKey)
+            NotificationCenter.default.post(name: HoverLookupController.preferenceChanged, object: nil)
+        }
         if !UserDefaults.standard.bool(forKey: "didWelcome") {
             showSettings()
             UserDefaults.standard.set(true, forKey: "didWelcome")

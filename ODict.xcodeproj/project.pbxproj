@@ -1,87 +1,363 @@
 // !$*UTF8*$!
 {
-archiveVersion = 1;
-classes = {};
-objectVersion = 56;
-objects = {
-000000000000000000000701 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Capture/HoverLookupController.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000801 = {isa = PBXBuildFile; fileRef = 000000000000000000000701; };
-000000000000000000000700 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/HoverTextService.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000800 = {isa = PBXBuildFile; fileRef = 000000000000000000000700; };
-000000000000000000000500 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/App/ApplicationCoordinator.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000600 = {isa = PBXBuildFile; fileRef = 000000000000000000000500; };
-000000000000000000000501 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/App/LifecycleDiagnostics.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000601 = {isa = PBXBuildFile; fileRef = 000000000000000000000501; };
-000000000000000000000502 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/App/MenuBarController.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000602 = {isa = PBXBuildFile; fileRef = 000000000000000000000502; };
-000000000000000000000503 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Lookup/CandidateSearchField.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000603 = {isa = PBXBuildFile; fileRef = 000000000000000000000503; };
-000000000000000000000504 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Lookup/LookupWindowController.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000604 = {isa = PBXBuildFile; fileRef = 000000000000000000000504; };
-000000000000000000000505 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/SettingsModel.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000605 = {isa = PBXBuildFile; fileRef = 000000000000000000000505; };
-000000000000000000000506 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/SettingsWindowController.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000606 = {isa = PBXBuildFile; fileRef = 000000000000000000000506; };
-000000000000000000000507 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/BlockingWorkQueue.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000607 = {isa = PBXBuildFile; fileRef = 000000000000000000000507; };
-000000000000000000000508 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/HTTPTransport.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000608 = {isa = PBXBuildFile; fileRef = 000000000000000000000508; };
-000000000000000000000509 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/PronunciationService.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000609 = {isa = PBXBuildFile; fileRef = 000000000000000000000509; };
-00000000000000000000050A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/RecentWordsStore.swift"; sourceTree = SOURCE_ROOT; };
-00000000000000000000060A = {isa = PBXBuildFile; fileRef = 00000000000000000000050A; };
-00000000000000000000050B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/RequestRateLimit.swift"; sourceTree = SOURCE_ROOT; };
-00000000000000000000060B = {isa = PBXBuildFile; fileRef = 00000000000000000000050B; };
-00000000000000000000050C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/ServiceSettingsStore.swift"; sourceTree = SOURCE_ROOT; };
-00000000000000000000060C = {isa = PBXBuildFile; fileRef = 00000000000000000000050C; };
-000000000000000000000306 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "ODict/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
-000000000000000000000406 = {isa = PBXBuildFile; fileRef = 000000000000000000000306; };
-000000000000000000000300 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Capture/CaptureSupport.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000400 = {isa = PBXBuildFile; fileRef = 000000000000000000000300; };
-000000000000000000000301 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Capture/ScreenSelectionController.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000401 = {isa = PBXBuildFile; fileRef = 000000000000000000000301; };
-000000000000000000000302 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Capture/CaptureCoordinator.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000402 = {isa = PBXBuildFile; fileRef = 000000000000000000000302; };
-000000000000000000000303 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/SelectedTextService.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000403 = {isa = PBXBuildFile; fileRef = 000000000000000000000303; };
-000000000000000000000304 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/ScreenTextService.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000404 = {isa = PBXBuildFile; fileRef = 000000000000000000000304; };
-000000000000000000000305 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/LegacyPreferencesMigration.swift"; sourceTree = SOURCE_ROOT; };
-000000000000000000000405 = {isa = PBXBuildFile; fileRef = 000000000000000000000305; };
-000000000000000000000064 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/App/ODictApp.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000C8 = {isa = PBXBuildFile; fileRef = 000000000000000000000064; };
-000000000000000000000065 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Models/DictionaryModels.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000C9 = {isa = PBXBuildFile; fileRef = 000000000000000000000065; };
-000000000000000000000066 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/KeychainStore.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CA = {isa = PBXBuildFile; fileRef = 000000000000000000000066; };
-000000000000000000000067 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/DictionaryClient.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CB = {isa = PBXBuildFile; fileRef = 000000000000000000000067; };
-000000000000000000000068 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Lookup/LookupModel.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CC = {isa = PBXBuildFile; fileRef = 000000000000000000000068; };
-000000000000000000000069 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Lookup/LookupView.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CD = {isa = PBXBuildFile; fileRef = 000000000000000000000069; };
-00000000000000000000006A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/SettingsView.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CE = {isa = PBXBuildFile; fileRef = 00000000000000000000006A; };
-000000000000000000000001 = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 1600; }; buildConfigurationList = 000000000000000000000002; compatibilityVersion = "Xcode 14.0"; developmentRegion = zh_CN; hasScannedForEncodings = 0; knownRegions = (en, zh_CN, Base); mainGroup = 000000000000000000000003; productRefGroup = 000000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000005); packageReferences = (000000000000000000000014); };
-000000000000000000000003 = {isa = PBXGroup; children = (000000000000000000000701, 000000000000000000000700, 000000000000000000000500, 000000000000000000000501, 000000000000000000000502, 000000000000000000000503, 000000000000000000000504, 000000000000000000000505, 000000000000000000000506, 000000000000000000000507, 000000000000000000000508, 000000000000000000000509, 00000000000000000000050A, 00000000000000000000050B, 00000000000000000000050C, 000000000000000000000306, 000000000000000000000300, 000000000000000000000301, 000000000000000000000302, 000000000000000000000303, 000000000000000000000304, 000000000000000000000305, 000000000000000000000064, 000000000000000000000065, 000000000000000000000066, 000000000000000000000067, 000000000000000000000068, 000000000000000000000069, 00000000000000000000006A, 00000000000000000000001E, 00000000000000000000001F, 000000000000000000000020, 000000000000000000000004); sourceTree = "<group>"; };
-00000000000000000000001E = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = ODict/Info.plist; sourceTree = SOURCE_ROOT; };
-00000000000000000000001F = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ODict/ODict.entitlements; sourceTree = SOURCE_ROOT; };
-000000000000000000000020 = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = SOURCE_ROOT; };
-000000000000000000000004 = {isa = PBXGroup; children = (000000000000000000000006); name = Products; sourceTree = "<group>"; };
-000000000000000000000006 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ODict.app; sourceTree = BUILT_PRODUCTS_DIR; };
-000000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000007; buildPhases = (000000000000000000000008, 000000000000000000000009, 00000000000000000000000A); buildRules = (); dependencies = (); name = ODict; packageProductDependencies = (000000000000000000000015); productName = ODict; productReference = 000000000000000000000006; productType = "com.apple.product-type.application"; };
-000000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000801, 000000000000000000000800, 000000000000000000000600, 000000000000000000000601, 000000000000000000000602, 000000000000000000000603, 000000000000000000000604, 000000000000000000000605, 000000000000000000000606, 000000000000000000000607, 000000000000000000000608, 000000000000000000000609, 00000000000000000000060A, 00000000000000000000060B, 00000000000000000000060C, 000000000000000000000400, 000000000000000000000401, 000000000000000000000402, 000000000000000000000403, 000000000000000000000404, 000000000000000000000405, 0000000000000000000000C8, 0000000000000000000000C9, 0000000000000000000000CA, 0000000000000000000000CB, 0000000000000000000000CC, 0000000000000000000000CD, 0000000000000000000000CE); runOnlyForDeploymentPostprocessing = 0; };
-000000000000000000000009 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000016); runOnlyForDeploymentPostprocessing = 0; };
-00000000000000000000000A = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000406); runOnlyForDeploymentPostprocessing = 0; };
-000000000000000000000014 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts"; requirement = {kind = exactVersion; version = 3.1.0; }; };
-000000000000000000000015 = {isa = XCSwiftPackageProductDependency; package = 000000000000000000000014; productName = KeyboardShortcuts; };
-000000000000000000000016 = {isa = PBXBuildFile; productRef = 000000000000000000000015; };
-000000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000B, 00000000000000000000000C); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-000000000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000D, 00000000000000000000000E); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-00000000000000000000000B = {isa = XCBuildConfiguration; name = Debug; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 12.0; SWIFT_VERSION = 5.0; GCC_C_LANGUAGE_STANDARD = gnu17; }; };
-00000000000000000000000C = {isa = XCBuildConfiguration; name = Release; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 12.0; SWIFT_VERSION = 5.0; GCC_C_LANGUAGE_STANDARD = gnu17; }; };
-00000000000000000000000D = {isa = XCBuildConfiguration; name = Debug; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; ENABLE_APP_SANDBOX = NO; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = ODict/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 1.0.0; PRODUCT_BUNDLE_IDENTIFIER = com.touchany.odict.mac; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; ENABLE_TESTABILITY = YES; ONLY_ACTIVE_ARCH = YES; }; };
-00000000000000000000000E = {isa = XCBuildConfiguration; name = Release; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; ENABLE_APP_SANDBOX = NO; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = ODict/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 1.0.0; PRODUCT_BUNDLE_IDENTIFIER = com.touchany.odict.mac; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_COMPILATION_MODE = wholemodule; ONLY_ACTIVE_ARCH = NO; }; };
-};
-rootObject = 000000000000000000000001;
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000016 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000015 /* KeyboardShortcuts */; };
+		0000000000000000000000C8 /* ODict/App/ODictApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000064 /* ODict/App/ODictApp.swift */; };
+		0000000000000000000000C9 /* ODict/Models/DictionaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* ODict/Models/DictionaryModels.swift */; };
+		0000000000000000000000CA /* ODict/Services/KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000066 /* ODict/Services/KeychainStore.swift */; };
+		0000000000000000000000CB /* ODict/Services/DictionaryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000067 /* ODict/Services/DictionaryClient.swift */; };
+		0000000000000000000000CC /* ODict/Features/Lookup/LookupModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */; };
+		0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */; };
+		0000000000000000000000CE /* ODict/Features/Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006A /* ODict/Features/Settings/SettingsView.swift */; };
+		000000000000000000000400 /* ODict/Features/Capture/CaptureSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000300 /* ODict/Features/Capture/CaptureSupport.swift */; };
+		000000000000000000000401 /* ODict/Features/Capture/ScreenSelectionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000301 /* ODict/Features/Capture/ScreenSelectionController.swift */; };
+		000000000000000000000402 /* ODict/Features/Capture/CaptureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000302 /* ODict/Features/Capture/CaptureCoordinator.swift */; };
+		000000000000000000000403 /* ODict/Services/SelectedTextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000303 /* ODict/Services/SelectedTextService.swift */; };
+		000000000000000000000404 /* ODict/Services/ScreenTextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000304 /* ODict/Services/ScreenTextService.swift */; };
+		000000000000000000000405 /* ODict/Services/LegacyPreferencesMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000305 /* ODict/Services/LegacyPreferencesMigration.swift */; };
+		000000000000000000000406 /* ODict/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000306 /* ODict/Assets.xcassets */; };
+		000000000000000000000600 /* ODict/App/ApplicationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000500 /* ODict/App/ApplicationCoordinator.swift */; };
+		000000000000000000000601 /* ODict/App/LifecycleDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000501 /* ODict/App/LifecycleDiagnostics.swift */; };
+		000000000000000000000602 /* ODict/App/MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000502 /* ODict/App/MenuBarController.swift */; };
+		000000000000000000000603 /* ODict/Features/Lookup/CandidateSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000503 /* ODict/Features/Lookup/CandidateSearchField.swift */; };
+		000000000000000000000604 /* ODict/Features/Lookup/LookupWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000504 /* ODict/Features/Lookup/LookupWindowController.swift */; };
+		000000000000000000000605 /* ODict/Features/Settings/SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000505 /* ODict/Features/Settings/SettingsModel.swift */; };
+		000000000000000000000606 /* ODict/Features/Settings/SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000506 /* ODict/Features/Settings/SettingsWindowController.swift */; };
+		000000000000000000000607 /* ODict/Services/BlockingWorkQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000507 /* ODict/Services/BlockingWorkQueue.swift */; };
+		000000000000000000000608 /* ODict/Services/HTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000508 /* ODict/Services/HTTPTransport.swift */; };
+		000000000000000000000609 /* ODict/Services/PronunciationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000509 /* ODict/Services/PronunciationService.swift */; };
+		00000000000000000000060A /* ODict/Services/RecentWordsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */; };
+		00000000000000000000060B /* ODict/Services/RequestRateLimit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */; };
+		00000000000000000000060C /* ODict/Services/ServiceSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */; };
+		000000000000000000000800 /* ODict/Services/HoverTextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000700 /* ODict/Services/HoverTextService.swift */; };
+		000000000000000000000801 /* ODict/Features/Capture/HoverLookupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000006 /* ODict.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ODict.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		00000000000000000000001E /* ODict/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = ODict/Info.plist; sourceTree = SOURCE_ROOT; };
+		00000000000000000000001F /* ODict/ODict.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ODict/ODict.entitlements; sourceTree = SOURCE_ROOT; };
+		000000000000000000000020 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = SOURCE_ROOT; };
+		000000000000000000000064 /* ODict/App/ODictApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/App/ODictApp.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000065 /* ODict/Models/DictionaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/DictionaryModels.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000066 /* ODict/Services/KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/KeychainStore.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000067 /* ODict/Services/DictionaryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/DictionaryClient.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupModel.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupView.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000006A /* ODict/Features/Settings/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/SettingsView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000300 /* ODict/Features/Capture/CaptureSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Capture/CaptureSupport.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000301 /* ODict/Features/Capture/ScreenSelectionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Capture/ScreenSelectionController.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000302 /* ODict/Features/Capture/CaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Capture/CaptureCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000303 /* ODict/Services/SelectedTextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/SelectedTextService.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000304 /* ODict/Services/ScreenTextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/ScreenTextService.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000305 /* ODict/Services/LegacyPreferencesMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/LegacyPreferencesMigration.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000306 /* ODict/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = ODict/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		000000000000000000000500 /* ODict/App/ApplicationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/App/ApplicationCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000501 /* ODict/App/LifecycleDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/App/LifecycleDiagnostics.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000502 /* ODict/App/MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/App/MenuBarController.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000503 /* ODict/Features/Lookup/CandidateSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/CandidateSearchField.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000504 /* ODict/Features/Lookup/LookupWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupWindowController.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000505 /* ODict/Features/Settings/SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/SettingsModel.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000506 /* ODict/Features/Settings/SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/SettingsWindowController.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000507 /* ODict/Services/BlockingWorkQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/BlockingWorkQueue.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000508 /* ODict/Services/HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/HTTPTransport.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000509 /* ODict/Services/PronunciationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/PronunciationService.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/RecentWordsStore.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/RequestRateLimit.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/ServiceSettingsStore.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000700 /* ODict/Services/HoverTextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/HoverTextService.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Capture/HoverLookupController.swift; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000009 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000016 /* KeyboardShortcuts in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000003 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */,
+				000000000000000000000700 /* ODict/Services/HoverTextService.swift */,
+				000000000000000000000500 /* ODict/App/ApplicationCoordinator.swift */,
+				000000000000000000000501 /* ODict/App/LifecycleDiagnostics.swift */,
+				000000000000000000000502 /* ODict/App/MenuBarController.swift */,
+				000000000000000000000503 /* ODict/Features/Lookup/CandidateSearchField.swift */,
+				000000000000000000000504 /* ODict/Features/Lookup/LookupWindowController.swift */,
+				000000000000000000000505 /* ODict/Features/Settings/SettingsModel.swift */,
+				000000000000000000000506 /* ODict/Features/Settings/SettingsWindowController.swift */,
+				000000000000000000000507 /* ODict/Services/BlockingWorkQueue.swift */,
+				000000000000000000000508 /* ODict/Services/HTTPTransport.swift */,
+				000000000000000000000509 /* ODict/Services/PronunciationService.swift */,
+				00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */,
+				00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */,
+				00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */,
+				000000000000000000000306 /* ODict/Assets.xcassets */,
+				000000000000000000000300 /* ODict/Features/Capture/CaptureSupport.swift */,
+				000000000000000000000301 /* ODict/Features/Capture/ScreenSelectionController.swift */,
+				000000000000000000000302 /* ODict/Features/Capture/CaptureCoordinator.swift */,
+				000000000000000000000303 /* ODict/Services/SelectedTextService.swift */,
+				000000000000000000000304 /* ODict/Services/ScreenTextService.swift */,
+				000000000000000000000305 /* ODict/Services/LegacyPreferencesMigration.swift */,
+				000000000000000000000064 /* ODict/App/ODictApp.swift */,
+				000000000000000000000065 /* ODict/Models/DictionaryModels.swift */,
+				000000000000000000000066 /* ODict/Services/KeychainStore.swift */,
+				000000000000000000000067 /* ODict/Services/DictionaryClient.swift */,
+				000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */,
+				000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */,
+				00000000000000000000006A /* ODict/Features/Settings/SettingsView.swift */,
+				00000000000000000000001E /* ODict/Info.plist */,
+				00000000000000000000001F /* ODict/ODict.entitlements */,
+				000000000000000000000020 /* README.md */,
+				000000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000006 /* ODict.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000005 /* ODict */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000007 /* Build configuration list for PBXNativeTarget "ODict" */;
+			buildPhases = (
+				000000000000000000000008 /* Sources */,
+				000000000000000000000009 /* Frameworks */,
+				00000000000000000000000A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ODict;
+			packageProductDependencies = (
+				000000000000000000000015 /* KeyboardShortcuts */,
+			);
+			productName = ODict;
+			productReference = 000000000000000000000006 /* ODict.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 000000000000000000000002 /* Build configuration list for PBXProject "ODict" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				zh_CN,
+				Base,
+			);
+			mainGroup = 000000000000000000000003;
+			packageReferences = (
+				000000000000000000000014 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+			);
+			productRefGroup = 000000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000005 /* ODict */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		00000000000000000000000A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000406 /* ODict/Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000801 /* ODict/Features/Capture/HoverLookupController.swift in Sources */,
+				000000000000000000000800 /* ODict/Services/HoverTextService.swift in Sources */,
+				000000000000000000000600 /* ODict/App/ApplicationCoordinator.swift in Sources */,
+				000000000000000000000601 /* ODict/App/LifecycleDiagnostics.swift in Sources */,
+				000000000000000000000602 /* ODict/App/MenuBarController.swift in Sources */,
+				000000000000000000000603 /* ODict/Features/Lookup/CandidateSearchField.swift in Sources */,
+				000000000000000000000604 /* ODict/Features/Lookup/LookupWindowController.swift in Sources */,
+				000000000000000000000605 /* ODict/Features/Settings/SettingsModel.swift in Sources */,
+				000000000000000000000606 /* ODict/Features/Settings/SettingsWindowController.swift in Sources */,
+				000000000000000000000607 /* ODict/Services/BlockingWorkQueue.swift in Sources */,
+				000000000000000000000608 /* ODict/Services/HTTPTransport.swift in Sources */,
+				000000000000000000000609 /* ODict/Services/PronunciationService.swift in Sources */,
+				00000000000000000000060A /* ODict/Services/RecentWordsStore.swift in Sources */,
+				00000000000000000000060B /* ODict/Services/RequestRateLimit.swift in Sources */,
+				00000000000000000000060C /* ODict/Services/ServiceSettingsStore.swift in Sources */,
+				000000000000000000000400 /* ODict/Features/Capture/CaptureSupport.swift in Sources */,
+				000000000000000000000401 /* ODict/Features/Capture/ScreenSelectionController.swift in Sources */,
+				000000000000000000000402 /* ODict/Features/Capture/CaptureCoordinator.swift in Sources */,
+				000000000000000000000403 /* ODict/Services/SelectedTextService.swift in Sources */,
+				000000000000000000000404 /* ODict/Services/ScreenTextService.swift in Sources */,
+				000000000000000000000405 /* ODict/Services/LegacyPreferencesMigration.swift in Sources */,
+				0000000000000000000000C8 /* ODict/App/ODictApp.swift in Sources */,
+				0000000000000000000000C9 /* ODict/Models/DictionaryModels.swift in Sources */,
+				0000000000000000000000CA /* ODict/Services/KeychainStore.swift in Sources */,
+				0000000000000000000000CB /* ODict/Services/DictionaryClient.swift in Sources */,
+				0000000000000000000000CC /* ODict/Features/Lookup/LookupModel.swift in Sources */,
+				0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */,
+				0000000000000000000000CE /* ODict/Features/Settings/SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		00000000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		00000000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		00000000000000000000000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KZNXN7G7D3;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ODict/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.touchany.odict.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		00000000000000000000000E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KZNXN7G7D3;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ODict/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.touchany.odict.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000002 /* Build configuration list for PBXProject "ODict" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000B /* Debug */,
+				00000000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000007 /* Build configuration list for PBXNativeTarget "ODict" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000D /* Debug */,
+				00000000000000000000000E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		000000000000000000000014 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = exactVersion;
+				version = 3.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		000000000000000000000015 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 000000000000000000000014 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
 }

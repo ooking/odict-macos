@@ -140,3 +140,48 @@ enum HoverWords {
         CGRect(x: point.x - 320, y: point.y - 80, width: 640, height: 160).intersection(screen)
     }
 }
+
+/// The hover gesture is independent of the shortcut that turns the feature on/off.
+/// Keep the previous Control behavior when upgrading or encountering an invalid preference.
+enum HoverTrigger: String, CaseIterable, Identifiable {
+    case none, command, control, option, shift
+
+    static let preferenceKey = "hoverLookupModifier"
+    static var current: Self {
+        UserDefaults.standard.string(forKey: preferenceKey).flatMap(Self.init(rawValue:)) ?? .control
+    }
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .none: return "不使用辅助按键"
+        case .command: return "⌘ Command"
+        case .control: return "⌃ Control"
+        case .option: return "⌥ Option"
+        case .shift: return "⇧ Shift"
+        }
+    }
+    var instruction: String {
+        switch self {
+        case .none: return "鼠标停在单词上约 0.3 秒即可取词，无需按键。"
+        case .command: return "按住 Command，将鼠标停在单词上约 0.3 秒即可取词。"
+        case .control: return "按住 Control，将鼠标停在单词上约 0.3 秒即可取词。"
+        case .option: return "按住 Option，将鼠标停在单词上约 0.3 秒即可取词。"
+        case .shift: return "按住 Shift，将鼠标停在单词上约 0.3 秒即可取词。"
+        }
+    }
+    private var modifier: NSEvent.ModifierFlags {
+        switch self {
+        case .none: return []
+        case .command: return .command
+        case .control: return .control
+        case .option: return .option
+        case .shift: return .shift
+        }
+    }
+    func matches(_ flags: NSEvent.ModifierFlags) -> Bool {
+        flags.intersection([.control, .option, .command, .shift]) == modifier
+    }
+    func isHeld(in flags: NSEvent.ModifierFlags) -> Bool {
+        self == .none ? matches(flags) : flags.contains(modifier)
+    }
+}

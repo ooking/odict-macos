@@ -5,6 +5,7 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
     @AppStorage(HoverLookupController.preferenceKey) private var hoverEnabled = false
+    @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
     @State private var accessibilityAllowed = false
     @State private var screenAllowed = false
 
@@ -12,32 +13,58 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Text("ODict 设置").font(.title2.bold())
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("全局快捷键").font(.headline)
-                    KeyboardShortcuts.Recorder("唤出 / 收起词典", name: .toggleDictionary)
-                    KeyboardShortcuts.Recorder("选中取词", name: .selectedTextLookup)
-                    KeyboardShortcuts.Recorder("截图取词", name: .screenshotLookup)
-                    Text("点击录制框后按下组合键；按删除键可清除。快捷键会自动保存。")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("词典窗口").font(.headline)
+                    KeyboardShortcuts.Recorder("唤出 / 收起", name: .toggleDictionary)
+                    Text("点击热键框后按下组合键；按删除键可清除。取词偏好和热键均自动保存。")
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Divider()
-                VStack(alignment: .leading, spacing: 10) {
-                    Toggle("按住 Control 悬停取词", isOn: $hoverEnabled)
-                        .onChange(of: hoverEnabled) { _ in
-                            NotificationCenter.default.post(name: HoverLookupController.preferenceChanged, object: nil)
-                        }
-                    Text("按住 Control，将鼠标停在单词上约 0.3 秒即可查词，无需选中。需要辅助功能权限；图片及无法直接读取的文字还需要屏幕录制权限。移入释义卡片可朗读、复制，点击卡片后可编辑查询；移开鼠标或按 Escape 收起。")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("选中取词").font(.headline)
+                    KeyboardShortcuts.Recorder("取词热键", name: .selectedTextLookup)
+                    Text("先在其他应用选中文字，再按热键查询。")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                Divider()
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("悬停取词").font(.headline)
+                        Spacer()
+                        Toggle("启用", isOn: $hoverEnabled).toggleStyle(.switch)
+                            .accessibilityLabel("启用悬停取词")
+                    }
+                    HStack(spacing: 12) {
+                        Text("取词方式")
+                        Picker("取词方式", selection: $hoverTrigger) {
+                            ForEach(HoverTrigger.allCases) { trigger in
+                                Text(trigger.title).tag(trigger.rawValue)
+                            }
+                        }.labelsHidden().pickerStyle(.menu).frame(width: 220)
+                    }
+                    KeyboardShortcuts.Recorder("开关热键", name: .toggleHoverLookup)
+                    Text((HoverTrigger(rawValue: hoverTrigger) ?? .control).instruction
+                        + "开关热键用于开启或关闭悬停取词，无需打开设置。")
+                        .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text("无需选中文字。移入释义卡片可朗读、复制，点击后可编辑；移开鼠标或按 Escape 收起。")
+                        .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                .onChange(of: hoverEnabled) { _ in notifyHoverPreferenceChanged() }
+                .onChange(of: hoverTrigger) { _ in notifyHoverPreferenceChanged() }
+                Divider()
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("截图取词").font(.headline)
+                    KeyboardShortcuts.Recorder("取词热键", name: .screenshotLookup)
+                    Text("按热键后框选图片、视频或应用中的文字，在本机识别后查询。")
                         .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Divider()
                 VStack(alignment: .leading, spacing: 10) {
                     Text("取词权限").font(.headline)
                     permissionRow("辅助功能", allowed: accessibilityAllowed) {
-                        if !accessibilityAllowed { CapturePermissions.requestAccessibility() }
                         CapturePermissions.openSettings(screenRecording: false)
                     }
                     permissionRow("屏幕录制", allowed: screenAllowed) {
-                        if !screenAllowed { _ = CGRequestScreenCaptureAccess() }
                         CapturePermissions.openSettings(screenRecording: true)
                     }
                     Text("选中取词读取当前应用选中的文字；悬停取词读取鼠标处文字，必要时仅截取附近区域。所有图片均在本机识别，不上传图片。仅将取出的文字交给词典服务查询。授权后请重新触发取词；屏幕录制权限可能需要按系统提示重新打开应用。")
@@ -77,6 +104,10 @@ struct SettingsView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                 refreshPermissions()
             }
+    }
+
+    private func notifyHoverPreferenceChanged() {
+        NotificationCenter.default.post(name: HoverLookupController.preferenceChanged, object: nil)
     }
 
     private func permissionRow(_ title: String, allowed: Bool, action: @escaping () -> Void) -> some View {

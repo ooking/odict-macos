@@ -30,6 +30,17 @@ struct HoverWordChecks {
 
     static func main() async throws {
         // No capture, permissions, UI automation, preferences, keychain or network access.
+        let fixtures: [(HoverTrigger, NSEvent.ModifierFlags)] = [
+            (.command, .command), (.control, .control), (.option, .option), (.shift, .shift), (.none, []),
+        ]
+        for (trigger, flags) in fixtures {
+            try require(trigger.matches(flags.union(.capsLock)), "Caps Lock changed the hover gesture")
+            for other in [NSEvent.ModifierFlags.command, .control, .option, .shift] where other != flags {
+                try require(!trigger.matches(flags.union(other)), "A keyboard chord incorrectly armed hover lookup")
+            }
+        }
+        try require(HoverTrigger.control.isHeld(in: [.control, .shift]), "A chord incorrectly released the Control gesture")
+        try require(!HoverTrigger.control.matches([]), "Default Control gesture became unconditional")
         let text = "echo echo state-of-the-art don't café"
         let ranges = HoverWords.ranges(in: text)
         let tokens = ranges.map { String(text[$0]) }

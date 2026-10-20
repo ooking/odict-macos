@@ -23,7 +23,8 @@ final class HoverLookupController {
     private var revision = UUID()
     private var pendingPoint: CGPoint?
     private var currentHit: HoverWordHit?
-    private var controlHeld = false
+    private var trigger = HoverTrigger.current
+    private var triggerHeld = false
     private var blockedGesture = false
 
     init(text: HoverTextReading = HoverTextService(), image: ScreenImageCapturing = ScreenImageService()) {
@@ -32,6 +33,13 @@ final class HoverLookupController {
     }
 
     func updateEnabled() {
+        let selected = HoverTrigger.current
+        if selected != trigger {
+            cancel()
+            trigger = selected
+            triggerHeld = false
+            blockedGesture = false
+        }
         guard UserDefaults.standard.bool(forKey: Self.preferenceKey) else { stop(); return }
         let trusted = CapturePermissions.accessibility
         if globalMonitor != nil || localMonitor != nil {
@@ -53,7 +61,7 @@ final class HoverLookupController {
         if let monitor = localMonitor { NSEvent.removeMonitor(monitor) }
         globalMonitor = nil
         localMonitor = nil
-        controlHeld = false
+        triggerHeld = false
         blockedGesture = false
         cancel()
         ocr = nil
@@ -77,13 +85,13 @@ final class HoverLookupController {
     private func handle(_ event: NSEvent) {
         let point = NSEvent.mouseLocation
         let modifiers = event.modifierFlags.intersection([.control, .option, .command, .shift])
-        let held = modifiers.contains(.control)
-        if !held { blockedGesture = false }
-        if held && !controlHeld {
+        let held = trigger.isHeld(in: modifiers)
+        if !held || (trigger == .none && event.type == .mouseMoved) { blockedGesture = false }
+        if held && !triggerHeld {
             blockedGesture = false
             if !containsPanel(point) { currentHit = nil; onDismiss?() }
         }
-        controlHeld = held
+        triggerHeld = held
 
         if event.type == .keyDown {
             blockedGesture = true
@@ -115,7 +123,13 @@ final class HoverLookupController {
             dismissal = nil
             return
         }
-        guard modifiers == .control, !blockedGesture, canBegin(), CapturePermissions.accessibility,
+        // Unmodified hover re-arms only on mouse movement, never after typing
+        // or releasing a keyboard shortcut while the pointer stays stationary.
+        if trigger == .none && event.type != .mouseMoved {
+            cancelCapture()
+            return
+        }
+        guard trigger.matches(modifiers), !blockedGesture, canBegin(), CapturePermissions.accessibility,
               !IsSecureEventInputEnabled(), NSEvent.pressedMouseButtons == 0 else {
             cancelCapture()
             dismissSoon()
@@ -164,7 +178,7 @@ final class HoverLookupController {
 
     private func isCurrent(_ token: UUID, point: CGPoint) -> Bool {
         let flags = NSEvent.modifierFlags.intersection([.control, .option, .command, .shift])
-        return !Task.isCancelled && token == revision && flags == .control && !blockedGesture
+        return !Task.isCancelled && token == revision && trigger.matches(flags) && !blockedGesture
             && canBegin() && !containsPanel(NSEvent.mouseLocation) && !IsSecureEventInputEnabled()
             && NSEvent.pressedMouseButtons == 0
             && hypot(NSEvent.mouseLocation.x - point.x, NSEvent.mouseLocation.y - point.y) <= 3
