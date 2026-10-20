@@ -43,10 +43,10 @@ struct LookupView: View {
     private var searchBar: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass").font(.system(size: 16)).foregroundColor(secondaryInk)
-            CandidateSearchField(text: Binding(
-                get: { model.query },
-                set: { editQuery(); model.query = $0; model.queryChanged() }
-            ), focused: $searchFocused, focusRequest: model.focusRequest,
+            CandidateSearchField(text: model.query, changed: { text, composing in
+                editQuery()
+                model.editQuery(text, composing: composing)
+            }, focused: $searchFocused, focusRequest: model.focusRequest,
                 move: { model.moveSuggestion(by: $0) }, submit: { editQuery(); model.submit() }, cancel: close)
                 .frame(height: 24)
             if model.isLoading || model.isSuggesting {
@@ -173,16 +173,13 @@ struct LookupView: View {
     }
 
     private var recentList: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionTitle("最近查过")
-            ForEach(model.recent, id: \.self) { word in
-                Button { model.lookup(word) } label: {
-                    HStack(spacing: 9) {
-                        Image(systemName: "clock").font(.system(size: 12)).foregroundColor(secondaryInk)
-                        Text(word).foregroundColor(.primary)
-                        Spacer()
-                    }.padding(.vertical, 5).contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                .padding(.horizontal, 10)
+            VStack(spacing: 4) {
+                ForEach(model.recent, id: \.self) { word in
+                    RecentWordRow(word: word) { model.lookup(word) }
+                }
             }
         }
     }
@@ -240,6 +237,45 @@ struct LookupView: View {
     }
 }
 
+private struct RecentWordRow: View {
+    let word: String
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "clock")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(hovered ? .accentColor : secondaryInk)
+                    .frame(width: 24, height: 24)
+                Text(word)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.left")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(secondaryInk)
+                    .opacity(hovered ? 1 : 0)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(hovered ? Color.accentColor.opacity(0.12) : Color.clear)
+            .cornerRadius(10)
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
+        .help("查询 \(word)")
+    }
+}
+
 private struct CandidateRow: View {
     let item: Suggestion
     let selected: Bool
@@ -264,97 +300,5 @@ private struct CandidateRow: View {
         }
         .buttonStyle(.plain).onHover { hovered = $0 }
         .accessibilityValue(selected ? "已选中" : "")
-    }
-}
-
-// Handle field-editor commands rather than monitoring keys globally. Marked text
-// belongs to the input method, including its arrow and Return key handling.
-private struct CandidateSearchField: NSViewRepresentable {
-    @Binding var text: String
-    @Binding var focused: Bool
-    let focusRequest: UUID
-    let move: (Int) -> Bool
-    let submit: () -> Void
-    let cancel: () -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeNSView(context: Context) -> SearchTextField {
-        let field = SearchTextField()
-        field.isBordered = false
-        field.drawsBackground = false
-        field.focusRingType = .none
-        field.font = .systemFont(ofSize: 15)
-        field.textColor = .labelColor
-        field.placeholderString = "查单词、短语或中文"
-        field.isEditable = true
-        field.isSelectable = true
-        field.maximumNumberOfLines = 1
-        field.cell?.usesSingleLineMode = true
-        field.setAccessibilityLabel("查词输入框")
-        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        field.delegate = context.coordinator
-        return field
-    }
-
-    func updateNSView(_ field: SearchTextField, context: Context) {
-        context.coordinator.parent = self
-        // Avoid replacing the field editor's marked text during IME composition.
-        let composing = (field.currentEditor() as? NSTextView)?.hasMarkedText() ?? false
-        if field.stringValue != text, !composing {
-            field.stringValue = text
-        }
-        if context.coordinator.lastFocusRequest != focusRequest {
-            context.coordinator.lastFocusRequest = focusRequest
-            field.requestFocus()
-        }
-    }
-
-    final class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: CandidateSearchField
-        var lastFocusRequest: UUID?
-        init(_ parent: CandidateSearchField) { self.parent = parent }
-
-        func controlTextDidChange(_ notification: Notification) {
-            guard let field = notification.object as? NSTextField else { return }
-            parent.text = field.stringValue
-        }
-
-        func controlTextDidBeginEditing(_ notification: Notification) { parent.focused = true }
-        func controlTextDidEndEditing(_ notification: Notification) { parent.focused = false }
-
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            guard !textView.hasMarkedText() else { return false }
-            switch NSStringFromSelector(commandSelector) {
-            case "moveDown:": return parent.move(1)
-            case "moveUp:": return parent.move(-1)
-            case "insertNewline:": parent.submit(); return true
-            case "cancelOperation:": parent.cancel(); return true
-            default: return false
-            }
-        }
-    }
-
-    final class SearchTextField: NSTextField {
-        private var pendingFocus = false
-
-        func requestFocus() {
-            pendingFocus = true
-            focusWhenAttached()
-        }
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            focusWhenAttached()
-        }
-
-        private func focusWhenAttached() {
-            guard pendingFocus, window != nil else { return }
-            pendingFocus = false
-            DispatchQueue.main.async { [weak self] in
-                guard let self, let window = self.window else { return }
-                window.makeFirstResponder(self)
-            }
-        }
     }
 }

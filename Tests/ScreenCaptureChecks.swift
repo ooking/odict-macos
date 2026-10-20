@@ -18,6 +18,33 @@ private actor DeferredSelection: SelectedTextReading {
     }
 }
 
+@MainActor
+private final class FixtureRegion: ScreenRegionSelecting {
+    var region: ScreenRegion?
+    func select() async throws -> ScreenRegion? { region }
+    func cancel() {}
+}
+
+private struct FixtureImage: ScreenImageCapturing {
+    func capture(_ region: ScreenRegion) async throws -> CGImage {
+        let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        return context.makeImage()!
+    }
+}
+
+private actor DeferredOCR: ScreenTextRecognizing {
+    private var nextID = 0
+    private var pending: [Int: CheckedContinuation<String, Error>] = [:]
+    var count: Int { nextID }
+    func recognize(_ image: CGImage) async throws -> String {
+        let id = nextID
+        nextID += 1
+        return try await withCheckedThrowingContinuation { pending[id] = $0 }
+    }
+    func complete(_ id: Int, text: String) { pending.removeValue(forKey: id)?.resume(returning: text) }
+}
+
 @main
 private struct ScreenCaptureChecks {
     static func rejects(_ expected: CaptureError, _ operation: () throws -> String) {
@@ -119,6 +146,39 @@ private struct ScreenCaptureChecks {
         await fixture.complete(2, text: "cancelled")
         await settle()
         precondition(results == ["new"], "cancelled capture must not deliver a result")
+
+        // Exercise the complete screenshot pipeline using a 1-pixel generated
+        // image and deferred OCR; no display, Vision or permission API is called.
+        let region = FixtureRegion()
+        let ocr = DeferredOCR()
+        var cancelled = 0
+        var recognizing = 0
+        let screenshot = CaptureCoordinator(selectedText: fixture, accessibilityAllowed: { true }, screenAllowed: { true },
+            requestAccessibility: {}, requestScreen: {}, selection: region,
+            screenImage: FixtureImage(), screenText: ocr)
+        screenshot.onResult = { results.append($0.text) }
+        screenshot.onCancelled = { cancelled += 1 }
+        screenshot.onRecognizing = { _ in recognizing += 1 }
+        screenshot.takeScreenshot(anchor: anchor)
+        await settle()
+        precondition(cancelled == 1 && results == ["new"] && !screenshot.isRunning,
+                     "cancelled selection must not start OCR or lookup")
+        region.region = ScreenRegion(rect: anchor, displayID: 0,
+            screenFrame: CGRect(x: 0, y: 0, width: 100, height: 100), scale: 1, primaryTop: 100)
+        for id in 0..<2 {
+            screenshot.takeScreenshot(anchor: anchor)
+            for _ in 0..<200 {
+                if await ocr.count == id + 1 { break }
+                try await Task.sleep(nanoseconds: 5_000_000)
+            }
+            let requests = await ocr.count
+            precondition(requests == id + 1 && screenshot.phase == .recognizingText)
+            if id == 0 { screenshot.cancel() }
+            await ocr.complete(id, text: id == 0 ? "stale-ocr" : "image-word")
+            await settle()
+            precondition(results == (id == 0 ? ["new"] : ["new", "image-word"]))
+        }
+        precondition(recognizing == 2 && !screenshot.isRunning && screenshot.phase == .idle)
         print("Screen capture logic checks passed (no screen capture, OCR, permissions or network used).")
     }
 }

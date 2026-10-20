@@ -3,18 +3,9 @@ import KeyboardShortcuts
 import AppKit
 
 struct SettingsView: View {
-    @State private var address = UserDefaults.standard.string(forKey: "apiURL") ?? "https://odict-api.touchany.com"
-    @State private var key = ""
-    @State private var message: String?
-    @State private var saved = false
-    @State private var keyLoaded = false
-    @State private var keyLoading = false
-    @State private var keyLoadID = UUID()
-    @State private var keyLoadToken = UUID()
-    @State private var isSaving = false
+    @ObservedObject var model: SettingsModel
     @State private var accessibilityAllowed = false
     @State private var screenAllowed = false
-    let didSave: () -> Void
 
     var body: some View {
         ScrollView {
@@ -45,57 +36,37 @@ struct SettingsView: View {
                 Divider()
                 VStack(alignment: .leading, spacing: 10) {
                     Text("词典服务").font(.headline)
-                    TextField("HTTPS API 地址", text: $address).disabled(isSaving)
-                    SecureField("只读 API 密钥", text: $key).disabled(!keyLoaded || isSaving)
-                    if keyLoading {
+                    TextField("HTTPS API 地址", text: $model.address).disabled(!model.keyLoaded || model.isSaving)
+                    SecureField("只读 API 密钥", text: $model.key).disabled(!model.keyLoaded || model.isSaving)
+                    if model.isLoading {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
                             Text("正在读取钥匙串，请留意系统授权提示…").font(.caption).foregroundColor(.secondary)
                         }
-                    } else if !keyLoaded {
-                        Button("重试读取钥匙串") { keyLoadID = UUID() }.controlSize(.small)
+                    } else if !model.keyLoaded {
+                        Button("重试读取钥匙串") { model.load() }.controlSize(.small)
                     }
                     Text("密钥只保存在本机钥匙串中。请使用只读产品密钥，不要填写管理密钥。更换服务器时请同时更换对应密钥。")
                         .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
                     Link("获取 API 密钥", destination: URL(string: "https://odict.touchany.com/admin/api-clients")!)
                 }.textFieldStyle(.roundedBorder)
-                if let message { Text(message).font(.callout).foregroundColor(saved ? .secondary : .red).fixedSize(horizontal: false, vertical: true) }
+                if let message = model.message { Text(message).font(.callout).foregroundColor(model.saved ? .secondary : .red).fixedSize(horizontal: false, vertical: true) }
                 HStack {
                     Text("macOS 原生词典 · v1.0").font(.caption).foregroundColor(.secondary)
                     Spacer()
-                    if isSaving { ProgressView().controlSize(.small).accessibilityLabel("正在保存服务设置") }
-                    Button(isSaving ? "正在保存…" : "保存服务设置", action: save)
-                        .keyboardShortcut(.defaultAction).disabled(!keyLoaded || isSaving)
+                    if model.isSaving { ProgressView().controlSize(.small).accessibilityLabel("正在保存服务设置") }
+                    Button(model.isSaving ? "正在保存…" : "保存服务设置", action: model.save)
+                        .keyboardShortcut(.defaultAction).disabled(!model.keyLoaded || model.isSaving)
                 }
             }.padding(26).frame(width: 512, alignment: .leading)
         }.frame(width: 512, height: min(680, (NSScreen.main?.visibleFrame.height ?? 760) - 80))
             .onAppear {
                 refreshPermissions()
+                model.load()
             }
-            .task(id: keyLoadID) { await loadKey() }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                 refreshPermissions()
             }
-    }
-
-    @MainActor
-    private func loadKey() async {
-        guard !keyLoaded else { return }
-        let token = UUID()
-        keyLoadToken = token
-        keyLoading = true
-        message = nil
-        defer { if keyLoadToken == token { keyLoading = false } }
-        do {
-            let value = try await KeychainStore.read()
-            guard !Task.isCancelled, keyLoadToken == token else { return }
-            key = value
-            keyLoaded = true
-        } catch {
-            guard !Task.isCancelled, keyLoadToken == token else { return }
-            saved = false
-            message = error.localizedDescription
-        }
     }
 
     private func permissionRow(_ title: String, allowed: Bool, action: @escaping () -> Void) -> some View {
@@ -112,26 +83,4 @@ struct SettingsView: View {
         screenAllowed = CapturePermissions.screenRecording
     }
 
-    private func save() {
-        guard keyLoaded, !isSaving else { return }
-        saved = false
-        let value = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URLComponents(string: value), url.scheme == "https", let host = url.host, !host.isEmpty,
-              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil else {
-            message = "请输入有效的 HTTPS 地址，不包含账户、查询参数或片段。"; return
-        }
-        let secret = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !secret.contains(where: { $0.isWhitespace || $0.isNewline }) else { message = "密钥中不能包含空格或换行。"; return }
-        isSaving = true
-        Task { @MainActor in
-            defer { isSaving = false }
-            do {
-                try await KeychainStore.save(secret)
-                UserDefaults.standard.set(value, forKey: "apiURL")
-                saved = true
-                message = secret.isEmpty ? "服务设置已保存，已移除本机密钥。" : "已保存，下一次查词生效。"
-                didSave()
-            } catch { message = error.localizedDescription }
-        }
-    }
 }

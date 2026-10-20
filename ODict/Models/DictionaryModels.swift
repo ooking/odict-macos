@@ -30,7 +30,7 @@ protocol DictionaryServing {
 }
 
 enum DictionaryError: LocalizedError {
-    case configuration, missingKey, notFound, unauthorized, limited(String?), server(Int), invalidResponse
+    case configuration, missingKey, notFound, unauthorized, limited(String?), server(Int), invalidResponse, responseTooLarge
     var errorDescription: String? {
         switch self {
         case .configuration: return "请在设置中填写有效的 HTTPS API 地址。"
@@ -40,6 +40,7 @@ enum DictionaryError: LocalizedError {
         case .limited(let seconds): return seconds.map { "查询过于频繁，请在 \($0) 秒后重试。" } ?? "查询过于频繁，请稍后重试。"
         case .server(let status): return "词典服务暂不可用（\(status)），请稍后重试。"
         case .invalidResponse: return "无法读取词典返回的数据。"
+        case .responseTooLarge: return "词典返回的数据过大，请缩小查询范围或检查服务配置。"
         }
     }
 }

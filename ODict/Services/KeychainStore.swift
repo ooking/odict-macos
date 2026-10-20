@@ -2,35 +2,22 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    // Security.framework calls are synchronous and can wait for system authorization.
-    // Serialize them off the UI thread; never cache the returned secret.
-    private static let queue = DispatchQueue(label: "com.touchany.odict.keychain", qos: .userInitiated)
+    private static let worker = BlockingWorkQueue(label: "com.touchany.odict.keychain")
 
-    static func read() async throws -> String {
-        try await perform { try readSynchronously() }
+    static func loadSettings() async throws -> SavedServiceSettings {
+        try await worker.perform {
+            let key = try readSynchronously()
+            let address = UserDefaults.standard.string(forKey: "apiURL") ?? ServiceSettingsStore.defaultAddress
+            return SavedServiceSettings(address: address, key: key)
+        }
     }
 
-    static func save(_ key: String) async throws {
-        try await perform { try saveSynchronously(key) }
-    }
-
-    private static func perform<Value: Sendable>(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
-        let cancellation = KeychainCancellation()
-        return try await withTaskCancellationHandler(operation: {
-            try Task.checkCancellation()
-            let value: Value = try await withCheckedThrowingContinuation { continuation in
-                queue.async {
-                    continuation.resume(with: Result {
-                        try cancellation.check()
-                        let value = try operation()
-                        try cancellation.check()
-                        return value
-                    })
-                }
-            }
-            try Task.checkCancellation()
-            return value
-        }, onCancel: { cancellation.cancel() })
+    static func saveSettings(address: String, key: String) async throws {
+        try await worker.perform {
+            try saveSynchronously(key)
+            // Commit the matching endpoint on the same queue, even if the UI closes.
+            UserDefaults.standard.set(address, forKey: "apiURL")
+        }
     }
 
     private static var query: [String: Any] {
@@ -70,17 +57,5 @@ enum KeychainStore {
     struct StorageError: LocalizedError {
         let status: OSStatus
         var errorDescription: String? { "无法访问钥匙串（\(status)），请解锁钥匙串后重试。" }
-    }
-}
-
-// A running Security call cannot be interrupted. Skip cancelled queued work and
-// discard its result if cancellation arrives while waiting for the system.
-private final class KeychainCancellation: @unchecked Sendable {
-    private let lock = NSLock()
-    private var cancelled = false
-    func cancel() { lock.lock(); cancelled = true; lock.unlock() }
-    func check() throws {
-        lock.lock(); let value = cancelled; lock.unlock()
-        if value { throw CancellationError() }
     }
 }

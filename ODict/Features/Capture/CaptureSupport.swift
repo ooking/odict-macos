@@ -1,9 +1,9 @@
 import AppKit
 import ApplicationServices
 
-enum CaptureSource { case selection, screenshot }
+enum CaptureSource: Sendable { case selection, screenshot }
 
-struct CapturedText {
+struct CapturedText: Sendable {
     let text: String
     let source: CaptureSource
     let anchor: CGRect
@@ -30,6 +30,7 @@ enum CaptureError: LocalizedError {
 
 enum CaptureText {
     static func normalize(_ raw: String, emptyError: CaptureError) throws -> String {
+        guard raw.utf16.prefix(65_537).count <= 65_536 else { throw CaptureError.tooLong }
         // Stop as soon as the limit is exceeded; don't build an unbounded copy of a selection.
         var result = ""
         var pendingSpace = false

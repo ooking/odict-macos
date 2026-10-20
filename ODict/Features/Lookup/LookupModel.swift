@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 
 @MainActor
 final class LookupModel: ObservableObject {
@@ -12,10 +11,11 @@ final class LookupModel: ObservableObject {
     @Published private(set) var message: String?
     @Published private(set) var captureStatus: String?
     @Published private(set) var captureIsBusy = false
-    @Published private(set) var recent = Array((UserDefaults.standard.stringArray(forKey: "recentWords") ?? []).prefix(20))
+    @Published private(set) var recent: [String]
     @Published var focusRequest = UUID()
     private let dictionary: DictionaryServing
-    private var speech: AVSpeechSynthesizer?
+    private let history: RecentWordsStore
+    private let pronunciation = PronunciationService()
     private var task: Task<Void, Never>?
     private var detailTask: Task<Void, Never>?
     private var previewWord: String?
@@ -23,7 +23,22 @@ final class LookupModel: ObservableObject {
     private var revision = UUID()
     private var detailRevision = UUID()
 
-    init(dictionary: DictionaryServing = DictionaryClient()) { self.dictionary = dictionary }
+    init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore()) {
+        self.dictionary = dictionary
+        self.history = history
+        recent = history.load()
+    }
+
+    func editQuery(_ text: String, composing: Bool) {
+        query = text
+        if composing {
+            cancelRequests()
+            entry = nil
+            suggestions = []
+            selectedSuggestionIndex = nil
+            message = nil
+        } else { queryChanged() }
+    }
 
     func presentCaptureStatus(_ text: String, busy: Bool) {
         cancelRequests()
@@ -95,7 +110,17 @@ final class LookupModel: ObservableObject {
     // Only the selected entry is held in memory. Keyboard repeats cancel and debounce
     // previews; hovering never requests data. One unique candidate skips the sidebar.
     private func acceptSuggestions(_ results: [Suggestion]) {
-        suggestions = Array(results.prefix(10))
+        var seen = Set<String>()
+        var accepted: [Suggestion] = []
+        // Explicitly traverse once: a lazy Collection can evaluate its predicate
+        // more than once, so mutating a deduplication set inside it is unsafe.
+        for result in results {
+            guard !result.word.isEmpty, result.word.count <= 255,
+                  seen.insert(result.word.lowercased()).inserted else { continue }
+            accepted.append(result)
+            if accepted.count == 10 { break }
+        }
+        suggestions = accepted
         selectedSuggestionIndex = suggestions.isEmpty ? nil : 0
         if let first = suggestions.first { preview(first.word) }
     }
@@ -183,25 +208,13 @@ final class LookupModel: ObservableObject {
         text.unicodeScalars.contains { (0x3400...0x9FFF).contains($0.value) }
     }
 
-    private func rememberWord(_ word: String) {
-        recent.removeAll { $0.caseInsensitiveCompare(word) == .orderedSame }
-        recent.insert(word, at: 0)
-        recent = Array(recent.prefix(20))
-        UserDefaults.standard.set(recent, forKey: "recentWords")
-    }
+    private func rememberWord(_ word: String) { recent = history.remember(word, in: recent) }
 
-    func pronounce(_ word: String) {
-        if speech == nil { speech = AVSpeechSynthesizer() }
-        speech?.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: word)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
-        speech?.speak(utterance)
-    }
+    func pronounce(_ word: String) { pronunciation.speak(word) }
 
     func clearHistory() {
         recent = []
-        UserDefaults.standard.removeObject(forKey: "recentWords")
+        history.clear()
     }
 
     private func cancelRequests() {
@@ -221,7 +234,6 @@ final class LookupModel: ObservableObject {
 
     func suspend() {
         cancelRequests()
-        speech?.stopSpeaking(at: .immediate)
-        speech = nil
+        pronunciation.stop()
     }
 }

@@ -14,7 +14,9 @@ enum LegacyPreferencesMigration {
             return
         }
         // Leave the marker unset on a read failure so a later launch can retry.
-        guard let data = try? Data(contentsOf: url),
+        guard let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize,
+              size <= 256 * 1024,
+              let data = try? Data(contentsOf: url),
               let legacy = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any] else { return }
         copyMissing(from: legacy, to: defaults)
         defaults.set(true, forKey: marker)

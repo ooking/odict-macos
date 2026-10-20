@@ -1,21 +1,14 @@
 import Foundation
 
-// Never forward credentials through redirects or persist authenticated responses to disk.
-final class DictionaryClient: NSObject, DictionaryServing, URLSessionTaskDelegate {
-    private lazy var session: URLSession = {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 15
-        configuration.timeoutIntervalForResource = 20
-        configuration.urlCache = nil
-        configuration.httpShouldSetCookies = false
-        return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
-    }()
+// Immutable dependencies; URLSession lifecycle and buffering belong to the transport.
+final class DictionaryClient: DictionaryServing {
+    private let settings: ServiceSettingsServing
+    private let transport: HTTPTransporting
+    private let rateLimit = RequestRateLimit()
 
-    func urlSession(_ session: URLSession, task: URLSessionTask,
-                    willPerformHTTPRedirection response: HTTPURLResponse,
-                    newRequest request: URLRequest,
-                    completionHandler: @escaping (URLRequest?) -> Void) {
-        completionHandler(nil)
+    init(settings: ServiceSettingsServing = ServiceSettingsStore(), transport: HTTPTransporting = HTTPTransport()) {
+        self.settings = settings
+        self.transport = transport
     }
 
     func entry(_ word: String) async throws -> Entry {
@@ -32,31 +25,26 @@ final class DictionaryClient: NSObject, DictionaryServing, URLSessionTaskDelegat
     }
 
     private func request<T: Decodable>(path: [String], query: [URLQueryItem] = []) async throws -> T {
-        let address = UserDefaults.standard.string(forKey: "apiURL") ?? "https://odict-api.touchany.com"
-        guard var components = URLComponents(string: address), components.scheme == "https",
-              components.host != nil, components.user == nil, components.password == nil,
-              components.query == nil, components.fragment == nil else { throw DictionaryError.configuration }
-        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
-        components.percentEncodedPath = components.percentEncodedPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            .split(separator: "/").map(String.init).reduce("") { $0 + "/" + $1 }
-            + "/" + path.map { $0.addingPercentEncoding(withAllowedCharacters: allowed)! }.joined(separator: "/")
-        components.queryItems = query + [.init(name: "source_language", value: "zh-CN"), .init(name: "target_language", value: "zh-CN")]
-        guard let url = components.url else { throw DictionaryError.configuration }
-        let key = try await KeychainStore.read()
-        guard !key.isEmpty else { throw DictionaryError.missingKey }
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, response) = try await session.data(for: request)
         try Task.checkCancellation()
-        guard let http = response as? HTTPURLResponse else { throw DictionaryError.invalidResponse }
+        let snapshot = try await settings.load()
+        try Task.checkCancellation()
+        let endpoint = try ServiceEndpoint(snapshot.address)
+        let url = try endpoint.url(path: path, query: query + [
+            .init(name: "source_language", value: "zh-CN"), .init(name: "target_language", value: "zh-CN")
+        ])
+        try rateLimit.check(url)
+        guard !snapshot.key.isEmpty else { throw DictionaryError.missingKey }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(snapshot.key)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, http) = try await transport.data(for: request)
+        try Task.checkCancellation()
         switch http.statusCode {
         case 200...299: break
         case 401, 403: throw DictionaryError.unauthorized
         case 404: throw DictionaryError.notFound
         case 429:
-            let retry = http.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init).flatMap { $0 >= 0 ? String($0) : nil }
-            throw DictionaryError.limited(retry)
+            throw DictionaryError.limited(rateLimit.record(http))
         default: throw DictionaryError.server(http.statusCode)
         }
         let decoder = JSONDecoder()

@@ -7,6 +7,7 @@ private final class FixtureDictionary: DictionaryServing {
         if query == "empty" { return [] }
         if query == "single" { return [suggestion("unique")] }
         if query == "many" { return (0..<30).map { suggestion("word\($0)") } }
+        if query == "duplicates" { return [suggestion("same"), suggestion("same"), suggestion("SAME"), suggestion("")] }
         if query == "slow" { try? await Task.sleep(nanoseconds: 300_000_000); return [suggestion("stale")] }
         return ["play", "player", "playing", "playground"].map(suggestion)
     }
@@ -37,7 +38,10 @@ private struct LookupModelChecks {
     @MainActor
     static func main() async throws {
         let fixture = FixtureDictionary()
-        let model = LookupModel(dictionary: fixture)
+        let suite = "odict.lookup.fixture.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = LookupModel(dictionary: fixture, history: RecentWordsStore(defaults: defaults))
         precondition(!model.moveSuggestion(by: 1))
         model.query = "play"; model.queryChanged()
         precondition(model.isSuggesting)
@@ -83,6 +87,13 @@ private struct LookupModelChecks {
         model.query = "many"; model.queryChanged()
         try await settled(model)
         precondition(model.suggestions.count == 10)
+        model.editQuery("拼音组合", composing: true)
+        precondition(!model.isSuggesting && model.suggestions.isEmpty && model.entry == nil)
+        try await Task.sleep(nanoseconds: 400_000_000)
+        precondition(!model.isSuggesting && model.suggestions.isEmpty, "marked text must not request suggestions")
+        model.editQuery("duplicates", composing: false)
+        try await settled(model)
+        precondition(model.suggestions.count == 1 && model.suggestions.first?.word == "same")
         model.query = "failure"; model.queryChanged()
         try await settled(model)
         precondition(!model.isSuggesting && model.message != nil)

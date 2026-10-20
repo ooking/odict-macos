@@ -10,11 +10,22 @@ struct ScreenRegion {
     let primaryTop: CGFloat
 }
 
-enum ScreenImageService {
+protocol ScreenImageCapturing {
+    func capture(_ region: ScreenRegion) async throws -> CGImage
+}
+
+protocol ScreenTextRecognizing {
+    func recognize(_ image: CGImage) async throws -> String
+}
+
+struct ScreenImageService: ScreenImageCapturing {
+    func capture(_ region: ScreenRegion) async throws -> CGImage { try await Self.capture(region) }
     static func capture(_ region: ScreenRegion) async throws -> CGImage {
         try Task.checkCancellation()
-        // Allow the compositor to remove the selection windows before taking a single image.
-        try await Task.sleep(nanoseconds: 100_000_000)
+        guard region.rect.width.isFinite, region.rect.height.isFinite,
+              region.rect.width > 0, region.rect.height > 0,
+              region.scale.isFinite, region.scale > 0,
+              region.screenFrame.contains(region.rect) else { throw CaptureError.unavailable }
         if #available(macOS 14.0, *) {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             try Task.checkCancellation()
@@ -35,6 +46,9 @@ enum ScreenImageService {
             try Task.checkCancellation()
             return image
         } else {
+            // Modern capture explicitly excludes our windows. The old API needs
+            // a compositor turn after the overlay is removed.
+            try await Task.sleep(nanoseconds: 100_000_000)
             return try legacyCapture(region)
         }
     }
@@ -42,7 +56,10 @@ enum ScreenImageService {
     @available(macOS, introduced: 12.0, obsoleted: 14.0)
     private static func legacyCapture(_ region: ScreenRegion) throws -> CGImage {
         let rect = CaptureGeometry.quartzRect(region.rect, primaryTop: region.primaryTop)
-        guard let image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]) else {
+        let nativePixels = region.rect.width * region.rect.height * region.scale * region.scale
+        let option: CGWindowImageOption = nativePixels <= 16_777_216 ? .bestResolution : .nominalResolution
+        guard region.rect.width * region.rect.height <= 16_777_216,
+              let image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, option) else {
             throw CaptureError.unavailable
         }
         // CoreGraphics allocates the selected region only, never a full-desktop cache.
@@ -92,7 +109,7 @@ private final class RecognitionCancellation: @unchecked Sendable {
     }
 }
 
-final class ScreenTextService {
+final class ScreenTextService: ScreenTextRecognizing {
     private let queue = DispatchQueue(label: "com.touchany.odict.ocr", qos: .userInitiated)
 
     func recognize(_ image: CGImage) async throws -> String {

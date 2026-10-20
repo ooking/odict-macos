@@ -1,48 +1,64 @@
 import AppKit
 
 @MainActor
-final class ScreenSelectionController {
+protocol ScreenRegionSelecting: AnyObject {
+    func select() async throws -> ScreenRegion?
+    func cancel()
+}
+
+@MainActor
+final class ScreenSelectionController: ScreenRegionSelecting {
     private var windows: [SelectionPanel] = []
     private var continuation: CheckedContinuation<ScreenRegion?, Error>?
+    private var sessionID = UUID()
     var isSelecting: Bool { continuation != nil }
 
     func select() async throws -> ScreenRegion? {
         try Task.checkCancellation()
         cancel()
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            let primaryTop = NSScreen.screens.first?.frame.maxY ?? 0
-            for screen in NSScreen.screens {
-                guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { continue }
-                let panel = SelectionPanel(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-                panel.isReleasedWhenClosed = false
-                panel.isOpaque = false
-                panel.backgroundColor = .clear
-                panel.hasShadow = false
-                panel.level = .screenSaver
-                panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-                panel.isMovable = false
-                panel.setAccessibilityLabel("框选需要查询的单词或短语，按 Escape 取消")
-                let view = SelectionView(frame: CGRect(origin: .zero, size: screen.frame.size))
-                view.complete = { [weak self] rect in
-                    guard let self else { return }
-                    guard let rect else { self.cancel(); return }
-                    let global = rect.offsetBy(dx: screen.frame.minX, dy: screen.frame.minY)
-                    let region = ScreenRegion(rect: global, displayID: number.uint32Value,
-                        screenFrame: screen.frame, scale: screen.backingScaleFactor, primaryTop: primaryTop)
-                    self.finish(.success(region))
+        let token = UUID()
+        sessionID = token
+        return try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+                let primaryTop = NSScreen.screens.first?.frame.maxY ?? 0
+                for screen in NSScreen.screens {
+                    guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { continue }
+                    let panel = SelectionPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+                    panel.isReleasedWhenClosed = false
+                    panel.isOpaque = false
+                    panel.backgroundColor = .clear
+                    panel.hasShadow = false
+                    panel.hidesOnDeactivate = false
+                    panel.level = .screenSaver
+                    panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+                    panel.isMovable = false
+                    panel.setAccessibilityLabel("框选需要查询的单词或短语，按 Escape 取消")
+                    let view = SelectionView(frame: CGRect(origin: .zero, size: screen.frame.size))
+                    view.complete = { [weak self] rect in
+                        guard let self else { return }
+                        guard let rect else { self.cancel(); return }
+                        let global = rect.offsetBy(dx: screen.frame.minX, dy: screen.frame.minY)
+                        let region = ScreenRegion(rect: global, displayID: number.uint32Value,
+                            screenFrame: screen.frame, scale: screen.backingScaleFactor, primaryTop: primaryTop)
+                        self.finish(.success(region))
+                    }
+                    view.crossDisplay = { [weak self] in self?.finish(.failure(CaptureError.crossDisplay)) }
+                    panel.cancelSelection = { [weak self] in self?.cancel() }
+                    panel.contentView = view
+                    windows.append(panel)
+                    panel.orderFrontRegardless()
                 }
-                view.crossDisplay = { [weak self] in self?.finish(.failure(CaptureError.crossDisplay)) }
-                panel.cancelSelection = { [weak self] in self?.cancel() }
-                panel.contentView = view
-                windows.append(panel)
-                panel.orderFrontRegardless()
+                guard !windows.isEmpty else { finish(.failure(CaptureError.unavailable)); return }
+                let point = NSEvent.mouseLocation
+                (windows.first(where: { $0.frame.contains(point) }) ?? windows.first)?.makeKeyAndOrderFront(nil)
             }
-            guard !windows.isEmpty else { finish(.failure(CaptureError.unavailable)); return }
-            NSApp.activate(ignoringOtherApps: true)
-            let point = NSEvent.mouseLocation
-            (windows.first(where: { $0.frame.contains(point) }) ?? windows.first)?.makeKeyAndOrderFront(nil)
-        }
+        }, onCancel: { [weak self] in
+            Task { @MainActor in
+                guard self?.sessionID == token else { return }
+                self?.cancel()
+            }
+        })
     }
 
     func cancel() { finish(.success(nil)) }
