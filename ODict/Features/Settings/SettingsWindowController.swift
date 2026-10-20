@@ -11,9 +11,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         if window == nil {
             let model = SettingsModel()
             model.didSave = { [weak self] in self?.didSave?() }
-            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 512, height: 680),
-                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 860, height: min(680, (NSScreen.main?.visibleFrame.height ?? 760) - 80)),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             window.title = "ODict 设置"
+            window.minSize = NSSize(width: 760, height: 520)
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.contentViewController = NSHostingController(rootView: SettingsView(model: model))

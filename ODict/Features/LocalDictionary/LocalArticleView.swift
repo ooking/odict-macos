@@ -31,7 +31,7 @@ struct LocalArticleView: View {
                     Text("\(article.word) → \(article.correspondingHeadwords.joined(separator: "、"))（词典对应词条）")
                 }
             }
-            .font(.system(size: 11)).foregroundColor(.secondary)
+            .font(AppTypography.caption).foregroundColor(.secondary)
             .textSelection(.enabled).padding(.horizontal, 16).padding(.vertical, 8)
             LocalArticleWebView(article: article, lookup: lookup).id(article.id)
         }
@@ -104,7 +104,10 @@ private final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigat
                     // A transport document supplies resource isolation. The dictionary's
                     // HTML itself passes through unchanged, with no per-dictionary parsing.
                     let policy = "default-src 'none'; img-src \(Self.scheme): data:; style-src \(Self.scheme): 'unsafe-inline'; font-src \(Self.scheme): data:; script-src \(Self.scheme): 'unsafe-inline'; media-src \(Self.scheme): data:; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
-                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\"></head><body>" + article.html + "</body></html>"
+                    // A low-priority native reading baseline. Dictionary styles and
+                    // user overrides retain control over specialized typography.
+                    let typography = "<style>:where(body) { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: 15px; line-height: 1.6; }</style>"
+                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">" + typography + "</head><body>" + article.html + "</body></html>"
                     data = Data(document.utf8); mime = "text/html"
                 } else {
                     data = try await LocalDictionaryLibrary.shared.resource(url.path, in: article.dictionary)

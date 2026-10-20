@@ -37,3 +37,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator = nil
     }
 }
+
+// Shared native typography; system fallback preserves Chinese and IPA glyphs.
+enum AppTypography {
+    static let pageTitle = Font.system(size: 24, weight: .semibold)
+    static let section = Font.system(size: 15, weight: .semibold)
+    static let navigation = Font.system(size: 14, weight: .medium)
+    static let body = Font.system(size: 14)
+    static let secondary = Font.system(size: 13)
+    static let caption = Font.system(size: 12)
+    static let word = Font.system(size: 30, weight: .semibold)
+    static let candidate = Font.system(size: 16, weight: .medium)
+    static let search = NSFont.systemFont(ofSize: 16)
+}

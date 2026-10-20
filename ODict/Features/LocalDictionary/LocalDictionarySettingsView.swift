@@ -85,15 +85,15 @@ final class LocalDictionarySettingsModel: ObservableObject {
 }
 
 struct LocalDictionarySettingsView: View {
-    @StateObject private var model = LocalDictionarySettingsModel()
+    @ObservedObject var model: LocalDictionarySettingsModel
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("词典来源").font(.headline)
+            Text("词典来源").font(AppTypography.section)
             Picker("查询方式", selection: $model.mode) {
                 ForEach(DictionaryMode.allCases) { mode in Text(mode.title).tag(mode) }
             }.onChange(of: model.mode) { _ in model.changeMode() }
             Text("本地词典按从上到下的顺序查询，命中后停止；全部未命中时使用在线词典。中文释义反查使用在线服务。")
-                .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             ForEach(Array(model.dictionaries.enumerated()), id: \.element.id) { index, dictionary in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
@@ -115,7 +115,7 @@ struct LocalDictionarySettingsView: View {
                             .accessibilityLabel("词典选项")
                     }
                     Text("\(dictionary.folder.path) · \(dictionary.resources.count) 个资源包")
-                        .font(.caption2).foregroundColor(.secondary).lineLimit(2).textSelection(.enabled)
+                        .font(AppTypography.caption).foregroundColor(.secondary).lineLimit(2).textSelection(.enabled)
                 }.padding(10).background(Color.primary.opacity(0.035)).cornerRadius(8)
             }
             HStack {
@@ -123,10 +123,10 @@ struct LocalDictionarySettingsView: View {
                 if model.busy { ProgressView().controlSize(.small) }
             }
             Text("每本词典建议使用独立文件夹。展示样式可编辑目录中的 odict-overrides.css，也可自行添加 odict-overrides.js；重新查询后生效。移除配置不会删除词典文件。")
-                .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             if let message = model.message {
-                Text(message).font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(message).font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-        }.controlSize(.small).onDisappear { model.close() }
+        }.font(AppTypography.body).onDisappear { model.close() }
     }
 }

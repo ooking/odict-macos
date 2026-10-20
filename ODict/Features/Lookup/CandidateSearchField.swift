@@ -20,7 +20,7 @@ struct CandidateSearchField: NSViewRepresentable {
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = .systemFont(ofSize: 15)
+        field.font = AppTypography.search
         field.textColor = .labelColor
         field.placeholderString = "查单词、短语或中文"
         field.isEditable = true

@@ -32,7 +32,7 @@ struct LookupView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         LocalArticleView(article: article, lookup: { model.lookup($0) })
                         if let notice = model.message {
-                            Text(notice).font(.caption).foregroundColor(.secondary).padding(12)
+                            Text(notice).font(AppTypography.secondary).foregroundColor(.secondary).padding(12)
                         }
                     }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -42,7 +42,7 @@ struct LookupView: View {
             Divider()
             footer
         }
-        .font(.system(size: 14, weight: .regular))
+        .font(AppTypography.body)
         .frame(width: panelSize.width, height: panelSize.height)
         .onAppear { resize(panelSize) }
         .onChange(of: panelSize) { resize($0) }
@@ -81,7 +81,7 @@ struct LookupView: View {
 
     private var candidateSidebar: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("候选词").font(.system(size: 12)).foregroundColor(secondaryInk)
+            Text("候选词").font(AppTypography.caption).foregroundColor(secondaryInk)
                 .padding(.horizontal, 16).padding(.top, 16)
             ScrollViewReader { proxy in
                 ScrollView {
@@ -106,7 +106,7 @@ struct LookupView: View {
                 if let status = model.captureStatus {
                     HStack(alignment: .top, spacing: 10) {
                         if model.captureIsBusy { ProgressView().controlSize(.small) }
-                        Text(status).font(.system(size: 13)).foregroundColor(secondaryInk)
+                        Text(status).font(AppTypography.secondary).foregroundColor(secondaryInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if !model.captureIsBusy {
@@ -118,11 +118,11 @@ struct LookupView: View {
                 } else if let entry = model.entry {
                     entryContent(entry)
                     if let source = model.source {
-                        Text("来源：" + source).font(.system(size: 11)).foregroundColor(secondaryInk)
+                        Text("来源：" + source).font(AppTypography.caption).foregroundColor(secondaryInk)
                     }
                 } else if model.isLoading || model.isSuggesting {
                     Text(model.isSuggesting ? "正在查找候选词…" : "正在载入释义…")
-                        .font(.system(size: 13)).foregroundColor(secondaryInk).padding(.top, 12)
+                        .font(AppTypography.secondary).foregroundColor(secondaryInk).padding(.top, 12)
                 } else if model.query.isEmpty {
                     if model.recent.isEmpty { emptyState } else { recentList }
                 }
@@ -130,7 +130,7 @@ struct LookupView: View {
                     Label {
                         Text(message).fixedSize(horizontal: false, vertical: true)
                     } icon: { Image(systemName: "info.circle") }
-                    .font(.system(size: 13)).foregroundColor(secondaryInk)
+                    .font(AppTypography.secondary).foregroundColor(secondaryInk)
                     HStack(spacing: 12) {
                         Button("重试") { model.submit() }
                         Button("打开设置", action: openSettings)
@@ -181,9 +181,9 @@ struct LookupView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("随手一查，继续阅读").font(.system(size: 18, weight: .medium))
             Text("输入英文查释义，输入中文找单词")
-                .font(.system(size: 13)).foregroundColor(secondaryInk)
+                .font(AppTypography.secondary).foregroundColor(secondaryInk)
             Button("快捷键与设置", action: openSettings)
-                .buttonStyle(.link).font(.system(size: 12)).padding(.top, 4)
+                .buttonStyle(.link).font(AppTypography.caption).padding(.top, 4)
         }.padding(.vertical, 18)
     }
 
@@ -208,7 +208,7 @@ struct LookupView: View {
     private func entryContent(_ entry: Entry) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(entry.word).font(.system(size: 30, weight: .semibold)).textSelection(.enabled)
+                Text(entry.word).font(AppTypography.word).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
                     if let phonetic = entry.phonetic, !phonetic.isEmpty {
@@ -231,16 +231,16 @@ struct LookupView: View {
                 VStack(alignment: .leading, spacing: 9) {
                     ForEach(Array(entry.inflections.enumerated()), id: \.offset) { _, form in
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text(form.typeName).font(.system(size: 12)).foregroundColor(secondaryInk)
+                            Text(form.typeName).font(AppTypography.caption).foregroundColor(secondaryInk)
                             Button(form.form) { model.lookup(form.form) }.buttonStyle(.link)
-                                .font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
+                                .font(AppTypography.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
             }
             if !entry.tags.isEmpty {
                 Text(entry.tags.map { $0.name ?? $0.code }.joined(separator: " · "))
-                    .font(.system(size: 11)).foregroundColor(secondaryInk)
+                    .font(AppTypography.caption).foregroundColor(secondaryInk)
             }
         }
     }
@@ -252,7 +252,7 @@ struct LookupView: View {
     private func definition(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             sectionTitle(title)
-            Text(text).font(.system(size: 14, weight: .regular)).lineSpacing(4)
+            Text(text).font(AppTypography.body).lineSpacing(4)
                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -272,11 +272,11 @@ private struct RecentWordRow: View {
                 // The history panel is 440pt wide. Keep a stable word column and
                 // give the longer definitions the remaining space.
                 Text(word)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(AppTypography.navigation)
                     .foregroundColor(.primary)
                     .frame(width: 132, alignment: .leading)
                 Text(translation.map { $0.isEmpty ? "点击查看释义" : $0 } ?? "点击查看释义")
-                    .font(.system(size: 13))
+                    .font(AppTypography.secondary)
                     .foregroundColor(secondaryInk.opacity(hasSummary ? 1 : 0.75))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .multilineTextAlignment(.leading)
@@ -309,10 +309,10 @@ private struct CandidateRow: View {
             HStack(spacing: 0) {
                 RoundedRectangle(cornerRadius: 2).fill(selected ? Color.accentColor : .clear).frame(width: 3)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(item.word).font(.system(size: 16, weight: .semibold)).foregroundColor(.primary)
+                    Text(item.word).font(AppTypography.candidate).foregroundColor(.primary)
                         .lineLimit(2)
                     if let text = item.translationPreview ?? item.translation {
-                        Text(text).font(.system(size: 12)).foregroundColor(secondaryInk).lineLimit(2)
+                        Text(text).font(AppTypography.secondary).foregroundColor(secondaryInk).lineLimit(2)
                     }
                 }.padding(.horizontal, 12).padding(.vertical, 11).frame(maxWidth: .infinity, alignment: .leading)
             }
