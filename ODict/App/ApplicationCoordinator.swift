@@ -78,7 +78,9 @@ final class ApplicationCoordinator: NSObject {
         NSApp.setActivationPolicy(.accessory)
         rememberSource()
         status.onToggle = { [weak self] in self?.toggleLookup() }
-        settings.didSave = { [weak self] in self?.model.suspend() }
+        settings.didSave = { [weak self] in self?.model.sourcesChanged() }
+        NotificationCenter.default.addObserver(self, selector: #selector(dictionarySourcesChanged),
+            name: LocalDictionaryStore.changed, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(sourceChanged(_:)),
             name: NSWorkspace.didActivateApplicationNotification, object: nil)
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification,
@@ -103,6 +105,8 @@ final class ApplicationCoordinator: NSObject {
         }
         LifecycleDiagnostics.record("launch.ready")
     }
+
+    @objc private func dictionarySourcesChanged() { model.sourcesChanged() }
 
     @objc private func cancelHover() { hover.cancel() }
 

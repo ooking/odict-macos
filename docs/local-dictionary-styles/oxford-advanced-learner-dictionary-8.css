@@ -1,0 +1,56 @@
+/* ODict local dictionary overrides. Edit freely; user changes are preserved.
+   Optional odict-overrides.js runs after the article loads.
+   Dictionary-specific selectors belong in this file, not in the app. */
+:root {
+  color-scheme: light dark;
+  --odict-text: CanvasText;
+  --odict-secondary: rgba(35, 35, 40, .72);
+  --odict-accent: #155a98;
+  --odict-example: #176861;
+  --odict-grammar: #2b6a39;
+  --odict-emphasis: #a13737;
+  --odict-rule: rgba(30, 30, 35, .2);
+  --odict-section: rgba(30, 30, 35, .045);
+}
+html, body {
+  background: transparent !important;
+  color: var(--odict-text) !important;
+}
+body { margin: 14px; font-size: 15px; overflow-wrap: anywhere; }
+img, video, table { max-width: 100%; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --odict-secondary: rgba(235, 235, 245, .76);
+    --odict-accent: #a6ceff;
+    --odict-example: #99d9d0;
+    --odict-grammar: #a7d4a2;
+    --odict-emphasis: #ffb5ad;
+    --odict-rule: rgba(235, 235, 245, .24);
+    --odict-section: rgba(235, 235, 245, .055);
+  }
+}
+
+/* Oxford presentation overrides. All dictionary-specific rules stay here. */
+.d, .ud, .x, .ei-g .ei, .ei-g .il, .ab .z_ab, .sym .z_sym {
+  color: var(--odict-text) !important;
+}
+.oalecd8e_chn, .x-g .oalecd8e_chn, .alt > .z_br, .vs-g, .z_a,
+.label-g, .arit1, .g, .gi, .il, .r, .ungi, .gr, .z_he_er {
+  color: var(--odict-secondary) !important;
+}
+.ab, .alt, .def-g .dhb, .dre, .eb, .he, .idg a, .pvg a,
+.vs, .vs-g .v, .xh a, .unxh a, .txt, .unfm, .unsyn, .unx, .xt,
+.h, .hs, .idh, .pvh, .de_s, .h2, .xp, .fm, .co, .xhm, .xs,
+.ei-g .phon-gb, .infl .inflection, .unbox .title, .ndv {
+  color: var(--odict-accent) !important;
+}
+.phon-us, .phon-usgb, .ei-g .z_phon-us { color: var(--odict-emphasis) !important; }
+.wordbox, .table, .id-g > .id, .pv-g > .pv {
+  background: var(--odict-section) !important;
+  border-color: var(--odict-rule) !important;
+}
+.pos, .idg_c, .pvg_c, .table .tr .th {
+  background: var(--odict-section) !important;
+  color: var(--odict-accent) !important;
+}
+.pos a, .table .th a { color: var(--odict-accent) !important; }

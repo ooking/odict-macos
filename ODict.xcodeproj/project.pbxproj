@@ -37,6 +37,13 @@
 		00000000000000000000060C /* ODict/Services/ServiceSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */; };
 		000000000000000000000800 /* ODict/Services/HoverTextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000700 /* ODict/Services/HoverTextService.swift */; };
 		000000000000000000000801 /* ODict/Features/Capture/HoverLookupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */; };
+		000000000000000000000A00 /* ODict/LocalDictionary/MDXBinary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000900 /* ODict/LocalDictionary/MDXBinary.swift */; };
+		000000000000000000000A01 /* ODict/LocalDictionary/MDXReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */; };
+		000000000000000000000A02 /* ODict/LocalDictionary/LocalDictionaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000902 /* ODict/LocalDictionary/LocalDictionaryStore.swift */; };
+		000000000000000000000A03 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000903 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift */; };
+		000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */; };
+		000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */; };
+		000000000000000000000A06 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,6 +80,13 @@
 		00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/ServiceSettingsStore.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000700 /* ODict/Services/HoverTextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/HoverTextService.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Capture/HoverLookupController.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000900 /* ODict/LocalDictionary/MDXBinary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/MDXBinary.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/MDXReader.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000902 /* ODict/LocalDictionary/LocalDictionaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalDictionaryStore.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000903 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalDictionaryLibrary.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/DictionaryRouter.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/LocalDictionary/LocalArticleView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +104,13 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */,
+				000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */,
+				000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */,
+				000000000000000000000903 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift */,
+				000000000000000000000902 /* ODict/LocalDictionary/LocalDictionaryStore.swift */,
+				000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */,
+				000000000000000000000900 /* ODict/LocalDictionary/MDXBinary.swift */,
 				000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */,
 				000000000000000000000700 /* ODict/Services/HoverTextService.swift */,
 				000000000000000000000500 /* ODict/App/ApplicationCoordinator.swift */,
@@ -204,6 +225,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000000A06 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift in Sources */,
+				000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */,
+				000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */,
+				000000000000000000000A03 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift in Sources */,
+				000000000000000000000A02 /* ODict/LocalDictionary/LocalDictionaryStore.swift in Sources */,
+				000000000000000000000A01 /* ODict/LocalDictionary/MDXReader.swift in Sources */,
+				000000000000000000000A00 /* ODict/LocalDictionary/MDXBinary.swift in Sources */,
 				000000000000000000000801 /* ODict/Features/Capture/HoverLookupController.swift in Sources */,
 				000000000000000000000800 /* ODict/Services/HoverTextService.swift in Sources */,
 				000000000000000000000600 /* ODict/App/ApplicationCoordinator.swift in Sources */,
@@ -285,6 +313,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				OTHER_LDFLAGS = "$(inherited) -lz";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -313,6 +342,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				OTHER_LDFLAGS = "$(inherited) -lz";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = Release;

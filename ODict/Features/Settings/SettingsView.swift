@@ -71,6 +71,8 @@ struct SettingsView: View {
                         .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Divider()
+                LocalDictionarySettingsView()
+                Divider()
                 VStack(alignment: .leading, spacing: 10) {
                     Text("词典服务").font(.headline)
                     TextField("HTTPS API 地址", text: $model.address).disabled(!model.keyLoaded || model.isSaving)

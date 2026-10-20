@@ -28,7 +28,16 @@ struct LookupView: View {
                     candidateSidebar.frame(width: 220)
                     Divider()
                 }
-                detailPane.frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let article = model.localArticle, model.contentVisible {
+                    VStack(alignment: .leading, spacing: 0) {
+                        LocalArticleView(article: article, lookup: { model.lookup($0) })
+                        if let notice = model.message {
+                            Text(notice).font(.caption).foregroundColor(.secondary).padding(12)
+                        }
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    detailPane.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             footer
@@ -108,6 +117,9 @@ struct LookupView: View {
                     }
                 } else if let entry = model.entry {
                     entryContent(entry)
+                    if let source = model.source {
+                        Text("来源：" + source).font(.system(size: 11)).foregroundColor(secondaryInk)
+                    }
                 } else if model.isLoading || model.isSuggesting {
                     Text(model.isSuggesting ? "正在查找候选词…" : "正在载入释义…")
                         .font(.system(size: 13)).foregroundColor(secondaryInk).padding(.top, 12)
@@ -124,7 +136,10 @@ struct LookupView: View {
                         Button("打开设置", action: openSettings)
                     }.controlSize(.small)
                 }
-            }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, showingHistory ? 12 : 22)
+            .padding(.vertical, showingHistory ? 16 : 22)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         // New entry starts at its heading instead of inheriting a long previous word's scroll position.
         .id(model.entry?.word ?? "pending")
@@ -170,6 +185,11 @@ struct LookupView: View {
             Button("快捷键与设置", action: openSettings)
                 .buttonStyle(.link).font(.system(size: 12)).padding(.top, 4)
         }.padding(.vertical, 18)
+    }
+
+    private var showingHistory: Bool {
+        model.query.isEmpty && !model.recent.isEmpty && model.entry == nil
+            && model.captureStatus == nil && !model.isLoading && !model.isSuggesting
     }
 
     private var recentList: some View {
@@ -244,40 +264,32 @@ private struct RecentWordRow: View {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovered = false
+    private var hasSummary: Bool { translation?.isEmpty == false }
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: "clock")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(hovered ? .accentColor : secondaryInk)
-                    .frame(width: 24, height: 24)
-                HStack(alignment: .top, spacing: 12) {
-                    Text(word)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(translation.map { $0.isEmpty ? "暂无释义" : $0 } ?? "待补充释义")
-                        .font(.system(size: 12))
-                        .foregroundColor(secondaryInk)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .multilineTextAlignment(.trailing)
-                }
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: false, vertical: true)
-                Image(systemName: "arrow.up.left")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(secondaryInk)
-                    .opacity(hovered ? 1 : 0)
-                    .accessibilityHidden(true)
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                // The history panel is 440pt wide. Keep a stable word column and
+                // give the longer definitions the remaining space.
+                Text(word)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 132, alignment: .leading)
+                Text(translation.map { $0.isEmpty ? "点击查看释义" : $0 } ?? "点击查看释义")
+                    .font(.system(size: 13))
+                    .foregroundColor(secondaryInk.opacity(hasSummary ? 1 : 0.75))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
             }
+            .lineLimit(2)
+            .truncationMode(.tail)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(hovered ? Color.accentColor.opacity(0.12) : Color.clear)
-            .cornerRadius(10)
-            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
+            .background(hovered ? Color.accentColor.opacity(0.10) : Color.clear)
+            .cornerRadius(7)
+            .contentShape(RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }

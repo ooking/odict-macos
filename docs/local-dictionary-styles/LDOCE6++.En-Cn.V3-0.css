@@ -1,0 +1,64 @@
+/* ODict local dictionary overrides. Edit freely; user changes are preserved.
+   Optional odict-overrides.js runs after the article loads.
+   Dictionary-specific selectors belong in this file, not in the app. */
+:root {
+  color-scheme: light dark;
+  --odict-text: CanvasText;
+  --odict-secondary: rgba(35, 35, 40, .72);
+  --odict-accent: #155a98;
+  --odict-example: #176861;
+  --odict-grammar: #2b6a39;
+  --odict-emphasis: #a13737;
+  --odict-rule: rgba(30, 30, 35, .2);
+  --odict-section: rgba(30, 30, 35, .045);
+}
+html, body {
+  background: transparent !important;
+  color: var(--odict-text) !important;
+}
+body { margin: 14px; font-size: 15px; overflow-wrap: anywhere; }
+img, video, table { max-width: 100%; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --odict-secondary: rgba(235, 235, 245, .76);
+    --odict-accent: #a6ceff;
+    --odict-example: #99d9d0;
+    --odict-grammar: #a7d4a2;
+    --odict-emphasis: #ffb5ad;
+    --odict-rule: rgba(235, 235, 245, .24);
+    --odict-section: rgba(235, 235, 245, .055);
+  }
+}
+
+/* Longman presentation overrides. All dictionary-specific rules stay here. */
+.entry, .verbtable { background: transparent !important; color: var(--odict-text) !important; }
+.def, .def en, .def tran, .gloss, .collgloss,
+.collo collot, .collo colloc, .menuitem .signpost {
+  color: var(--odict-text) !important;
+}
+.example { color: var(--odict-example) !important; }
+.example example, .arrow, .gramrefcont { color: var(--odict-secondary) !important; }
+.gram, .pos { color: var(--odict-grammar) !important; }
+.hyphenation, .homnum, .sensenum, .deriv, .exp, .expr, .geo,
+.registerlab, .colloc.key, .nodeword, .colloinexa, .phrvbs .heading {
+  color: var(--odict-accent) !important;
+}
+.collo, .lexunit, .lexvar, .opp, .pastpart, .phrvbhwd, .propform,
+.freq, .frequent, .level, .cross { color: var(--odict-emphasis) !important; }
+.entry a { color: var(--odict-accent); }
+.chwd { border-color: var(--odict-rule) !important; }
+.chwd a, .chwd .hw, .popup-button, .signpost {
+  background-color: var(--odict-section) !important;
+  color: var(--odict-accent) !important;
+  border-color: var(--odict-rule) !important;
+}
+.collobox, .thesbox, .usagebox, .grambox, .f2nbox,
+.collobox .section, .grambox .expl, .grambox .compareword,
+.popup-button-hover, .at-link {
+  background: var(--odict-section) !important;
+  border-color: var(--odict-rule) !important;
+}
+.heading, .subheading, .secheading, .popheader, .popverbs {
+  background: transparent !important;
+  color: var(--odict-accent) !important;
+}

@@ -103,6 +103,7 @@ final class LookupWindowController {
     }
 
     func show(anchor: CGRect?, hover: Bool = false) {
+        model.resume()
         LifecycleDiagnostics.record("lookup.show.begin", panel: panel)
         self.anchor = anchor
         isHover = hover

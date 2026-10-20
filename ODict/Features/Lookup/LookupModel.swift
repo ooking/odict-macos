@@ -3,7 +3,11 @@ import SwiftUI
 @MainActor
 final class LookupModel: ObservableObject {
     @Published var query = ""
-    @Published private(set) var entry: Entry?
+    @Published private(set) var result: LookupResult?
+    var entry: Entry? { result?.remote }
+    var localArticle: LocalArticle? { result?.local }
+    var source: String? { result?.source }
+    @Published private(set) var contentVisible = true
     @Published private(set) var suggestions: [Suggestion] = []
     @Published private(set) var selectedSuggestionIndex: Int?
     @Published private(set) var isLoading = false
@@ -15,7 +19,7 @@ final class LookupModel: ObservableObject {
     @Published private(set) var recentTranslations: [String: String]
     @Published var focusRequest = UUID()
     @Published var acceptsSearchFocus = true
-    private let dictionary: DictionaryServing
+    private let dictionary: DictionaryLookupServing
     private let history: RecentWordsStore
     private let pronunciation = PronunciationService()
     private var task: Task<Void, Never>?
@@ -25,8 +29,12 @@ final class LookupModel: ObservableObject {
     private var revision = UUID()
     private var detailRevision = UUID()
 
-    init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore()) {
-        self.dictionary = dictionary
+    convenience init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore()) {
+        self.init(router: DictionaryRouter(remote: dictionary), history: history)
+    }
+
+    init(router: DictionaryLookupServing, history: RecentWordsStore = RecentWordsStore()) {
+        self.dictionary = router
         self.history = history
         let saved = history.load()
         recent = saved
@@ -34,10 +42,11 @@ final class LookupModel: ObservableObject {
     }
 
     func editQuery(_ text: String, composing: Bool) {
+        contentVisible = true
         query = text
         if composing {
             cancelRequests()
-            entry = nil
+            result = nil
             suggestions = []
             selectedSuggestionIndex = nil
             message = nil
@@ -47,7 +56,7 @@ final class LookupModel: ObservableObject {
     func presentCaptureStatus(_ text: String, busy: Bool) {
         cancelRequests()
         query = ""
-        entry = nil
+        result = nil
         suggestions = []
         selectedSuggestionIndex = nil
         message = nil
@@ -85,8 +94,9 @@ final class LookupModel: ObservableObject {
     }
 
     func queryChanged() {
+        contentVisible = true
         cancelRequests()
-        entry = nil
+        result = nil
         suggestions = []
         selectedSuggestionIndex = nil
         message = nil
@@ -141,12 +151,13 @@ final class LookupModel: ObservableObject {
         previewWord = word
         rememberPreview = remember
         message = nil
-        if let current = entry, current.word.caseInsensitiveCompare(word) == .orderedSame {
+        if let current = result, current.word.caseInsensitiveCompare(word) == .orderedSame {
+            message = current.notice
             isLoading = false
             if remember { rememberEntry(current) }
             return
         }
-        entry = nil
+        result = nil
         isLoading = true
         detailTask = Task {
             defer {
@@ -158,7 +169,8 @@ final class LookupModel: ObservableObject {
                 if delay { try await Task.sleep(nanoseconds: 150_000_000) }
                 let result = try await dictionary.entry(word)
                 guard !Task.isCancelled, token == detailRevision else { return }
-                entry = result
+                self.result = result
+                message = result.notice
                 if rememberPreview { rememberEntry(result) }
             } catch {
                 guard !Task.isCancelled, token == detailRevision else { return }
@@ -168,10 +180,11 @@ final class LookupModel: ObservableObject {
     }
 
     func lookup(_ word: String? = nil) {
+        contentVisible = true
         if let word { query = word }
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         cancelRequests()
-        entry = nil
+        result = nil
         suggestions = []
         selectedSuggestionIndex = nil
         message = nil
@@ -192,7 +205,8 @@ final class LookupModel: ObservableObject {
                     do {
                         let result = try await dictionary.entry(text)
                         guard !Task.isCancelled, token == revision else { return }
-                        entry = result
+                        self.result = result
+                        message = result.notice
                         rememberEntry(result)
                     } catch DictionaryError.notFound {
                         let results = try await dictionary.search(text, translation: false)
@@ -212,7 +226,7 @@ final class LookupModel: ObservableObject {
         text.unicodeScalars.contains { (0x3400...0x9FFF).contains($0.value) }
     }
 
-    private func rememberEntry(_ entry: Entry) {
+    private func rememberEntry(_ entry: LookupResult) {
         recent = history.remember(entry.word, in: recent)
         recentTranslations = recentTranslations.filter { recent.contains($0.key) }
         recentTranslations[entry.word] = RecentWordsStore.summary(entry.translation ?? "")
@@ -265,8 +279,26 @@ final class LookupModel: ObservableObject {
         isSuggesting = false
     }
 
+    func resume() {
+        let reload = !contentVisible && result == nil && !query.isEmpty && !isLoading && !isSuggesting && captureStatus == nil
+        contentVisible = true
+        if reload { lookup() }
+    }
+
+    func sourcesChanged() {
+        suspend()
+        result = nil
+        suggestions = []
+        selectedSuggestionIndex = nil
+    }
+
     func suspend() {
+        contentVisible = false
         cancelRequests()
+        // Dropping HTML and its WebView releases the renderer and resource tasks.
+        if result?.local != nil { result = nil }
+        let router = dictionary
+        Task { await router.releaseLocalResources() }
         pronunciation.stop()
     }
 }
