@@ -10,6 +10,8 @@ final class LookupModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var isSuggesting = false
     @Published private(set) var message: String?
+    @Published private(set) var captureStatus: String?
+    @Published private(set) var captureIsBusy = false
     @Published private(set) var recent = Array((UserDefaults.standard.stringArray(forKey: "recentWords") ?? []).prefix(20))
     @Published var focusRequest = UUID()
     private let dictionary: DictionaryServing
@@ -22,6 +24,17 @@ final class LookupModel: ObservableObject {
     private var detailRevision = UUID()
 
     init(dictionary: DictionaryServing = DictionaryClient()) { self.dictionary = dictionary }
+
+    func presentCaptureStatus(_ text: String, busy: Bool) {
+        cancelRequests()
+        query = ""
+        entry = nil
+        suggestions = []
+        selectedSuggestionIndex = nil
+        message = nil
+        captureStatus = text
+        captureIsBusy = busy
+    }
 
     var hasMultipleSuggestions: Bool { suggestions.count > 1 }
 
@@ -192,6 +205,8 @@ final class LookupModel: ObservableObject {
     }
 
     private func cancelRequests() {
+        captureStatus = nil
+        captureIsBusy = false
         task?.cancel()
         detailTask?.cancel()
         task = nil

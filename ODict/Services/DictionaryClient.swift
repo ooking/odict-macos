@@ -42,7 +42,7 @@ final class DictionaryClient: NSObject, DictionaryServing, URLSessionTaskDelegat
             + "/" + path.map { $0.addingPercentEncoding(withAllowedCharacters: allowed)! }.joined(separator: "/")
         components.queryItems = query + [.init(name: "source_language", value: "zh-CN"), .init(name: "target_language", value: "zh-CN")]
         guard let url = components.url else { throw DictionaryError.configuration }
-        let key = try KeychainStore.read()
+        let key = try await KeychainStore.read()
         guard !key.isEmpty else { throw DictionaryError.missingKey }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")

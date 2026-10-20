@@ -9,11 +9,14 @@ struct LookupView: View {
     let openSettings: () -> Void
     let close: () -> Void
     let resize: (NSSize) -> Void
+    var captureSelection: () -> Void = {}
+    var captureScreenshot: () -> Void = {}
+    var editQuery: () -> Void = {}
     @State private var searchFocused = false
 
     private var panelSize: NSSize {
         NSSize(width: model.hasMultipleSuggestions ? 640 : 440,
-               height: model.query.isEmpty && model.recent.isEmpty ? 280 : 440)
+               height: model.query.isEmpty && model.recent.isEmpty && model.captureStatus == nil ? 280 : 440)
     }
 
     var body: some View {
@@ -42,9 +45,9 @@ struct LookupView: View {
             Image(systemName: "magnifyingglass").font(.system(size: 16)).foregroundColor(secondaryInk)
             CandidateSearchField(text: Binding(
                 get: { model.query },
-                set: { model.query = $0; model.queryChanged() }
+                set: { editQuery(); model.query = $0; model.queryChanged() }
             ), focused: $searchFocused, focusRequest: model.focusRequest,
-                move: { model.moveSuggestion(by: $0) }, submit: { model.submit() }, cancel: close)
+                move: { model.moveSuggestion(by: $0) }, submit: { editQuery(); model.submit() }, cancel: close)
                 .frame(height: 24)
             if model.isLoading || model.isSuggesting {
                 ProgressView().controlSize(.small)
@@ -52,7 +55,7 @@ struct LookupView: View {
             }
             if !model.query.isEmpty {
                 Button {
-                    model.query = ""; model.queryChanged(); model.focusRequest = UUID()
+                    editQuery(); model.query = ""; model.queryChanged(); model.focusRequest = UUID()
                 } label: {
                     Image(systemName: "xmark.circle.fill").frame(width: 24, height: 24)
                 }
@@ -91,7 +94,19 @@ struct LookupView: View {
     private var detailPane: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                if let entry = model.entry {
+                if let status = model.captureStatus {
+                    HStack(alignment: .top, spacing: 10) {
+                        if model.captureIsBusy { ProgressView().controlSize(.small) }
+                        Text(status).font(.system(size: 13)).foregroundColor(secondaryInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !model.captureIsBusy {
+                        HStack(spacing: 12) {
+                            Button("截图取词", action: captureScreenshot)
+                            Button("打开设置", action: openSettings)
+                        }.controlSize(.small)
+                    }
+                } else if let entry = model.entry {
                     entryContent(entry)
                 } else if model.isLoading || model.isSuggesting {
                     Text(model.isSuggesting ? "正在查找候选词…" : "正在载入释义…")
@@ -120,6 +135,8 @@ struct LookupView: View {
             Image(systemName: "book.closed.fill").font(.system(size: 14)).foregroundColor(.accentColor)
             Text("ODict").font(.system(size: 12, weight: .semibold))
             Spacer()
+            captureButton("选中取词", icon: "text.cursor", action: captureSelection)
+            captureButton("截图取词", icon: "viewfinder", action: captureScreenshot)
             Button(action: openSettings) {
                 Image(systemName: "gearshape").font(.system(size: 14))
                     .frame(width: 28, height: 28).contentShape(Rectangle())
@@ -134,6 +151,15 @@ struct LookupView: View {
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .foregroundColor(secondaryInk).help("更多").accessibilityLabel("更多操作")
         }.padding(.horizontal, 18).padding(.vertical, 5)
+    }
+
+    private func captureButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 14))
+                .frame(width: 28, height: 28).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).foregroundColor(secondaryInk)
+        .help(title).accessibilityLabel(title)
     }
 
     private var emptyState: some View {
