@@ -34,23 +34,40 @@ img, video, table { max-width: 100%; }
 .d, .ud, .x, .ei-g .ei, .ei-g .il, .ab .z_ab, .sym .z_sym {
   color: var(--odict-text) !important;
 }
-.oalecd8e_chn, .x-g .oalecd8e_chn, .alt > .z_br, .vs-g, .z_a,
+.oalecd8e_chn, .d .oalecd8e_chn, .ud .oalecd8e_chn,
+.x-g .oalecd8e_chn, .alt > .z_br, .vs-g, .z_a,
 .label-g, .arit1, .g, .gi, .il, .r, .ungi, .gr, .z_he_er {
   color: var(--odict-secondary) !important;
 }
 .ab, .alt, .def-g .dhb, .dre, .eb, .he, .idg a, .pvg a,
 .vs, .vs-g .v, .xh a, .unxh a, .txt, .unfm, .unsyn, .unx, .xt,
 .h, .hs, .idh, .pvh, .de_s, .h2, .xp, .fm, .co, .xhm, .xs,
-.ei-g .phon-gb, .infl .inflection, .unbox .title, .ndv {
+.ei-g .phon-gb, .infl .inflection, .unbox .title, .ndv,
+.arbd1, .revout a, .n-g .z_n, .if-g .if,
+.h-g .top-g .pos-g .Ref a, .gl, .sym, .ungl,
+.wordbox .wf-g .wfw, .wordbox .word, .sd-g .sd,
+.dr-g .top-g .dr, .dr-g .top-g .zd, .z_xr, .symbols-drsym,
+.symbols-coresym:before, .symbols-small_coresym:before {
   color: var(--odict-accent) !important;
 }
 .phon-us, .phon-usgb, .ei-g .z_phon-us { color: var(--odict-emphasis) !important; }
-.wordbox, .table, .id-g > .id, .pv-g > .pv {
+.wordbox, .table, .id-g > .id, .pv-g > .pv,
+.ids-g, .pvs-g, .help, .block-g {
   background: var(--odict-section) !important;
   border-color: var(--odict-rule) !important;
 }
-.pos, .idg_c, .pvg_c, .table .tr .th {
+.pos, .idg_c, .pvg_c, .table .tr .th, .table .table .tr .th,
+.symbols-xrsym, .symbols-synsym, .symbols-oppsym,
+.symbols-etymsym, .symbols-helpsym, .symbols-notesym, .symbols-awlsym {
   background: var(--odict-section) !important;
   color: var(--odict-accent) !important;
 }
 .pos a, .table .th a { color: var(--odict-accent) !important; }
+.symbols-oppsym a, .symbols-synsym a { color: var(--odict-accent) !important; }
+.x-g:before { color: var(--odict-secondary) !important; }
+.dr:before { border-left-color: var(--odict-accent) !important; }
+.oalecd8e_show_all:before, .oalecd8e_show_all.active:before {
+  color: var(--odict-accent) !important;
+  background: var(--odict-section) !important;
+  border-color: var(--odict-rule) !important;
+}

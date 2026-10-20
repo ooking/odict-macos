@@ -33,18 +33,24 @@ img, video, table { max-width: 100%; }
 /* Longman presentation overrides. All dictionary-specific rules stay here. */
 .entry, .verbtable { background: transparent !important; color: var(--odict-text) !important; }
 .def, .def en, .def tran, .gloss, .collgloss,
-.collo collot, .collo colloc, .menuitem .signpost {
+.collo collot, .collo colloc, .menuitem .signpost,
+span.italic, span.neutral, ul.exas li, .verbtable .geo {
   color: var(--odict-text) !important;
 }
 .example { color: var(--odict-example) !important; }
 .example example, .arrow, .gramrefcont { color: var(--odict-secondary) !important; }
 .gram, .pos { color: var(--odict-grammar) !important; }
 .hyphenation, .homnum, .sensenum, .deriv, .exp, .expr, .geo,
-.registerlab, .colloc.key, .nodeword, .colloinexa, .phrvbs .heading {
+.registerlab, .colloc.key, .nodeword, .colloinexa, .phrvbs .heading,
+.ac, .cyan, .spokensecthead, .ws-head, span.keycollo, span.synopp,
+.thesref .refhwd, .thesref .refhomnum, .thesref span.thesaurus,
+.verbtable .lemma, .verbtable .verb_form {
   color: var(--odict-accent) !important;
 }
 .collo, .lexunit, .lexvar, .opp, .pastpart, .phrvbhwd, .propform,
-.freq, .frequent, .level, .cross { color: var(--odict-emphasis) !important; }
+.freq, .frequent, .level, .cross, .syn, .propformprep, span.warning {
+  color: var(--odict-emphasis) !important;
+}
 .entry a { color: var(--odict-accent); }
 .chwd { border-color: var(--odict-rule) !important; }
 .chwd a, .chwd .hw, .popup-button, .signpost {
@@ -54,11 +60,14 @@ img, video, table { max-width: 100%; }
 }
 .collobox, .thesbox, .usagebox, .grambox, .f2nbox,
 .collobox .section, .grambox .expl, .grambox .compareword,
+.thesbox .section, .usagebox .expl,
 .popup-button-hover, .at-link {
   background: var(--odict-section) !important;
   border-color: var(--odict-rule) !important;
 }
-.heading, .subheading, .secheading, .popheader, .popverbs {
+.heading, .subheading, .secheading, .popheader, .popverbs,
+.f2nbox .heading {
   background: transparent !important;
   color: var(--odict-accent) !important;
 }
+.arrow, .spokensect, .verbtable td { border-color: var(--odict-rule) !important; }

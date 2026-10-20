@@ -110,10 +110,13 @@ struct HoverWordHit: Sendable {
 }
 
 enum HoverWords {
+    private static let componentSeparators: Set<Character> = [".", "．", "/", "\\", "_", ":", "@"]
+
     /// Keep the original String ranges: repeated words must retain separate boxes.
     static func ranges(in text: String) -> [Range<String.Index>] {
         var ranges: [Range<String.Index>] = []
-        text.enumerateSubstrings(in: text.startIndex..<text.endIndex, options: [.byWords, .localized]) { _, range, _, _ in
+        func append(_ range: Range<String.Index>) {
+            guard !range.isEmpty else { return }
             if let previous = ranges.last {
                 let separator = text[previous.upperBound..<range.lowerBound]
                 if separator == "-" || separator == "'" || separator == "’" {
@@ -122,6 +125,16 @@ enum HoverWords {
                 }
             }
             ranges.append(range)
+        }
+        text.enumerateSubstrings(in: text.startIndex..<text.endIndex, options: [.byWords, .localized]) { _, range, _, _ in
+            // Foundation may return dotted names/URLs as a single word. Split
+            // components before AX/OCR hit testing, retaining exact source indices.
+            var start = range.lowerBound
+            for index in text[range].indices where componentSeparators.contains(text[index]) {
+                append(start..<index)
+                start = text.index(after: index)
+            }
+            append(start..<range.upperBound)
         }
         return ranges
     }

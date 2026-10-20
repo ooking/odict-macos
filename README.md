@@ -91,6 +91,10 @@ ODict/Features/Capture    取词协调、权限/坐标/文本处理、临时框�
 
 选中取词仅查询来源应用的焦点元素及选区边界，不扫描整个辅助功能树；安全文本控件不取词，不支持该接口的应用会提示改用截图取词。截图在 macOS 14+ 使用 ScreenCaptureKit 单次截图，macOS 12–13 回退 CoreGraphics；OCR 使用系统支持的英文及简繁中文，单边最多 4096 像素，不缓存图像。每次只保留一个有效取词任务，编辑、关闭、切换应用或显示器变化时取消旧任务，过期回调不能覆盖新结果。Escape 取消框选后返回原应用。
 
+macOS 27 的系统 E5 模型加载问题采用原生 Vision 修订版 2 + CPU 兼容路径处理，两种 OCR 入口共用；其他系统保留默认调度，执行失败最多回退一次。诊断依据、语言配置、初始化延迟及验证范围见 [OCR 兼容记录](docs/ocr-compatibility.md)。没有修改系统模型、引入第三方 OCR 或增加后台预热/轮询。
+
+悬停按鼠标所在部分取词：例如 `TextRecognition.frame` 在点号两侧分别取 `TextRecognition`、`frame`，停在点号上不取词；路径和下划线也作为分隔符，连字符和撇号单词保留。辅助功能与 OCR 共用源文本范围规则。2026-10-20 已用本地文本偏移和生成图片验证两侧命中、点号不命中及原有单词边界；未对真实屏幕进行此次界面复测。
+
 退出沙盒后的首次启动只迁移旧容器中缺失的 API 地址、原有快捷键、欢迎状态及最多 20 条最近记录，保留新设置和旧容器。Keychain 的 service/account 及 Bundle ID 保持原值，不导出或复制密钥；更换开发签名仍可能需要重新授权钥匙串。
 
 方案参考：[Bob 双入口](https://bobtranslate.com/guide/quickstart/translate.html)、[Bob 权限说明](https://bobtranslate.com/general/privacy.html)、[Apple 沙盒限制](https://developer.apple.com/documentation/security/protecting-user-data-with-app-sandbox)、[Apple Vision 本机文字识别](https://developer.apple.com/documentation/vision/recognizing-text-in-images)。

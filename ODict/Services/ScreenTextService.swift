@@ -1,4 +1,5 @@
 import AppKit
+import CoreML
 import ScreenCaptureKit
 import Vision
 
@@ -109,8 +110,53 @@ private final class RecognitionCancellation: @unchecked Sendable {
     }
 }
 
-final class ScreenTextService: ScreenTextRecognizing {
+enum OCRComputePolicy {
+    case automatic, compatibleCPU
+    // Vision revision 2 supports English and Chinese on our macOS 12 baseline.
+    // It is intentionally retained as a runtime-checked compatibility path.
+    static let compatibilityRevision = 2
+
+    static func preferred(systemMajorVersion: Int = ProcessInfo.processInfo.operatingSystemVersion.majorVersion) -> Self {
+        // macOS 27's system text detector can stall while loading its E5 model.
+        // Keep the workaround scoped to this OS generation, not a private asset path.
+        systemMajorVersion == 27 ? .compatibleCPU : .automatic
+    }
+
+    func configure(_ request: VNRecognizeTextRequest) throws {
+        request.recognitionLevel = .accurate
+        if self == .compatibleCPU {
+            guard VNRecognizeTextRequest.supportedRevisions.contains(Self.compatibilityRevision) else {
+                throw CaptureError.recognitionFailed
+            }
+            request.revision = Self.compatibilityRevision
+        }
+        let supported = try request.supportedRecognitionLanguages()
+        // A Chinese-capable model also handles Latin text; prioritizing English
+        // can instead interpret Chinese glyphs as Latin punctuation or letters.
+        request.recognitionLanguages = ["zh-Hans", "zh-Hant", "en-US"].filter { supported.contains($0) }
+        request.usesLanguageCorrection = true
+        guard self == .compatibleCPU else { return }
+        if #available(macOS 14.0, *) {
+            let stages = try request.supportedComputeStageDevices
+            guard !stages.isEmpty else { throw CaptureError.recognitionFailed }
+            for (stage, devices) in stages {
+                guard let cpu = devices.first(where: { if case .cpu = $0 { return true }; return false }) else {
+                    throw CaptureError.recognitionFailed
+                }
+                request.setComputeDevice(cpu, for: stage)
+            }
+        } else { Self.configureLegacyCPU(request) }
+    }
+
+    @available(macOS, introduced: 12.0, obsoleted: 14.0)
+    private static func configureLegacyCPU(_ request: VNRecognizeTextRequest) { request.usesCPUOnly = true }
+}
+
+// Mutable backend selection is confined to queue; public methods only enqueue work.
+final class ScreenTextService: ScreenTextRecognizing, @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.touchany.odict.ocr", qos: .userInitiated)
+    // Only accessed on the OCR queue. Retain the successful fallback, not images or requests.
+    private var computePolicy = OCRComputePolicy.preferred()
 
     func recognize(_ image: CGImage) async throws -> String {
         try await recognize(image) { observations in
@@ -168,17 +214,18 @@ final class ScreenTextService: ScreenTextRecognizing {
                     continuation.resume(with: Result {
                         try autoreleasepool {
                             try cancellation.check()
-                            let request = VNRecognizeTextRequest()
-                            request.recognitionLevel = .accurate
-                            let supported = try request.supportedRecognitionLanguages()
-                            request.recognitionLanguages = ["en-US", "zh-Hans", "zh-Hant"].filter { supported.contains($0) }
-                            request.usesLanguageCorrection = true
-                            try cancellation.install(request)
-                            defer { cancellation.finish() }
-                            do { try VNImageRequestHandler(cgImage: image, options: [:]).perform([request]) }
-                            catch { try cancellation.check(); throw CaptureError.recognitionFailed }
+                            let observations: [VNRecognizedTextObservation]
+                            do { observations = try self.perform(image, policy: self.computePolicy, cancellation: cancellation) }
+                            catch {
+                                try cancellation.check()
+                                guard self.computePolicy == .automatic else { throw CaptureError.recognitionFailed }
+                                // Retry an execution failure once with legacy Vision on CPU. Empty text or
+                                // downstream word matching must never trigger another OCR.
+                                do { observations = try self.perform(image, policy: .compatibleCPU, cancellation: cancellation) }
+                                catch { try cancellation.check(); throw CaptureError.recognitionFailed }
+                                self.computePolicy = .compatibleCPU
+                            }
                             try cancellation.check()
-                            let observations = request.results ?? []
                             let result = try consume(observations)
                             try cancellation.check()
                             return result
@@ -187,5 +234,18 @@ final class ScreenTextService: ScreenTextRecognizing {
                 }
             }
         }, onCancel: { cancellation.cancel() })
+    }
+
+    private func perform(_ image: CGImage, policy: OCRComputePolicy,
+                         cancellation: RecognitionCancellation) throws -> [VNRecognizedTextObservation] {
+        try cancellation.check()
+        let request = VNRecognizeTextRequest()
+        try policy.configure(request)
+        try cancellation.install(request)
+        defer { cancellation.finish() }
+        do { try VNImageRequestHandler(cgImage: image, options: [:]).perform([request]) }
+        catch { try cancellation.check(); throw CaptureError.recognitionFailed }
+        try cancellation.check()
+        return request.results ?? []
     }
 }
