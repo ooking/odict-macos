@@ -35,7 +35,7 @@ struct LookupView: View {
         }
         .font(.system(size: 14, weight: .regular))
         .frame(width: panelSize.width, height: panelSize.height)
-        .onAppear { model.focusRequest = UUID(); resize(panelSize) }
+        .onAppear { resize(panelSize) }
         .onChange(of: panelSize) { resize($0) }
         .onExitCommand(perform: close)
     }
@@ -46,7 +46,7 @@ struct LookupView: View {
             CandidateSearchField(text: model.query, changed: { text, composing in
                 editQuery()
                 model.editQuery(text, composing: composing)
-            }, focused: $searchFocused, focusRequest: model.focusRequest,
+            }, focused: $searchFocused, focusRequest: model.focusRequest, allowsFocus: model.acceptsSearchFocus,
                 move: { model.moveSuggestion(by: $0) }, submit: { editQuery(); model.submit() }, cancel: close)
                 .frame(height: 24)
             if model.isLoading || model.isSuggesting {

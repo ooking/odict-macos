@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+mkdir -p build/Checks
+DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+export DEVELOPER_DIR
+sdk_path="$(xcrun --sdk macosx --show-sdk-path)"
+xcrun swiftc -swift-version 5 -sdk "$sdk_path" -target "$(uname -m)-apple-macosx12.0" -parse-as-library \
+    ODict/Features/Capture/CaptureSupport.swift ODict/Services/ScreenTextService.swift \
+    Tests/HoverWordChecks.swift -o build/Checks/HoverWordChecks
+build/Checks/HoverWordChecks

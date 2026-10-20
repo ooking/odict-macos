@@ -113,6 +113,54 @@ final class ScreenTextService: ScreenTextRecognizing {
     private let queue = DispatchQueue(label: "com.touchany.odict.ocr", qos: .userInitiated)
 
     func recognize(_ image: CGImage) async throws -> String {
+        try await recognize(image) { observations in
+            let ordered = observations.sorted { $0.boundingBox.midY > $1.boundingBox.midY }
+            var rows: [[VNRecognizedTextObservation]] = []
+            for observation in ordered {
+                if let last = rows.last, let first = last.first,
+                   abs(first.boundingBox.midY - observation.boundingBox.midY)
+                    <= min(first.boundingBox.height, observation.boundingBox.height) * 0.5 {
+                    rows[rows.count - 1].append(observation)
+                } else { rows.append([observation]) }
+            }
+            var lines: [String] = []
+            var length = 0
+            for row in rows {
+                for observation in row.sorted(by: { $0.boundingBox.minX < $1.boundingBox.minX }) {
+                    guard let text = observation.topCandidates(1).first?.string else { continue }
+                    length += text.count + (lines.isEmpty ? 0 : 1)
+                    guard length <= 1024 else { throw CaptureError.tooLong }
+                    lines.append(text)
+                }
+            }
+            return try CaptureText.normalize(lines.joined(separator: " "), emptyError: .noText)
+        }
+    }
+
+    func recognizeWord(_ image: CGImage, region: CGRect, point: CGPoint) async throws -> HoverWordHit? {
+        try await recognize(image) { observations in
+            var hits: [HoverWordHit] = []
+            for observation in observations {
+                guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.35,
+                      candidate.string.utf16.count <= 2048 else { continue }
+                for range in HoverWords.ranges(in: candidate.string) {
+                    guard let box = try? candidate.boundingBox(for: range) else { continue }
+                    let bounds = HoverWords.screenRect(box.boundingBox, region: region)
+                    // Do not guess the closest word when the pointer is over whitespace.
+                    guard HoverWords.valid(bounds), bounds.insetBy(dx: -1, dy: -1).contains(point) else { continue }
+                    // If a word touches a crop edge, retry with a manual selection rather than query a fragment.
+                    guard region.insetBy(dx: 1, dy: 1).contains(bounds) else { continue }
+                    let text = String(candidate.string[range])
+                    guard text.count <= 255 else { continue }
+                    hits.append(HoverWordHit(text: text, anchor: bounds))
+                }
+            }
+            return hits.min { $0.anchor.width * $0.anchor.height < $1.anchor.width * $1.anchor.height }
+        }
+    }
+
+    private func recognize<Value>(_ image: CGImage,
+                                  consume: @escaping ([VNRecognizedTextObservation]) throws -> Value) async throws -> Value {
         let cancellation = RecognitionCancellation()
         return try await withTaskCancellationHandler(operation: {
             try await withCheckedThrowingContinuation { continuation in
@@ -131,27 +179,9 @@ final class ScreenTextService: ScreenTextRecognizing {
                             catch { try cancellation.check(); throw CaptureError.recognitionFailed }
                             try cancellation.check()
                             let observations = request.results ?? []
-                            // Group rows by vertical overlap, then read each row left to right.
-                            let ordered = observations.sorted { $0.boundingBox.midY > $1.boundingBox.midY }
-                            var rows: [[VNRecognizedTextObservation]] = []
-                            for observation in ordered {
-                                if let last = rows.last, let first = last.first,
-                                   abs(first.boundingBox.midY - observation.boundingBox.midY)
-                                    <= min(first.boundingBox.height, observation.boundingBox.height) * 0.5 {
-                                    rows[rows.count - 1].append(observation)
-                                } else { rows.append([observation]) }
-                            }
-                            var lines: [String] = []
-                            var length = 0
-                            for row in rows {
-                                for observation in row.sorted(by: { $0.boundingBox.minX < $1.boundingBox.minX }) {
-                                    guard let text = observation.topCandidates(1).first?.string else { continue }
-                                    length += text.count + (lines.isEmpty ? 0 : 1)
-                                    guard length <= 1024 else { throw CaptureError.tooLong }
-                                    lines.append(text)
-                                }
-                            }
-                            return try CaptureText.normalize(lines.joined(separator: " "), emptyError: .noText)
+                            let result = try consume(observations)
+                            try cancellation.check()
+                            return result
                         }
                     })
                 }

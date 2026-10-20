@@ -51,6 +51,19 @@ enum CaptureGeometry {
         CGRect(x: rect.minX, y: primaryTop - rect.maxY, width: rect.width, height: rect.height)
     }
 
+    static func hoverPanelOrigin(size: CGSize, anchor: CGRect, visible: CGRect) -> CGPoint {
+        var origin = panelOrigin(size: size, anchor: anchor, visible: visible)
+        guard CGRect(origin: origin, size: size).intersects(anchor.insetBy(dx: -4, dy: -4)) else { return origin }
+        // Near the vertical center there may be no room above/below; prefer a side
+        // placement rather than clamping the card back over the source word.
+        if anchor.maxX + 8 + size.width <= visible.maxX - 8 {
+            origin.x = anchor.maxX + 8
+        } else if anchor.minX - 8 - size.width >= visible.minX + 8 {
+            origin.x = anchor.minX - 8 - size.width
+        }
+        return origin
+    }
+
     static func panelOrigin(size: CGSize, anchor: CGRect, visible: CGRect) -> CGPoint {
         let left = visible.minX + 8
         let bottom = visible.minY + 8
@@ -88,5 +101,42 @@ final class CaptureCancellation: @unchecked Sendable {
     func check() throws {
         lock.lock(); let value = cancelled; lock.unlock()
         if value { throw CancellationError() }
+    }
+}
+
+struct HoverWordHit: Sendable {
+    let text: String
+    let anchor: CGRect
+}
+
+enum HoverWords {
+    /// Keep the original String ranges: repeated words must retain separate boxes.
+    static func ranges(in text: String) -> [Range<String.Index>] {
+        var ranges: [Range<String.Index>] = []
+        text.enumerateSubstrings(in: text.startIndex..<text.endIndex, options: [.byWords, .localized]) { _, range, _, _ in
+            if let previous = ranges.last {
+                let separator = text[previous.upperBound..<range.lowerBound]
+                if separator == "-" || separator == "'" || separator == "’" {
+                    ranges[ranges.count - 1] = previous.lowerBound..<range.upperBound
+                    return
+                }
+            }
+            ranges.append(range)
+        }
+        return ranges
+    }
+
+    static func valid(_ rect: CGRect) -> Bool {
+        !rect.isNull && !rect.isInfinite && !rect.isEmpty && rect.minX.isFinite && rect.minY.isFinite
+            && rect.maxX.isFinite && rect.maxY.isFinite
+    }
+
+    static func screenRect(_ box: CGRect, region: CGRect) -> CGRect {
+        CGRect(x: region.minX + box.minX * region.width, y: region.minY + box.minY * region.height,
+               width: box.width * region.width, height: box.height * region.height)
+    }
+
+    static func region(around point: CGPoint, screen: CGRect) -> CGRect {
+        CGRect(x: point.x - 320, y: point.y - 80, width: 640, height: 160).intersection(screen)
     }
 }

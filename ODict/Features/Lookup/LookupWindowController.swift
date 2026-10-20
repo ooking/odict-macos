@@ -6,6 +6,7 @@ struct LookupWindowActions {
     var captureSelection: () -> Void
     var captureScreenshot: () -> Void
     var editQuery: () -> Void
+    var interacted: () -> Void
     var dismissed: () -> Void
 }
 
@@ -28,6 +29,9 @@ final class LookupWindowController {
         configure()
     }
 
+    private(set) var isHover = false
+    func contains(_ point: CGPoint) -> Bool { panel.isVisible && panel.frame.contains(point) }
+
     var isVisible: Bool { panel.isVisible }
     var isKeyWindow: Bool { panel.isKeyWindow }
 
@@ -42,6 +46,7 @@ final class LookupWindowController {
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.title = "ODict 查词"
+        panel.acceptsMouseMovedEvents = true
         let hostingView = NSHostingView(rootView: LookupView(model: model,
             openSettings: actions.openSettings,
             close: { [weak self] in self?.hide() },
@@ -81,8 +86,10 @@ final class LookupWindowController {
                 return (l.isNull ? 0 : l.width * l.height) < (r.isNull ? 0 : r.width * r.height)
             } ?? NSScreen.main
             guard let screen else { return }
-            panel.setFrameOrigin(CaptureGeometry.panelOrigin(size: panel.frame.size,
-                anchor: anchor, visible: screen.visibleFrame))
+            let origin = isHover
+                ? CaptureGeometry.hoverPanelOrigin(size: panel.frame.size, anchor: anchor, visible: screen.visibleFrame)
+                : CaptureGeometry.panelOrigin(size: panel.frame.size, anchor: anchor, visible: screen.visibleFrame)
+            panel.setFrameOrigin(origin)
             return
         }
         guard let anchor = status.anchor else { return }
@@ -95,13 +102,37 @@ final class LookupWindowController {
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    func show(anchor: CGRect?) {
+    func show(anchor: CGRect?, hover: Bool = false) {
         LifecycleDiagnostics.record("lookup.show.begin", panel: panel)
         self.anchor = anchor
+        isHover = hover
+        panel.acceptsKeyboard = !hover
+        model.acceptsSearchFocus = !hover
         position()
-        panel.makeKeyAndOrderFront(nil)
+        if hover {
+            panel.makeFirstResponder(nil)
+            panel.orderFrontRegardless()
+        } else {
+            panel.makeKeyAndOrderFront(nil)
+            model.focusRequest = UUID()
+        }
         status.highlight(true)
-        model.focusRequest = UUID()
+        removeMonitors()
+        if !hover { installMonitors() }
+        LifecycleDiagnostics.record("lookup.show.end", panel: panel)
+    }
+
+    func promote() {
+        guard isHover else { return }
+        isHover = false
+        panel.acceptsKeyboard = true
+        model.acceptsSearchFocus = true
+        actions.interacted()
+        panel.makeKey()
+        installMonitors()
+    }
+
+    private func installMonitors() {
         removeMonitors()
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             guard let self, !self.status.containsPointer else { return }
@@ -116,15 +147,15 @@ final class LookupWindowController {
             }
             return event
         }
-        LifecycleDiagnostics.record("lookup.show.end", panel: panel)
     }
 
-    func hide(reason: String = "requested") {
+    func hide(reason: String = "requested", notifyDismissed: Bool = true) {
         LifecycleDiagnostics.record("lookup.hide.\(reason)", panel: panel)
         panel.orderOut(nil)
+        isHover = false
         status.highlight(false)
         removeMonitors()
-        actions.dismissed()
+        if notifyDismissed { actions.dismissed() }
     }
 
     func screenChanged() { if panel.isVisible { position() } }
@@ -141,6 +172,7 @@ final class LookupWindowController {
 }
 
 private final class LookupPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
+    var acceptsKeyboard = true
+    override var canBecomeKey: Bool { acceptsKeyboard }
     override var canBecomeMain: Bool { false }
 }

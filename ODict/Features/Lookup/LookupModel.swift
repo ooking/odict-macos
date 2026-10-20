@@ -13,6 +13,7 @@ final class LookupModel: ObservableObject {
     @Published private(set) var captureIsBusy = false
     @Published private(set) var recent: [String]
     @Published var focusRequest = UUID()
+    @Published var acceptsSearchFocus = true
     private let dictionary: DictionaryServing
     private let history: RecentWordsStore
     private let pronunciation = PronunciationService()

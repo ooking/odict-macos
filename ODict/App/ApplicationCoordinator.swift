@@ -15,7 +15,32 @@ final class ApplicationCoordinator: NSObject {
         captureSelection: { [weak self] in self?.startSelection() },
         captureScreenshot: { [weak self] in self?.startScreenshot() },
         editQuery: { [weak self] in self?.capture.cancel() },
-        dismissed: { [weak self] in self?.capture.cancel(); self?.model.suspend() }))
+        interacted: { [weak self] in self?.hover.cancel(dismiss: false) },
+        dismissed: { [weak self] in
+            self?.hover.cancel(dismiss: false)
+            self?.capture.cancel()
+            self?.model.suspend()
+        }))
+    private lazy var hover: HoverLookupController = {
+        let controller = HoverLookupController()
+        controller.canBegin = { [weak self] in
+            guard let self else { return false }
+            return !self.settings.isVisible && !self.capture.isRunning && (!self.lookup.isVisible || self.lookup.isHover)
+        }
+        controller.containsPanel = { [weak self] point in self?.lookup.contains(point) ?? false }
+        controller.onResult = { [weak self] result in
+            guard let self else { return }
+            self.model.lookup(result.text)
+            self.lookup.show(anchor: result.anchor, hover: true)
+        }
+        controller.onInteraction = { [weak self] in self?.lookup.promote() }
+        controller.onDismiss = { [weak self] in
+            guard let self, self.lookup.isHover else { return }
+            self.lookup.hide(reason: "hoverEnded", notifyDismissed: false)
+            self.model.suspend()
+        }
+        return controller
+    }()
     private lazy var capture: CaptureCoordinator = {
         let coordinator = CaptureCoordinator()
         coordinator.onResult = { [weak self] result in
@@ -56,7 +81,14 @@ final class ApplicationCoordinator: NSObject {
         settings.didSave = { [weak self] in self?.model.suspend() }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(sourceChanged(_:)),
             name: NSWorkspace.didActivateApplicationNotification, object: nil)
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification,
+                     NSWorkspace.sessionDidResignActiveNotification, NSWorkspace.activeSpaceDidChangeNotification] {
+            NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(cancelHover), name: name, object: nil)
+        }
         _ = lookup
+        NotificationCenter.default.addObserver(self, selector: #selector(hoverPreferenceChanged),
+            name: HoverLookupController.preferenceChanged, object: nil)
+        hover.updateEnabled()
         KeyboardShortcuts.onKeyUp(for: .toggleDictionary) { [weak self] in self?.toggleLookup() }
         KeyboardShortcuts.onKeyUp(for: .selectedTextLookup) { [weak self] in self?.startSelection() }
         KeyboardShortcuts.onKeyUp(for: .screenshotLookup) { [weak self] in self?.startScreenshot() }
@@ -67,13 +99,19 @@ final class ApplicationCoordinator: NSObject {
         LifecycleDiagnostics.record("launch.ready")
     }
 
+    @objc private func cancelHover() { hover.cancel() }
+
+    @objc private func hoverPreferenceChanged() { hover.updateEnabled() }
+
     func toggleLookup() {
+        hover.cancel()
         if lookup.isVisible { lookup.hide(); return }
         capture.cancel()
         lookup.show(anchor: nil)
     }
 
     private func showSettings() {
+        hover.cancel()
         lookup.hide()
         settings.show()
     }
@@ -89,6 +127,7 @@ final class ApplicationCoordinator: NSObject {
               app.processIdentifier != ProcessInfo.processInfo.processIdentifier,
               app.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier else { return }
         lastExternalPID = app.processIdentifier
+        hover.cancel()
         // Removing an OCR overlay can return focus to its original app. That is
         // an expected transition, not the user abandoning the capture operation.
         if capture.isRunning, captureOriginPID == app.processIdentifier { return }
@@ -97,6 +136,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     private func prepareCapture() -> CGRect {
+        hover.cancel()
         rememberSource()
         captureOriginPID = lastExternalPID
         lookup.hide()
@@ -111,16 +151,19 @@ final class ApplicationCoordinator: NSObject {
 
     private func startScreenshot() { capture.takeScreenshot(anchor: prepareCapture()) }
 
+    func becameActive() { hover.updateEnabled() }
+
     func resignedActive() {
         guard !NSApp.isActive else { return }
         // Closing settings or showing a nonactivating selection panel can resign
         // the app without abandoning capture. Actual external switches are handled
         // by sourceChanged; deactivation alone must not dismiss the overlay.
         if capture.isRunning, !lookup.isVisible { return }
-        if !lookup.isKeyWindow { lookup.hide(reason: "applicationDeactivated") }
+        if !lookup.isKeyWindow && !lookup.isHover { lookup.hide(reason: "applicationDeactivated") }
     }
 
     func screenChanged() {
+        hover.cancel()
         capture.cancel()
         if model.captureStatus != nil { lookup.hide() }
         lookup.screenChanged()
@@ -131,11 +174,13 @@ final class ApplicationCoordinator: NSObject {
     }
 
     func stop() {
+        hover.stop()
         capture.cancel()
         lookup.hide()
         settings.close()
         KeyboardShortcuts.removeAllHandlers()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
         status.stop()
     }
 }

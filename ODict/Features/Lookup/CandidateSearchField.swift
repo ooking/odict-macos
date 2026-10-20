@@ -8,6 +8,7 @@ struct CandidateSearchField: NSViewRepresentable {
     let changed: (String, Bool) -> Void
     @Binding var focused: Bool
     let focusRequest: UUID
+    var allowsFocus = true
     let move: (Int) -> Bool
     let submit: () -> Void
     let cancel: () -> Void
@@ -34,6 +35,7 @@ struct CandidateSearchField: NSViewRepresentable {
 
     func updateNSView(_ field: SearchTextField, context: Context) {
         context.coordinator.parent = self
+        field.allowsAutomaticFocus = allowsFocus
         // Avoid replacing the field editor's marked text during IME composition.
         let composing = (field.currentEditor() as? NSTextView)?.hasMarkedText() ?? false
         if field.stringValue != text, !composing {
@@ -41,7 +43,7 @@ struct CandidateSearchField: NSViewRepresentable {
         }
         if context.coordinator.lastFocusRequest != focusRequest {
             context.coordinator.lastFocusRequest = focusRequest
-            field.requestFocus()
+            if allowsFocus { field.requestFocus() }
         }
     }
 
@@ -73,6 +75,7 @@ struct CandidateSearchField: NSViewRepresentable {
 
     final class SearchTextField: NSTextField {
         private var pendingFocus = false
+        var allowsAutomaticFocus = true { didSet { if !allowsAutomaticFocus { pendingFocus = false } } }
 
         func requestFocus() {
             pendingFocus = true
@@ -85,10 +88,10 @@ struct CandidateSearchField: NSViewRepresentable {
         }
 
         private func focusWhenAttached() {
-            guard pendingFocus, window != nil else { return }
+            guard pendingFocus, allowsAutomaticFocus, window != nil else { return }
             pendingFocus = false
             DispatchQueue.main.async { [weak self] in
-                guard let self, let window = self.window else { return }
+                guard let self, self.allowsAutomaticFocus, let window = self.window, window.isKeyWindow else { return }
                 window.makeFirstResponder(self)
             }
         }

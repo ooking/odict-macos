@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.coordinator = coordinator
         coordinator.start()
     }
+    func applicationDidBecomeActive(_ notification: Notification) { coordinator?.becameActive() }
     func applicationDidResignActive(_ notification: Notification) { coordinator?.resignedActive() }
     func applicationDidChangeScreenParameters(_ notification: Notification) { coordinator?.screenChanged() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
