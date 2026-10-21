@@ -5,7 +5,7 @@ import Carbon
 /// and a short dismissal grace period. No polling, screen stream or image cache.
 @MainActor
 final class HoverLookupController {
-    static let preferenceKey = "hoverLookupEnabled"
+    static let preferenceKey = CaptureMethod.hover.preferenceKey
     static let preferenceChanged = Notification.Name("ODictHoverPreferenceChanged")
     var canBegin: () -> Bool = { true }
     var containsPanel: (CGPoint) -> Bool = { _ in false }
@@ -43,6 +43,7 @@ final class HoverLookupController {
         }
         guard UserDefaults.standard.bool(forKey: Self.preferenceKey) else { stop(); return }
         let trusted = CapturePermissions.accessibility
+        guard trusted else { stop(); return }
         if globalMonitor != nil || localMonitor != nil {
             if monitoredTrust == trusted { return }
             stop()

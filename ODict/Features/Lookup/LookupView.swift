@@ -196,7 +196,7 @@ struct LookupView: View {
                     HStack(spacing: 12) {
                         Button("重试") { model.submit() }
                         if presentation.mode == .manual, model.mode == .dictionary, model.query.count > 255 {
-                            Button("切换到 AI") { model.setMode(.ai) }
+                            Button("用 AI 翻译") { model.useAIForCurrentQuery() }
                         }
                         Button("打开设置", action: openSettings)
                     }.controlSize(.small)

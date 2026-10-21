@@ -4,7 +4,6 @@ import AppKit
 
 private enum SettingsCategory: String, CaseIterable, Identifiable {
     case capture = "取词方式"
-    case shortcuts = "快捷键"
     case dictionaries = "词典来源"
     case service = "在线词典"
     case ai = "AI"
@@ -14,7 +13,6 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .capture: return "text.cursor"
-        case .shortcuts: return "command"
         case .dictionaries: return "books.vertical"
         case .service: return "network"
         case .ai: return "sparkles"
@@ -23,8 +21,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
-        case .capture: return "选择适合你的取词方式，随时继续阅读。"
-        case .shortcuts: return "设置全局快捷键，无需切换应用即可查词。"
+        case .capture: return "选择一种方式，了解用法并按需开启。"
         case .dictionaries: return "管理本地词典、查询顺序和词典资源。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
@@ -45,12 +42,18 @@ struct SettingsView: View {
     // Retain the lightweight configuration across category switches, including
     // import status. The child cancels pending discovery when it disappears.
     @StateObject private var dictionaryModel = LocalDictionarySettingsModel()
-    @AppStorage(HoverLookupController.preferenceKey) private var hoverEnabled = false
+    @AppStorage(CaptureMethod.selection.preferenceKey) private var selectionEnabled = false
+    @AppStorage(CaptureMethod.screenshot.preferenceKey) private var screenshotEnabled = false
+    @AppStorage(CaptureMethod.hover.preferenceKey) private var hoverEnabled = false
     @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
     @AppStorage(QueryMode.captureKey) private var captureMode = QueryMode.dictionary.rawValue
     @State private var category = SettingsCategory.capture
+    @State private var selectedCaptureMethod = CaptureMethod.selection
     @State private var accessibilityAllowed = false
     @State private var screenAllowed = false
+    @State private var showCaptureAuthorization = false
+    @State private var authorizationMethod: CaptureMethod?
+    @State private var pendingAuthorization: Set<CaptureMethod> = []
 
     var body: some View {
         HStack(spacing: 0) {
@@ -74,6 +77,16 @@ struct SettingsView: View {
         .frame(minWidth: 760, minHeight: 480)
         .onAppear { refreshPermissions(); if model.showAI { category = .ai } }
         .onChange(of: model.showAI) { value in if value { category = .ai } }
+        .alert("\(authorizationMethod?.title ?? "取词")需要\(authorizationMethod?.permissionTitle ?? "系统")权限",
+               isPresented: $showCaptureAuthorization, presenting: authorizationMethod) { method in
+            Button("前往授权") {
+                pendingAuthorization.insert(method)
+                CapturePermissions.openSettings(screenRecording: method.usesScreenPermission)
+            }
+            Button("取消", role: .cancel) { pendingAuthorization.remove(method) }
+        } message: { method in
+            Text("请在系统设置的「隐私与安全性 → \(method.permissionTitle)」中允许 ODict。授权后返回，将自动开启\(method.title)。" + (method.usesScreenPermission ? "若系统提示需要重新打开应用，请重开后再次开启。" : ""))
+        }
         .onChange(of: hoverEnabled) { _ in notifyHoverPreferenceChanged() }
         .onChange(of: hoverTrigger) { _ in notifyHoverPreferenceChanged() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -116,7 +129,6 @@ struct SettingsView: View {
     @ViewBuilder private var categoryContent: some View {
         switch category {
         case .capture: captureSettings
-        case .shortcuts: shortcutSettings
         case .dictionaries:
             settingsGroup { LocalDictionarySettingsView(model: dictionaryModel) }
         case .service: serviceSettings.onAppear { model.load() }
@@ -126,58 +138,123 @@ struct SettingsView: View {
     }
 
     private var captureSettings: some View {
-        VStack(spacing: 18) {
-            settingsGroup {
-                Text("查询模式").font(AppTypography.section)
-                Picker("取词后使用", selection: $captureMode) {
-                    ForEach(QueryMode.allCases) { Text($0.title).tag($0.rawValue) }
-                }.pickerStyle(.segmented)
-                helpText("选中、截图和悬停取词共用此设置。手动查询窗口单独记住上次模式；两种模式不会自动互相兜底。")
-            }
-            settingsGroup {
-                HStack {
-                    Text("悬停取词").font(AppTypography.section)
-                    Spacer()
-                    Toggle("启用悬停取词", isOn: $hoverEnabled).labelsHidden().toggleStyle(.switch)
+        VStack(alignment: .leading, spacing: 18) {
+            Picker("查看取词方式", selection: $selectedCaptureMethod) {
+                ForEach(CaptureMethod.allCases) { method in
+                    Text(method.title).tag(method)
                 }
-                helpText("无需选中文字，使用触发键读取鼠标附近的文字。")
-                Divider().padding(.vertical, 4)
-                HStack {
-                    Text("触发方式")
-                    Spacer()
-                    Picker("触发方式", selection: $hoverTrigger) {
-                        ForEach(HoverTrigger.allCases) { trigger in Text(trigger.title).tag(trigger.rawValue) }
-                    }.labelsHidden().pickerStyle(.menu).frame(width: 200).disabled(!hoverEnabled)
-                }
-                helpText((HoverTrigger(rawValue: hoverTrigger) ?? .control).instruction)
-                helpText("移入释义卡片可朗读、复制，点击后可编辑；移开鼠标或按 Escape 收起。")
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            captureMethodSettings(selectedCaptureMethod)
             settingsGroup {
-                Text("选中取词").font(AppTypography.section)
-                helpText("先在其他应用选中文字，再按取词热键查询。")
-                Divider().padding(.vertical, 4)
-                Text("截图取词").font(AppTypography.section)
-                helpText("按热键后框选图片、视频或应用中的文字，在本机识别后查询。")
-                Button("设置取词快捷键") { category = .shortcuts }
-                    .padding(.top, 4)
+                Text("通用设置").font(AppTypography.section)
+                HStack {
+                    Text("取词后使用")
+                    Spacer()
+                    Picker("取词后使用", selection: $captureMode) {
+                        ForEach(QueryMode.allCases) { Text($0.title).tag($0.rawValue) }
+                    }.labelsHidden().pickerStyle(.segmented).frame(width: 180)
+                }
+                helpText("三种取词方式共用此模式，不会自动切换兜底；手动查询窗口单独记住上次模式。")
+                Divider()
+                shortcutRow("唤出 / 收起词典", name: .toggleDictionary)
+                helpText("设置自动保存。点击快捷键框后按组合键，按删除键清除。")
             }
-            helpText("取词偏好自动保存。若无法取词，请在「权限与隐私」中查看授权状态。")
         }
     }
 
-    private var shortcutSettings: some View {
-        VStack(spacing: 18) {
-            settingsGroup {
-                shortcutRow("唤出 / 收起词典", name: .toggleDictionary)
-                Divider()
-                shortcutRow("选中取词", name: .selectedTextLookup)
-                Divider()
-                shortcutRow("截图取词", name: .screenshotLookup)
-                Divider()
-                shortcutRow("开启 / 关闭悬停取词", name: .toggleHoverLookup)
-            }
-            helpText("点击热键框后按下组合键；按删除键可清除。快捷键自动保存，并在其他应用中生效。")
+    private func captureInstruction(_ method: CaptureMethod) -> String {
+        switch method {
+        case .selection: return "选中文字 → 按取词快捷键 → 查看释义"
+        case .screenshot: return "按取词快捷键 → 框选文字区域 → 本机识别并查询"
+        case .hover:
+            return (HoverTrigger(rawValue: hoverTrigger) ?? .control).instruction
         }
+    }
+
+    private func captureMethodSettings(_ method: CaptureMethod) -> some View {
+        settingsGroup {
+            HStack {
+                Text("启用\(method.title)").font(AppTypography.section)
+                Spacer()
+                Toggle("启用\(method.title)", isOn: captureEnabledBinding(method))
+                    .labelsHidden().toggleStyle(.switch)
+            }
+            helpText("默认关闭。开启需要\(method.permissionTitle)权限。")
+            if pendingAuthorization.contains(method) {
+                HStack {
+                    helpText("等待授权，授权后返回此处将自动开启。")
+                    Button("取消开启") { pendingAuthorization.remove(method) }
+                }
+            }
+            if isCaptureEnabled(method) || pendingAuthorization.contains(method) {
+                permissionRow(method.permissionTitle, allowed: permissionAllowed(method)) {
+                    CapturePermissions.openSettings(screenRecording: method.usesScreenPermission)
+                }
+            }
+            if isCaptureEnabled(method) {
+                Divider()
+                if method == .selection {
+                    shortcutRow("取词快捷键", name: .selectedTextLookup)
+                        .accessibilityLabel("选中取词快捷键")
+                } else if method == .screenshot {
+                    shortcutRow("取词快捷键", name: .screenshotLookup)
+                        .accessibilityLabel("截图取词快捷键")
+                    helpText("按快捷键框选文字，图片仅在本机识别。")
+                } else {
+                    HStack {
+                        Text("触发方式")
+                        Spacer()
+                        Picker("触发方式", selection: $hoverTrigger) {
+                            ForEach(HoverTrigger.allCases) { trigger in Text(trigger.title).tag(trigger.rawValue) }
+                        }.labelsHidden().pickerStyle(.menu).frame(width: 200)
+                    }
+                    shortcutRow("开启 / 关闭悬停取词", name: .toggleHoverLookup)
+                    Divider()
+                    permissionRow("屏幕录制（可选）", allowed: screenAllowed) {
+                        CapturePermissions.openSettings(screenRecording: true)
+                    }
+                    helpText("直接读取不到文字时，授权屏幕录制可截取鼠标附近区域，在本机识别。")
+                }
+            }
+            Divider()
+            CaptureMethodGuide(method: method, instruction: captureInstruction(method))
+        }
+    }
+
+    private func isCaptureEnabled(_ method: CaptureMethod) -> Bool {
+        switch method {
+        case .selection: return selectionEnabled
+        case .screenshot: return screenshotEnabled
+        case .hover: return hoverEnabled
+        }
+    }
+
+    private func setCaptureEnabled(_ method: CaptureMethod, _ enabled: Bool) {
+        switch method {
+        case .selection: selectionEnabled = enabled
+        case .screenshot: screenshotEnabled = enabled
+        case .hover: hoverEnabled = enabled
+        }
+    }
+
+    private func permissionAllowed(_ method: CaptureMethod) -> Bool {
+        method.usesScreenPermission ? screenAllowed : accessibilityAllowed
+    }
+
+    private func captureEnabledBinding(_ method: CaptureMethod) -> Binding<Bool> {
+        Binding(get: { isCaptureEnabled(method) }, set: { enabled in
+            pendingAuthorization.remove(method)
+            guard enabled else { setCaptureEnabled(method, false); return }
+            refreshPermissions()
+            guard permissionAllowed(method) else {
+                authorizationMethod = method
+                showCaptureAuthorization = true
+                return
+            }
+            setCaptureEnabled(method, true)
+        })
     }
 
     private var serviceSettings: some View {
@@ -279,5 +356,9 @@ struct SettingsView: View {
     private func refreshPermissions() {
         accessibilityAllowed = CapturePermissions.accessibility
         screenAllowed = CapturePermissions.screenRecording
+        for method in CaptureMethod.allCases where pendingAuthorization.contains(method) && permissionAllowed(method) {
+            pendingAuthorization.remove(method)
+            setCaptureEnabled(method, true)
+        }
     }
 }

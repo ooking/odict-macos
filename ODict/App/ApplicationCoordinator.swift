@@ -10,9 +10,10 @@ final class ApplicationCoordinator: NSObject {
     private let settings = SettingsWindowController()
     private var lastExternalPID: pid_t?
     private var captureOriginPID: pid_t?
+    private var selectionReturnsToInput = false
     private lazy var lookup = LookupWindowController(model: model, status: status, actions: LookupWindowActions(
         openSettings: { [weak self] in self?.showSettings() },
-        captureSelection: { [weak self] in self?.startSelection() },
+        captureSelection: { [weak self] in self?.startSelection(inCurrentWindow: true) },
         captureScreenshot: { [weak self] in self?.startScreenshot() },
         editQuery: { [weak self] in self?.capture.cancel() },
         interacted: { [weak self] in self?.hover.cancel(dismiss: false) },
@@ -50,12 +51,17 @@ final class ApplicationCoordinator: NSObject {
         let coordinator = CaptureCoordinator()
         coordinator.onResult = { [weak self] result in
             guard let self else { return }
+            if self.selectionReturnsToInput {
+                self.model.lookupSelectionInInput(result.text)
+                return
+            }
             self.model.lookupCaptured(result.text)
             self.lookup.show(anchor: result.anchor, mode: .capture)
         }
         coordinator.onFailure = { [weak self] message, anchor in
             guard let self else { return }
-            self.model.presentCaptureStatus(message, busy: false)
+            self.model.presentCaptureStatus(message, busy: false, preservingManualInput: self.selectionReturnsToInput)
+            if self.selectionReturnsToInput { return }
             self.lookup.show(anchor: anchor, mode: .capture)
         }
         coordinator.onRecognizing = { [weak self] anchor in
@@ -101,7 +107,12 @@ final class ApplicationCoordinator: NSObject {
         KeyboardShortcuts.onKeyUp(for: .toggleDictionary) { [weak self] in self?.toggleLookup() }
         KeyboardShortcuts.onKeyUp(for: .selectedTextLookup) { [weak self] in self?.startSelection() }
         KeyboardShortcuts.onKeyUp(for: .screenshotLookup) { [weak self] in self?.startScreenshot() }
-        KeyboardShortcuts.onKeyUp(for: .toggleHoverLookup) {
+        KeyboardShortcuts.onKeyUp(for: .toggleHoverLookup) { [weak self] in
+            // Enabling through a shortcut must respect the same permission requirement.
+            if !CaptureMethod.hover.isEnabled && !CaptureMethod.hover.permissionAllowed {
+                self?.showSettings()
+                return
+            }
             let defaults = UserDefaults.standard
             defaults.set(!defaults.bool(forKey: HoverLookupController.preferenceKey), forKey: HoverLookupController.preferenceKey)
             NotificationCenter.default.post(name: HoverLookupController.preferenceChanged, object: nil)
@@ -125,6 +136,7 @@ final class ApplicationCoordinator: NSObject {
         hover.cancel()
         if lookup.isVisible && !lookup.isCapture { lookup.hide(); return }
         capture.cancel()
+        rememberSource()
         lookup.show(anchor: nil)
     }
 
@@ -154,6 +166,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     private func prepareCapture() -> CGRect {
+        selectionReturnsToInput = false
         hover.cancel()
         rememberSource()
         captureOriginPID = lastExternalPID
@@ -162,12 +175,27 @@ final class ApplicationCoordinator: NSObject {
         return CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 1))
     }
 
-    private func startSelection() {
-        let anchor = prepareCapture()
+    private func startSelection(inCurrentWindow: Bool = false) {
+        guard CaptureMethod.selection.isEnabled else { showSettings(); return }
+        let anchor: CGRect
+        if inCurrentWindow && lookup.isVisible && !lookup.isCapture {
+            hover.cancel(dismiss: false)
+            capture.cancel()
+            rememberSource()
+            captureOriginPID = lastExternalPID
+            selectionReturnsToInput = true
+            anchor = CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 1))
+            model.presentCaptureStatus("正在读取选中文字…", busy: true, preservingManualInput: true)
+        } else {
+            anchor = prepareCapture()
+        }
         capture.takeSelection(pid: captureOriginPID, anchor: anchor, primaryTop: NSScreen.screens.first?.frame.maxY ?? 0)
     }
 
-    private func startScreenshot() { capture.takeScreenshot(anchor: prepareCapture()) }
+    private func startScreenshot() {
+        guard CaptureMethod.screenshot.isEnabled else { showSettings(); return }
+        capture.takeScreenshot(anchor: prepareCapture())
+    }
 
     func becameActive() { hover.updateEnabled() }
 

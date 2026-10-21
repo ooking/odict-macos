@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */; };
 		000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */; };
 		000000000000000000000016 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000015 /* KeyboardShortcuts */; };
 		0000000000000000000000C8 /* ODict/App/ODictApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000064 /* ODict/App/ODictApp.swift */; };
@@ -60,6 +61,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/CaptureMethodGuide.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleSummary.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000006 /* ODict.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ODict.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00000000000000000000001E /* ODict/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = ODict/Info.plist; sourceTree = SOURCE_ROOT; };
@@ -178,6 +180,7 @@
 				000000000000000000000067 /* ODict/Services/DictionaryClient.swift */,
 				000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */,
 				000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */,
+				000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */,
 				00000000000000000000006A /* ODict/Features/Settings/SettingsView.swift */,
 				00000000000000000000001E /* ODict/Info.plist */,
 				00000000000000000000001F /* ODict/ODict.entitlements */,
@@ -327,6 +330,7 @@
 				0000000000000000000000CB /* ODict/Services/DictionaryClient.swift in Sources */,
 				0000000000000000000000CC /* ODict/Features/Lookup/LookupModel.swift in Sources */,
 				0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */,
+				000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */,
 				0000000000000000000000CE /* ODict/Features/Settings/SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

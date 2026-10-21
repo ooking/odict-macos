@@ -7,9 +7,17 @@ final class LookupModel: ObservableObject {
     let ai: AIQueryModel
     private let preferences: UserDefaults
     private var captureContext = false
-    // Only edits in the manual input field update this session-only draft.
-    // Captures and result/history navigation share query, but never this value.
-    private var manualQuery = ""
+    // Keep one session-only input per mode. Captures and result/history
+    // navigation share query, but never overwrite these manual drafts.
+    private var dictionaryManualQuery = ""
+    private var aiManualQuery = ""
+    private var manualQuery: String {
+        get { mode == .dictionary ? dictionaryManualQuery : aiManualQuery }
+        set {
+            if mode == .dictionary { dictionaryManualQuery = newValue }
+            else { aiManualQuery = newValue }
+        }
+    }
 
     func setMode(_ value: QueryMode) {
         guard value != mode else { return }
@@ -17,6 +25,10 @@ final class LookupModel: ObservableObject {
         ai.reset()
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
         mode = value
+        if !captureContext {
+            query = manualQuery
+            contentVisible = true
+        }
         pronunciation.stop()
         if value == .ai {
             let router = dictionary
@@ -27,9 +39,10 @@ final class LookupModel: ObservableObject {
     }
 
     func beginManual() {
-        let restoreDraft = captureContext || query != manualQuery
+        let manualMode = QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary
+        let restoreDraft = captureContext || mode != manualMode || query != manualQuery
         captureContext = false
-        setMode(QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary)
+        setMode(manualMode)
         guard restoreDraft else { return }
         cancelRequests()
         ai.reset()
@@ -43,10 +56,25 @@ final class LookupModel: ObservableObject {
         contentVisible = false
     }
 
+    /// Explicitly carry source text; the mode picker only restores drafts.
+    func useAIForCurrentQuery() {
+        let text = query
+        setMode(.ai)
+        editQuery(text, composing: false)
+    }
+
     func lookupCaptured(_ text: String) {
         captureContext = true
         setMode(QueryMode(rawValue: preferences.string(forKey: QueryMode.captureKey) ?? "") ?? .dictionary)
         lookup(text)
+    }
+
+    /// The manual window's selection button imports into its existing input.
+    func lookupSelectionInInput(_ text: String) {
+        captureContext = false
+        manualQuery = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        lookup(manualQuery)
+        focusRequest = UUID()
     }
 
     /// Reuse only the visible capture's exact query or its current request. No
@@ -124,11 +152,11 @@ final class LookupModel: ObservableObject {
         } else { queryChanged() }
     }
 
-    func presentCaptureStatus(_ text: String, busy: Bool) {
-        captureContext = true
+    func presentCaptureStatus(_ text: String, busy: Bool, preservingManualInput: Bool = false) {
+        if !preservingManualInput { captureContext = true }
         ai.reset()
         cancelRequests()
-        query = ""
+        if !preservingManualInput { query = "" }
         result = nil
         suggestions = []
         selectedSuggestionIndex = nil

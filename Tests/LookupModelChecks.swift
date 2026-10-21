@@ -94,6 +94,21 @@ private struct LookupModelChecks {
         draftModel.resume()
         precondition(draftModel.query.isEmpty && draftModel.result == nil && !draftModel.isLoading,
                      "explicitly clearing the input must clear the saved manual draft")
+
+        draftModel.lookupSelectionInInput(" imported-selection ")
+        try await settled(draftModel)
+        precondition(draftModel.query == "imported-selection" && draftModel.result != nil,
+                     "manual selection import must populate the input and query immediately")
+        draftModel.suspend()
+        draftModel.beginManual()
+        precondition(draftModel.query == "imported-selection",
+                     "an explicitly imported selection must become the manual draft")
+        draftModel.presentCaptureStatus("未读取到选中文字", busy: false, preservingManualInput: true)
+        precondition(draftModel.query == "imported-selection" && draftModel.captureStatus != nil,
+                     "selection failure in the manual window must preserve its input")
+        draftModel.beginManual()
+        precondition(draftModel.query == "imported-selection",
+                     "selection failure must not replace the saved manual draft")
         // Repeated hits at different screen positions must share the visible
         // capture request/result, but hide, failure and source changes must retry.
         let hoverFixture = FixtureDictionary()

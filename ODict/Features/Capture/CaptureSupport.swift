@@ -3,6 +3,33 @@ import ApplicationServices
 
 enum CaptureSource: Sendable { case selection, screenshot }
 
+/// Capture opt-ins are independent of shortcut assignments and default to off.
+enum CaptureMethod: String, CaseIterable, Identifiable {
+    case selection, screenshot, hover
+
+    var id: Self { self }
+    var preferenceKey: String {
+        switch self {
+        case .selection: return "selectedTextLookupEnabled"
+        case .screenshot: return "screenshotLookupEnabled"
+        case .hover: return "hoverLookupEnabled"
+        }
+    }
+    var title: String {
+        switch self {
+        case .selection: return "选中取词"
+        case .screenshot: return "截图取词"
+        case .hover: return "悬停取词"
+        }
+    }
+    var usesScreenPermission: Bool { self == .screenshot }
+    var permissionTitle: String { usesScreenPermission ? "屏幕录制" : "辅助功能" }
+    var permissionAllowed: Bool {
+        usesScreenPermission ? CapturePermissions.screenRecording : CapturePermissions.accessibility
+    }
+    var isEnabled: Bool { UserDefaults.standard.bool(forKey: preferenceKey) }
+}
+
 struct CapturedText: Sendable {
     let text: String
     let source: CaptureSource
