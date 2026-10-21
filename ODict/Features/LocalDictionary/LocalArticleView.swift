@@ -25,17 +25,7 @@ struct LocalArticleView: View {
     let renderer: LocalArticleRenderer
     let lookup: (String) -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("来源：\(article.dictionary.name) · 本地")
-                if !article.correspondingHeadwords.isEmpty {
-                    Text("\(article.word) → \(article.correspondingHeadwords.joined(separator: "、"))（词典对应词条）")
-                }
-            }
-            .font(AppTypography.caption).foregroundColor(.secondary)
-            .textSelection(.enabled).padding(.horizontal, 16).padding(.vertical, 8)
-            LocalArticleWebView(article: article, renderer: renderer, lookup: lookup)
-        }
+        LocalArticleWebView(article: article, renderer: renderer, lookup: lookup)
     }
 }
 
@@ -154,7 +144,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
                     // A low-priority native reading baseline. Dictionary styles and
                     // user overrides retain control over specialized typography.
                     let typography = "<style>:where(body) { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: 15px; line-height: 1.6; }</style>"
-                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">" + typography + "</head><body>" + article.html + "</body></html>"
+                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">" + typography + "</head><body>" + article.html + Self.sourceFooter(article) + "</body></html>"
                     data = Data(document.utf8); mime = "text/html"
                 } else {
                     data = try await LocalDictionaryLibrary.shared.resource(url.path, in: article.dictionary)
@@ -202,6 +192,23 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         default: break
         }
     }
+    /// Transport metadata follows all dictionary content and scrolls with it.
+    private static func sourceFooter(_ article: LocalArticle) -> String {
+        func escape(_ text: String) -> String {
+            text.replacingOccurrences(of: "&", with: "&amp;")
+                .replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+                .replacingOccurrences(of: "\"", with: "&quot;")
+                .replacingOccurrences(of: "'", with: "&#39;")
+        }
+        var lines = ["来源：\(article.dictionary.name) · 本地"]
+        if !article.correspondingHeadwords.isEmpty {
+            lines.append("\(article.word) → \(article.correspondingHeadwords.joined(separator: "、"))（词典对应词条）")
+        }
+        let content = lines.map { "<div>\(escape($0))</div>" }.joined()
+        return "<footer id=\"odict-source-footer\" style=\"display:block;clear:both;margin-top:24px;padding:12px 0 4px;border-top:1px solid var(--odict-rule,rgba(128,128,128,.25));font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;line-height:1.6;font-weight:400;color:var(--odict-secondary,GrayText);overflow-wrap:anywhere;\">" + content + "</footer>"
+    }
+
     private static func target(_ url: URL) -> String {
         let value = url.absoluteString
         let raw = value.components(separatedBy: "://").dropFirst().joined(separator: "://")
