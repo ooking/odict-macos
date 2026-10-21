@@ -33,11 +33,14 @@ struct HoverWordChecks {
 
     static func main() async throws {
         // No capture, permissions, UI automation, preferences, keychain or network access.
-        try require(OCRComputePolicy.preferred(systemMajorVersion: 27) == .compatibleCPU, "Affected OS must bypass the E5 model")
-        for version in [12, 13, 14, 26, 28] {
-            try require(OCRComputePolicy.preferred(systemMajorVersion: version) == .automatic, "Workaround escaped the affected OS generation")
-        }
+        let automaticRequest = VNRecognizeTextRequest()
+        let defaultRevision = automaticRequest.revision
+        try OCRComputePolicy.automatic.configure(automaticRequest)
+        try require(automaticRequest.revision == defaultRevision, "Default OCR must retain the system revision")
         if #available(macOS 14.0, *) {
+            for stage in try automaticRequest.supportedComputeStageDevices.keys {
+                try require(automaticRequest.computeDevice(for: stage) == nil, "Default OCR must retain automatic device selection")
+            }
             let request = VNRecognizeTextRequest()
             request.recognitionLevel = .accurate
             try OCRComputePolicy.compatibleCPU.configure(request)
@@ -133,6 +136,6 @@ struct HoverWordChecks {
             _ = try await cancelled.value
             throw NSError(domain: "HoverWordChecks", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cancelled OCR returned a result"])
         } catch is CancellationError { }
-        print("Hover word checks passed (OS compute policy, CPU stages, screenshot OCR, boundaries, coordinates, synthetic OCR, whitespace and cancellation). OCR elapsed: \(ProcessInfo.processInfo.systemUptime - start) seconds")
+        print("Hover word checks passed (automatic compute policy, compatibility CPU stages, screenshot OCR, boundaries, coordinates, synthetic OCR, whitespace and cancellation). OCR elapsed: \(ProcessInfo.processInfo.systemUptime - start) seconds")
     }
 }

@@ -10,6 +10,7 @@ final class HoverLookupController {
     var canBegin: () -> Bool = { true }
     var containsPanel: (CGPoint) -> Bool = { _ in false }
     var onResult: ((HoverWordHit) -> Void)?
+    var onFailure: ((String, CGRect) -> Void)?
     var onInteraction: (() -> Void)?
     var onDismiss: (() -> Void)?
     private let text: HoverTextReading
@@ -22,7 +23,7 @@ final class HoverLookupController {
     private var dismissal: Task<Void, Never>?
     private var revision = UUID()
     private var pendingPoint: CGPoint?
-    private var currentHit: HoverWordHit?
+    private var currentAnchor: CGRect?
     private var trigger = HoverTrigger.current
     private var triggerHeld = false
     private var blockedGesture = false
@@ -71,7 +72,7 @@ final class HoverLookupController {
         cancelCapture()
         dismissal?.cancel()
         dismissal = nil
-        currentHit = nil
+        currentAnchor = nil
         if dismiss { onDismiss?() }
     }
 
@@ -89,7 +90,7 @@ final class HoverLookupController {
         if !held || (trigger == .none && event.type == .mouseMoved) { blockedGesture = false }
         if held && !triggerHeld {
             blockedGesture = false
-            if !containsPanel(point) { currentHit = nil; onDismiss?() }
+            if !containsPanel(point) { currentAnchor = nil; onDismiss?() }
         }
         triggerHeld = held
 
@@ -117,7 +118,7 @@ final class HoverLookupController {
             dismissal = nil
             return
         }
-        if let hit = currentHit, hit.anchor.insetBy(dx: -2, dy: -2).contains(point) {
+        if let anchor = currentAnchor, anchor.insetBy(dx: -2, dy: -2).contains(point) {
             cancelCapture()
             dismissal?.cancel()
             dismissal = nil
@@ -166,8 +167,17 @@ final class HoverLookupController {
                 guard self.isCurrent(token, point: point), let result else { return }
                 self.dismissal?.cancel()
                 self.dismissal = nil
-                self.currentHit = result
+                self.currentAnchor = result.anchor
                 self.onResult?(result)
+            } catch CaptureError.recognitionFailed {
+                guard let self, self.isCurrent(token, point: point) else { return }
+                self.dismissal?.cancel()
+                self.dismissal = nil
+                // Retain only the trigger area so a stationary pointer doesn't
+                // continuously re-run a failed OCR. Use the same card lifecycle.
+                let anchor = CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)
+                self.currentAnchor = anchor
+                self.onFailure?(CaptureError.recognitionFailed.localizedDescription, anchor)
             } catch {
                 // Missing permissions, unsupported AX, secure fields and empty OCR remain quiet.
                 // In particular, secure-input failures must never fall back to OCR.
@@ -185,15 +195,15 @@ final class HoverLookupController {
     }
 
     private func dismissSoon() {
-        guard currentHit != nil, dismissal == nil else { return }
+        guard currentAnchor != nil, dismissal == nil else { return }
         dismissal = Task { [weak self] in
             do { try await Task.sleep(nanoseconds: 450_000_000) } catch { return }
             guard let self else { return }
             self.dismissal = nil
             guard !self.containsPanel(NSEvent.mouseLocation),
-                  self.currentHit?.anchor.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) != true else { return }
+                  self.currentAnchor?.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) != true else { return }
             // Dismiss the old card without cancelling a new word's in-flight capture.
-            self.currentHit = nil
+            self.currentAnchor = nil
             self.onDismiss?()
         }
     }

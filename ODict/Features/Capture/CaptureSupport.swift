@@ -23,7 +23,7 @@ enum CaptureError: LocalizedError {
         case .tooLong: return "取出的文字超过 255 字，请只选择单词或短语。"
         case .unavailable: return "无法捕获此区域，请检查屏幕权限后重新框选。"
         case .crossDisplay: return "请在同一显示器内框选，不支持跨屏截图。"
-        case .recognitionFailed: return "文字识别失败，请重新框选后再试。"
+        case .recognitionFailed: return "文字识别失败，兼容重试也未成功。请稍后重试，或尝试选中取词。"
         }
     }
 }

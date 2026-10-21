@@ -31,6 +31,13 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
+    private static let versionLabel: String = {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "\(version) (Build \(build))"
+    }()
+
     @ObservedObject var model: SettingsModel
     // Retain the lightweight configuration across category switches, including
     // import status. The child cancels pending discovery when it disappears.
@@ -92,7 +99,7 @@ struct SettingsView: View {
             Spacer()
             VStack(alignment: .leading, spacing: 5) {
                 Text("ODict").font(AppTypography.section)
-                Text("macOS 原生词典 · v1.0").font(AppTypography.caption).foregroundColor(.secondary)
+                Text(Self.versionLabel).font(AppTypography.caption).foregroundColor(.secondary)
             }.padding(12)
         }
         .padding(12)

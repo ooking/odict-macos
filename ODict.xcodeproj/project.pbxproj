@@ -162,6 +162,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 000000000000000000000007 /* Build configuration list for PBXNativeTarget "ODict" */;
 			buildPhases = (
+				000000000000000000000B00 /* Generate timestamp build version */,
 				000000000000000000000008 /* Sources */,
 				000000000000000000000009 /* Frameworks */,
 				00000000000000000000000A /* Resources */,
@@ -219,6 +220,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		000000000000000000000B00 /* Generate timestamp build version */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/ODict/Info.plist",);
+			name = "Generate timestamp build version";
+			outputPaths = ("$(DERIVED_FILE_DIR)/ODict-Info.plist",);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n/bin/cp \"$SRCROOT/ODict/Info.plist\" \"$SCRIPT_OUTPUT_FILE_0\"\n/usr/bin/plutil -replace CFBundleVersion -string \"$(TZ=Asia/Shanghai /bin/date +%Y%m%d%H%M)\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000000000008 /* Sources */ = {
@@ -302,18 +318,22 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = ODict/Info.plist;
+				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/ODict-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lz",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.touchany.odict.mac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				OTHER_LDFLAGS = "$(inherited) -lz";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -331,18 +351,22 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = ODict/Info.plist;
+				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/ODict-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lz",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.touchany.odict.mac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				OTHER_LDFLAGS = "$(inherited) -lz";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = Release;

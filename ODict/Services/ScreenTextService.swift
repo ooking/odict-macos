@@ -116,12 +116,6 @@ enum OCRComputePolicy {
     // It is intentionally retained as a runtime-checked compatibility path.
     static let compatibilityRevision = 2
 
-    static func preferred(systemMajorVersion: Int = ProcessInfo.processInfo.operatingSystemVersion.majorVersion) -> Self {
-        // macOS 27's system text detector can stall while loading its E5 model.
-        // Keep the workaround scoped to this OS generation, not a private asset path.
-        systemMajorVersion == 27 ? .compatibleCPU : .automatic
-    }
-
     func configure(_ request: VNRecognizeTextRequest) throws {
         request.recognitionLevel = .accurate
         if self == .compatibleCPU {
@@ -152,11 +146,8 @@ enum OCRComputePolicy {
     private static func configureLegacyCPU(_ request: VNRecognizeTextRequest) { request.usesCPUOnly = true }
 }
 
-// Mutable backend selection is confined to queue; public methods only enqueue work.
-final class ScreenTextService: ScreenTextRecognizing, @unchecked Sendable {
+final class ScreenTextService: ScreenTextRecognizing {
     private let queue = DispatchQueue(label: "com.touchany.odict.ocr", qos: .userInitiated)
-    // Only accessed on the OCR queue. Retain the successful fallback, not images or requests.
-    private var computePolicy = OCRComputePolicy.preferred()
 
     func recognize(_ image: CGImage) async throws -> String {
         try await recognize(image) { observations in
@@ -215,15 +206,13 @@ final class ScreenTextService: ScreenTextRecognizing, @unchecked Sendable {
                         try autoreleasepool {
                             try cancellation.check()
                             let observations: [VNRecognizedTextObservation]
-                            do { observations = try self.perform(image, policy: self.computePolicy, cancellation: cancellation) }
+                            do { observations = try Self.perform(image, policy: .automatic, cancellation: cancellation) }
                             catch {
                                 try cancellation.check()
-                                guard self.computePolicy == .automatic else { throw CaptureError.recognitionFailed }
                                 // Retry an execution failure once with legacy Vision on CPU. Empty text or
                                 // downstream word matching must never trigger another OCR.
-                                do { observations = try self.perform(image, policy: .compatibleCPU, cancellation: cancellation) }
+                                do { observations = try Self.perform(image, policy: .compatibleCPU, cancellation: cancellation) }
                                 catch { try cancellation.check(); throw CaptureError.recognitionFailed }
-                                self.computePolicy = .compatibleCPU
                             }
                             try cancellation.check()
                             let result = try consume(observations)
@@ -236,8 +225,8 @@ final class ScreenTextService: ScreenTextRecognizing, @unchecked Sendable {
         }, onCancel: { cancellation.cancel() })
     }
 
-    private func perform(_ image: CGImage, policy: OCRComputePolicy,
-                         cancellation: RecognitionCancellation) throws -> [VNRecognizedTextObservation] {
+    private static func perform(_ image: CGImage, policy: OCRComputePolicy,
+                                cancellation: RecognitionCancellation) throws -> [VNRecognizedTextObservation] {
         try cancellation.check()
         let request = VNRecognizeTextRequest()
         try policy.configure(request)

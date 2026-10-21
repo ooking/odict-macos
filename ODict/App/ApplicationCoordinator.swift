@@ -33,6 +33,11 @@ final class ApplicationCoordinator: NSObject {
             self.model.lookup(result.text)
             self.lookup.show(anchor: result.anchor, hover: true)
         }
+        controller.onFailure = { [weak self] message, anchor in
+            guard let self else { return }
+            self.model.presentCaptureStatus(message, busy: false)
+            self.lookup.show(anchor: anchor, hover: true)
+        }
         controller.onInteraction = { [weak self] in self?.lookup.promote() }
         controller.onDismiss = { [weak self] in
             guard let self, self.lookup.isHover else { return }
