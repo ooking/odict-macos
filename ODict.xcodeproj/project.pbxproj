@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */; };
 		000000000000000000000016 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000015 /* KeyboardShortcuts */; };
 		0000000000000000000000C8 /* ODict/App/ODictApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000064 /* ODict/App/ODictApp.swift */; };
 		0000000000000000000000C9 /* ODict/Models/DictionaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* ODict/Models/DictionaryModels.swift */; };
@@ -59,6 +60,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleSummary.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000006 /* ODict.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ODict.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00000000000000000000001E /* ODict/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = ODict/Info.plist; sourceTree = SOURCE_ROOT; };
 		00000000000000000000001F /* ODict/ODict.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ODict/ODict.entitlements; sourceTree = SOURCE_ROOT; };
@@ -144,6 +146,7 @@
 				000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */,
 				000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */,
 				000000000000000000000903 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift */,
+				000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */,
 				000000000000000000000902 /* ODict/LocalDictionary/LocalDictionaryStore.swift */,
 				000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */,
 				000000000000000000000900 /* ODict/LocalDictionary/MDXBinary.swift */,
@@ -293,6 +296,7 @@
 				000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */,
 				000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */,
 				000000000000000000000A03 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift in Sources */,
+				000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */,
 				000000000000000000000A02 /* ODict/LocalDictionary/LocalDictionaryStore.swift in Sources */,
 				000000000000000000000A01 /* ODict/LocalDictionary/MDXReader.swift in Sources */,
 				000000000000000000000A00 /* ODict/LocalDictionary/MDXBinary.swift in Sources */,

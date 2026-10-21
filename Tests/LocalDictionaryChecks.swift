@@ -67,6 +67,25 @@ private enum Fixture {
         catch { print("FAIL:",error.localizedDescription); exit(1) }
     }
     static func run() async throws {
+        let oxford = """
+        <div class="def-g"><span class="oalecd8e_chn">进化</span></div>
+        <div class="x-g"><span class="oalecd8e_chn">不应收录的例句</span></div>
+        <div class="ids-g"><span class="def-g"><span class="oalecd8e_chn">不应收录的习语</span></span></div>
+        <div class="def-g"><span class="oalecd8e_chn">发展</span></div>
+        <div class="def-g"><span class="oalecd8e_chn">进化</span></div>
+        """
+        try require(LocalArticleSummary.extract(from: oxford) == "进化；发展", "Oxford history meanings without examples")
+        let longman = """
+        <div class="example"><span class="def"><tran>例句译文</tran></span></div>
+        <span class="sense"><span class="lexunit">a phrase</span><span class="def"><TRAN>短语释义</TRAN></span></span>
+        <span class="def"><en>change</en><tran>变化 &amp; <b>发展</b></tran></span>
+        """
+        let longmanSummary = LocalArticleSummary.extract(from: longman)
+        try require(longmanSummary == "变化 & 发展", "Longman nested text and entities: \(longmanSummary ?? "nil")")
+        try require(LocalArticleSummary.extract(from: "<nav>词典导航</nav><p>中文例句</p>") == nil, "No arbitrary Chinese fallback")
+        try require(LocalArticleSummary.extract(from: "<span class='def'><tran>English only</tran></span>") == nil, "No invented Chinese summary")
+        try require(LocalArticleSummary.extract(from: String(repeating: "x", count: 512 * 1024 + 1)) == nil, "Summary input bound")
+        try require(LocalArticleSummary.extract(from: "<!DOCTYPE x [<!ENTITY x SYSTEM 'file:///etc/hosts'>]><x>&x;</x>") == nil, "Reject entity declarations")
         let vectors = [("","cdf26213a150dc3ecb610f18f6b38b46"),("a","86be7afa339d0fc7cfc785e72f578d33"),("abc","c14a12199c66e4ba84636b0f69144c77")]
         for (input, expected) in vectors {
             let value = RIPEMD128.digest(Data(input.utf8)).map { String(format:"%02x",$0) }.joined()
@@ -157,6 +176,13 @@ private enum Fixture {
         let words = ["hello","apple","computer","recording","run","running","test","what","book","world","learn","word","dictionary","language","good","time","people","work","life","day"]
         for name in names {
             let dictionary = try LocalDictionaryDiscovery.discover(root.appendingPathComponent(name))[0]
+            for word in ["evolution", "apple", "computer"] {
+                let article = try await library.article(word, in: dictionary)
+                try require(article?.summary?.isEmpty == false, "real Chinese history summary \(name)/\(word)")
+                if word == "apple" { try require(article?.summary == "苹果", "exclude idiom senses from real apple summary") }
+                print("SUMMARY \(name)/\(word): \(article?.summary ?? "nil")")
+            }
+            await library.release()
             let start = Date()
             let hello = try await library.article("hello",in:dictionary)
             try require(hello?.html.contains("hello") == true,"real hello entry")

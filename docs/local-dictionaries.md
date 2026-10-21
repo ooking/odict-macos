@@ -9,6 +9,7 @@
 - `LocalDictionary/MDXBinary.swift`：有界二进制读取、zlib 校验解压和 RIPEMD-128 索引解码。
 - `LocalDictionary/MDXReader.swift`：利用原文件的词头/正文块目录查找，处理重复词头、跨块正文和内部跳转。
 - `LocalDictionary/LocalDictionaryLibrary.swift`：后台串行文件访问、资源寻址及有界内存缓存。
+- `LocalDictionary/LocalArticleSummary.swift`：从词条的中文释义标记提取有界的历史摘要，不执行脚本或读取外部资源。
 - `LocalDictionary/LocalDictionaryStore.swift`：配置、目录发现与覆盖样式文件创建。
 - `LocalDictionary/DictionaryRouter.swift`：来源选择、失败提示、顺序查询与在线兜底。
 - `Features/LocalDictionary/`：独立设置组件与本地 HTML 展示，不调用在线词条的原生正文视图。
@@ -21,7 +22,13 @@
 
 本地正文使用非持久化 WKWebView，以词典 ID 隔离资源地址。资源来自词典目录或关联的 MDD，外部文件的路径和符号链接不能越出目录。页面禁止自动访问网络、嵌入外部页面及提交表单；显式点击外部网页链接交给系统浏览器。没有向页面暴露 Keychain、在线密钥或原生消息桥。MDict `entry://` 等词条链接交给共享查询调度，`sound://` 音频按需读取。
 
-最近记录保留本地词头，暂不从 HTML 提取中文摘要；本地命中不会为了补摘要额外请求在线服务。
+最近记录在成功查词时保存词头与简短释义。本地词条从牛津中文释义、朗文 `def tran` 等明确的释义标记中提取最多两条、240 字的摘要，排除例句、习语/短语分组和导航；不提取任意中文正文，不为补摘要请求在线服务。临时解析的 HTML 上限为 512 KiB，不执行脚本、加载外部实体或资源。未识别到释义时右侧留空，悬停显示查词箭头。打开历史不触发查询或补齐，既有记录需要重新查询才会更新摘要。
+
+### 历史摘要验证（2026-10-21）
+
+经用户同意，`sh scripts/check-local-dictionaries.sh /Volumes/Data/dict` 与 `sh scripts/check-lookup.sh` 均通过。合成用例覆盖中文释义、朗文自定义标签保留、HTML 实体与嵌套文字、例句/习语排除、无中文时留空、输入大小上限和实体声明拒绝；模型用例覆盖本地摘要持久化、重新载入不查询、不补齐旧历史及清空。使用独立偏好域和模拟在线服务，不访问真实在线 API 或 Keychain。
+
+真实牛津、朗文分别核对 `evolution`、`apple`、`computer` 摘要；两本 `apple` 均只提取「苹果」。每本另执行 20 词各 5 轮的查询/摘要抽样，牛津中位约 13.18 ms、P95 58.78 ms，朗文中位约 43.92 ms、P95 123.36 ms。包含正文读取及摘要提取，不含 WebView、排版和交互，不是全词库性能保证或内存测量。实际历史列表的深浅色、悬停和排版尚未验证。
 
 ## 资源和能力边界
 

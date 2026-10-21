@@ -42,6 +42,22 @@ private struct LookupModelChecks {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let model = LookupModel(dictionary: fixture, history: RecentWordsStore(defaults: defaults), preferences: defaults)
+        let localRouter = FixtureLocalRouter()
+        let history = RecentWordsStore(defaults: defaults)
+        _ = history.remember("old-word", in: [])
+        let localModel = LookupModel(router: localRouter, history: history, preferences: defaults)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        precondition(localRouter.requests.isEmpty && localModel.recentTranslations["old-word"] == nil,
+                     "loading history must not backfill old records")
+        localModel.lookup("apple")
+        try await settled(localModel)
+        precondition(localModel.recentTranslations["apple"] == "苹果", "save local lookup summary")
+        let restored = LookupModel(router: localRouter, history: history, preferences: defaults)
+        precondition(restored.recentTranslations["apple"] == "苹果" && localRouter.requests == ["apple"],
+                     "restore saved local summary without additional lookups")
+        localModel.clearHistory()
+        precondition(history.load().isEmpty && history.loadTranslations(for: ["apple"]).isEmpty,
+                     "clear words and their summaries together")
         precondition(!model.moveSuggestion(by: 1))
         model.query = "play"; model.queryChanged()
         precondition(model.isSuggesting)
@@ -115,4 +131,17 @@ private struct LookupModelChecks {
         precondition(model.captureStatus == nil && !model.captureIsBusy)
         print("PASS: auto preview; two-column/single-column state; debounced keyboard previews; click/Return; single Chinese/fuzzy result; stale response rejection; candidate cap; failure and close cleanup")
     }
+}
+
+private final class FixtureLocalRouter: DictionaryLookupServing {
+    var requests: [String] = []
+    func entry(_ word: String) async throws -> LookupResult {
+        requests.append(word)
+        let dictionary = LocalDictionaryConfiguration(id: UUID(), name: "Fixture", mdxPath: "/unused.mdx", resources: [], enabled: true)
+        return LookupResult(remote: nil, local: LocalArticle(dictionary: dictionary, word: word,
+            headwords: [word], html: "<p>苹果</p>", summary: "苹果"), notice: nil)
+    }
+    func suggestions(_ query: String) async throws -> [Suggestion] { [] }
+    func search(_ query: String, translation: Bool) async throws -> [Suggestion] { [] }
+    func releaseLocalResources() async {}
 }

@@ -286,29 +286,6 @@ final class LookupModel: ObservableObject {
         history.saveTranslations(recentTranslations, for: recent)
     }
 
-    // The history view owns this task: leaving it cancels the sequential backfill.
-    // Never retain fetched entries or change history order while filling old records.
-    func fillRecentTranslations() async {
-        let token = revision
-        let missing = recent.filter { recentTranslations[$0] == nil }
-        for word in missing {
-            guard !Task.isCancelled, token == revision, recent.contains(word) else { return }
-            do {
-                let result = try await dictionary.entry(word)
-                guard !Task.isCancelled, token == revision, recent.contains(word) else { return }
-                recentTranslations[word] = RecentWordsStore.summary(result.translation ?? "")
-                history.saveTranslations(recentTranslations, for: recent)
-            } catch DictionaryError.notFound {
-                guard !Task.isCancelled, token == revision, recent.contains(word) else { return }
-                recentTranslations[word] = ""
-                history.saveTranslations(recentTranslations, for: recent)
-            } catch {
-                // Stop on service/auth/rate-limit errors; normal lookup stays usable.
-                return
-            }
-        }
-    }
-
     func pronounce(_ word: String) { pronunciation.speak(word) }
 
     func clearHistory() {

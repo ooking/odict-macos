@@ -27,8 +27,9 @@ actor LocalDictionaryLibrary {
         guard !entries.isEmpty else { return nil }
         var seen = Set<String>()
         let headwords = entries.map(\.0).filter { seen.insert($0).inserted }
+        let html = entries.map(\.1).joined(separator: "\n")
         return LocalArticle(dictionary: dictionary, word: word, headwords: headwords,
-                            html: entries.map(\.1).joined(separator: "\n"))
+                            html: html, summary: LocalArticleSummary.extract(from: html))
     }
     func words(_ query: String, in dictionary: LocalDictionaryConfiguration, exact: Bool) throws -> [Suggestion] {
         try reader(dictionary.mdxPath).words(query, prefix: !exact, limit: exact ? 1 : 10).map {

@@ -7,7 +7,7 @@ struct LookupResult {
     let local: LocalArticle?
     let notice: String?
     var word: String { remote?.word ?? local?.word ?? "" }
-    var translation: String? { remote?.translation }
+    var translation: String? { remote?.translation ?? local?.summary }
     var source: String { local.map { "\($0.dictionary.name) · 本地" } ?? "ODict · 在线" }
 }
 

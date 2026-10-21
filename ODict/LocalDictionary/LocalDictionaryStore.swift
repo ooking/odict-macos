@@ -46,6 +46,7 @@ struct LocalArticle: Identifiable, Sendable {
     /// Terminal record keys are separate metadata; HTML remains untouched.
     let headwords: [String]
     let html: String
+    var summary: String? = nil
 
     var correspondingHeadwords: [String] {
         headwords.filter { $0.caseInsensitiveCompare(word) != .orderedSame }

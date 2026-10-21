@@ -277,7 +277,6 @@ struct LookupView: View {
                 }
             }
         }
-        .task { await model.fillRecentTranslations() }
     }
 
     private func entryContent(_ entry: Entry) -> some View {
@@ -350,11 +349,18 @@ private struct RecentWordRow: View {
                     .font(AppTypography.navigation)
                     .foregroundColor(.primary)
                     .frame(width: 132, alignment: .leading)
-                Text(translation.map { $0.isEmpty ? "点击查看释义" : $0 } ?? "点击查看释义")
+                Text(translation ?? "")
                     .font(AppTypography.secondary)
-                    .foregroundColor(secondaryInk.opacity(hasSummary ? 1 : 0.75))
+                    .foregroundColor(secondaryInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .multilineTextAlignment(.leading)
+                if !hasSummary {
+                    Image(systemName: "arrow.up.left")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(secondaryInk)
+                        .opacity(hovered ? 1 : 0)
+                        .accessibilityHidden(true)
+                }
             }
             .lineLimit(2)
             .truncationMode(.tail)
