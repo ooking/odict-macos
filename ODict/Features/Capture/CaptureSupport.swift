@@ -20,7 +20,7 @@ enum CaptureError: LocalizedError {
         case .noSelection: return "未读取到选中文字，请先选中单词，或使用截图取词。"
         case .secureInput: return "无法从安全输入区域取词，请在普通文本中使用。"
         case .noText: return "没有识别到文字，请重新框选清晰的单词或短语。"
-        case .tooLong: return "取出的文字超过 255 字，请只选择单词或短语。"
+        case .tooLong: return "取出的文字过长，请选择 4000 字以内的内容。"
         case .unavailable: return "无法捕获此区域，请检查屏幕权限后重新框选。"
         case .crossDisplay: return "请在同一显示器内框选，不支持跨屏截图。"
         case .recognitionFailed: return "文字识别失败，兼容重试也未成功。请稍后重试，或尝试选中取词。"
@@ -29,16 +29,23 @@ enum CaptureError: LocalizedError {
 }
 
 enum CaptureText {
-    static func normalize(_ raw: String, emptyError: CaptureError) throws -> String {
+    static func normalize(_ raw: String, emptyError: CaptureError, maximumCount: Int = 255, preserveLines: Bool = false) throws -> String {
         guard raw.utf16.prefix(65_537).count <= 65_536 else { throw CaptureError.tooLong }
         // Stop as soon as the limit is exceeded; don't build an unbounded copy of a selection.
         var result = ""
         var pendingSpace = false
+        var pendingLine = false
+        var count = 0
         for character in raw {
-            if character.isWhitespace { pendingSpace = !result.isEmpty; continue }
-            if pendingSpace { result.append(" "); pendingSpace = false }
+            if character.isWhitespace {
+                pendingSpace = !result.isEmpty
+                if preserveLines && character.isNewline { pendingLine = !result.isEmpty }
+                continue
+            }
+            if pendingSpace { result.append(pendingLine ? "\n" : " "); count += 1; pendingSpace = false; pendingLine = false }
             result.append(character)
-            if result.count > 255 { throw CaptureError.tooLong }
+            count += 1
+            if count > maximumCount { throw CaptureError.tooLong }
         }
         guard !result.isEmpty else { throw emptyError }
         return result

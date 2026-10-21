@@ -8,26 +8,31 @@ struct LookupWindowActions {
     var editQuery: () -> Void
     var interacted: () -> Void
     var dismissed: () -> Void
+    var openAISettings: () -> Void = {}
 }
 
 /// Owns only the native lookup window, its placement and temporary mouse monitors.
 @MainActor
-final class LookupWindowController {
-    private let panel = LookupPanel(contentRect: CGRect(x: 0, y: 0, width: 420, height: 440),
-        styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+final class LookupWindowController: NSObject, NSWindowDelegate {
+    private let panel = LookupPanel(contentRect: CGRect(origin: .zero, size: LookupWindowLayout.defaultSize),
+        styleMask: [.borderless, .nonactivatingPanel, .resizable], backing: .buffered, defer: false)
     private let model: LookupModel
     private let status: MenuBarController
     private let actions: LookupWindowActions
     private let presentation = LookupPresentation()
+    private let preferences: UserDefaults
+    private static let sizeKey = "lookup.windowSize.v1"
     private var userPositioned = false
     private var anchor: CGRect?
     private var outsideClickMonitor: Any?
     private var localClickMonitor: Any?
 
-    init(model: LookupModel, status: MenuBarController, actions: LookupWindowActions) {
+    init(model: LookupModel, status: MenuBarController, actions: LookupWindowActions, preferences: UserDefaults = .standard) {
         self.model = model
         self.status = status
         self.actions = actions
+        self.preferences = preferences
+        super.init()
         configure()
     }
 
@@ -43,12 +48,20 @@ final class LookupWindowController {
     var isKeyWindow: Bool { panel.isKeyWindow }
 
     private func configure() {
+        panel.delegate = self
+        panel.contentMinSize = LookupWindowLayout.minimumSize
+        if let saved = preferences.array(forKey: Self.sizeKey) as? [Double], saved.count == 2,
+           saved.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 4096 }) {
+            panel.setContentSize(NSSize(width: max(saved[0], LookupWindowLayout.minimumSize.width),
+                                       height: max(saved[1], LookupWindowLayout.minimumSize.height)))
+        }
         panel.isReleasedWhenClosed = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.isFloatingPanel = true
+        panel.isMovableByWindowBackground = true
         panel.becomesKeyOnlyIfNeeded = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -57,12 +70,12 @@ final class LookupWindowController {
         let hostingView = NSHostingView(rootView: LookupView(model: model,
             openSettings: actions.openSettings,
             close: { [weak self] in self?.hide() },
-            resize: { [weak self] size in self?.resize(size) },
             captureSelection: actions.captureSelection, captureScreenshot: actions.captureScreenshot,
-            editQuery: actions.editQuery, presentation: presentation,
+            editQuery: actions.editQuery, openAISettings: actions.openAISettings, presentation: presentation,
             togglePin: { [weak self] in self?.togglePin() },
             dragWindow: { [weak self] event in self?.dragWindow(event) }))
         hostingView.autoresizingMask = [.width, .height]
+        if #available(macOS 13.0, *) { hostingView.sizingOptions = [] }
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView()
             glass.style = .regular
@@ -95,6 +108,7 @@ final class LookupWindowController {
                 return (l.isNull ? 0 : l.width * l.height) < (r.isNull ? 0 : r.width * r.height)
             } ?? NSScreen.main
             guard let screen else { return }
+            fitToScreen(screen)
             let origin = isHover
                 ? CaptureGeometry.hoverPanelOrigin(size: panel.frame.size, anchor: anchor, visible: screen.visibleFrame)
                 : CaptureGeometry.panelOrigin(size: panel.frame.size, anchor: anchor, visible: screen.visibleFrame)
@@ -104,6 +118,7 @@ final class LookupWindowController {
         guard let anchor = status.anchor else { return }
         let screen = status.screen ?? NSScreen.main
         guard let visible = screen?.visibleFrame else { return }
+        if let screen { fitToScreen(screen) }
         let size = panel.frame.size
         let x = min(max(anchor.midX - size.width / 2, visible.minX + 8), visible.maxX - size.width - 8)
         let top = min(anchor.minY - 6, visible.maxY - 6)
@@ -118,6 +133,7 @@ final class LookupWindowController {
             userPositioned = false
         }
         presentation.mode = mode
+        if mode == .manual { model.beginManual() }
         // Match native controls and WebKit's prefers-color-scheme to the white card.
         panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
         model.resume()
@@ -179,13 +195,11 @@ final class LookupWindowController {
     }
 
     private func togglePin() {
-        guard isCapture else { return }
         promote()
         presentation.isPinned.toggle()
     }
 
     private func dragWindow(_ event: NSEvent) {
-        guard isCapture else { return }
         promote()
         userPositioned = true
         panel.performDrag(with: event)
@@ -202,17 +216,27 @@ final class LookupWindowController {
 
     func screenChanged() {
         guard panel.isVisible else { return }
+        if let screen = panel.screen { fitToScreen(screen) }
         if userPositioned || isPinned { constrainToScreen() } else { position() }
     }
-    private func resize(_ size: NSSize) {
-        let top = panel.frame.maxY
-        panel.setContentSize(size)
-        if panel.isVisible {
-            if userPositioned || isPinned {
-                panel.setFrameOrigin(NSPoint(x: panel.frame.minX, y: top - size.height))
-                constrainToScreen()
-            } else { position() }
-        }
+    // Native live resizing drives the flexible hosting view directly; no per-frame published state.
+    func windowWillStartLiveResize(_ notification: Notification) {
+        promote()
+        userPositioned = true
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        constrainToScreen()
+        preferences.set([panel.frame.width, panel.frame.height], forKey: Self.sizeKey)
+    }
+
+    private func fitToScreen(_ screen: NSScreen) {
+        let available = screen.visibleFrame.insetBy(dx: 8, dy: 8).size
+        panel.contentMaxSize = NSSize(width: max(LookupWindowLayout.minimumSize.width, available.width),
+                                     height: max(LookupWindowLayout.minimumSize.height, available.height))
+        let size = NSSize(width: min(panel.frame.width, panel.contentMaxSize.width),
+                          height: min(panel.frame.height, panel.contentMaxSize.height))
+        if size != panel.frame.size { panel.setContentSize(size) }
     }
     private func removeMonitors() {
         if let monitor = outsideClickMonitor { NSEvent.removeMonitor(monitor) }

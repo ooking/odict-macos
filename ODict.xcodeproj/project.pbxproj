@@ -44,6 +44,15 @@
 		000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */; };
 		000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */; };
 		000000000000000000000A06 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */; };
+		000000000000000000000E00 /* ODict/Models/AIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D00 /* ODict/Models/AIModels.swift */; };
+		000000000000000000000E01 /* ODict/Services/AISettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D01 /* ODict/Services/AISettingsStore.swift */; };
+		000000000000000000000E02 /* ODict/Services/AIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D02 /* ODict/Services/AIClient.swift */; };
+		000000000000000000000E03 /* ODict/Features/AI/AIQueryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D03 /* ODict/Features/AI/AIQueryModel.swift */; };
+		000000000000000000000E04 /* ODict/Features/AI/AITextInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D04 /* ODict/Features/AI/AITextInput.swift */; };
+		000000000000000000000E05 /* ODict/Features/AI/AIResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D05 /* ODict/Features/AI/AIResultView.swift */; };
+		000000000000000000000E06 /* ODict/Features/AI/AISettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D06 /* ODict/Features/AI/AISettingsModel.swift */; };
+		000000000000000000000E07 /* ODict/Features/AI/AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D07 /* ODict/Features/AI/AISettingsView.swift */; };
+		000000000000000000000E08 /* ODict/Features/AI/AIComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D08 /* ODict/Features/AI/AIComposerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -87,6 +96,15 @@
 		000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/DictionaryRouter.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/LocalDictionary/LocalArticleView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D00 /* ODict/Models/AIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/AIModels.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D01 /* ODict/Services/AISettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AISettingsStore.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D02 /* ODict/Services/AIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIClient.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D03 /* ODict/Features/AI/AIQueryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIQueryModel.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D04 /* ODict/Features/AI/AITextInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AITextInput.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D05 /* ODict/Features/AI/AIResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIResultView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D06 /* ODict/Features/AI/AISettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AISettingsModel.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D07 /* ODict/Features/AI/AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AISettingsView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000D08 /* ODict/Features/AI/AIComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIComposerView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +122,15 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000D08 /* ODict/Features/AI/AIComposerView.swift */,
+				000000000000000000000D07 /* ODict/Features/AI/AISettingsView.swift */,
+				000000000000000000000D06 /* ODict/Features/AI/AISettingsModel.swift */,
+				000000000000000000000D05 /* ODict/Features/AI/AIResultView.swift */,
+				000000000000000000000D04 /* ODict/Features/AI/AITextInput.swift */,
+				000000000000000000000D03 /* ODict/Features/AI/AIQueryModel.swift */,
+				000000000000000000000D02 /* ODict/Services/AIClient.swift */,
+				000000000000000000000D01 /* ODict/Services/AISettingsStore.swift */,
+				000000000000000000000D00 /* ODict/Models/AIModels.swift */,
 				000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */,
 				000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */,
 				000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */,
@@ -241,6 +268,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000000E08 /* ODict/Features/AI/AIComposerView.swift in Sources */,
+				000000000000000000000E07 /* ODict/Features/AI/AISettingsView.swift in Sources */,
+				000000000000000000000E06 /* ODict/Features/AI/AISettingsModel.swift in Sources */,
+				000000000000000000000E05 /* ODict/Features/AI/AIResultView.swift in Sources */,
+				000000000000000000000E04 /* ODict/Features/AI/AITextInput.swift in Sources */,
+				000000000000000000000E03 /* ODict/Features/AI/AIQueryModel.swift in Sources */,
+				000000000000000000000E02 /* ODict/Services/AIClient.swift in Sources */,
+				000000000000000000000E01 /* ODict/Services/AISettingsStore.swift in Sources */,
+				000000000000000000000E00 /* ODict/Models/AIModels.swift in Sources */,
 				000000000000000000000A06 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift in Sources */,
 				000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */,
 				000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */,

@@ -40,7 +40,7 @@ private struct PreviewRoot: View {
             if settings {
                 ScrollView { LocalDictionarySettingsView().padding(20) }.frame(width:640,height:440)
             } else {
-                LookupView(model:model,openSettings:{settings=true},close:{model.suspend()},resize:{_ in})
+                LookupView(model:model,openSettings:{settings=true},close:{model.suspend()})
             }
         }.padding(20).frame(width:680,height:540)
             .onAppear { model.lookup("hello"); NSApp.activate(ignoringOtherApps:true) }

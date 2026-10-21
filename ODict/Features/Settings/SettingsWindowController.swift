@@ -7,9 +7,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var model: SettingsModel?
     var didSave: (() -> Void)?
 
-    func show() {
+    func show(ai: Bool = false) {
         if window == nil {
             let model = SettingsModel()
+            model.showAI = ai
             model.didSave = { [weak self] in self?.didSave?() }
             let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 860, height: min(680, (NSScreen.main?.visibleFrame.height ?? 760) - 80)),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -22,9 +23,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             self.model = model
             self.window = window
         }
+        if ai { model?.showAI = true }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-        model?.load()
     }
 
     var isVisible: Bool { window?.isVisible ?? false }

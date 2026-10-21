@@ -20,14 +20,31 @@ enum KeychainStore {
         }
     }
 
-    private static var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: "com.touchany.odict.mac",
-         kSecAttrAccount as String: "dictionary-read-key"]
+    static func loadAISettings() async throws -> AISavedSettings {
+        try await worker.perform {
+            // Read the endpoint/model and matching credential on the same serial queue as saves.
+            AISavedSettings(configuration: AISettingsStore.configuration,
+                            key: try readSynchronously(account: "ai-service-key"))
+        }
     }
 
-    private static func readSynchronously() throws -> String {
-        var request = query
+    static func saveAIKey(_ key: String, configuration: Data, preferenceKey: String) async throws {
+        try await worker.perform {
+            try saveSynchronously(key, account: "ai-service-key")
+            UserDefaults.standard.set(configuration, forKey: preferenceKey)
+            // Publish committed changes even if the caller closed its window during Keychain work.
+            DispatchQueue.main.async { NotificationCenter.default.post(name: AISettingsStore.changed, object: nil) }
+        }
+    }
+
+    private static func query(account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: "com.touchany.odict.mac",
+         kSecAttrAccount as String: account]
+    }
+
+    private static func readSynchronously(account: String = "dictionary-read-key") throws -> String {
+        var request = query(account: account)
         request[kSecReturnData as String] = true
         request[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
@@ -38,7 +55,8 @@ enum KeychainStore {
         return value
     }
 
-    private static func saveSynchronously(_ key: String) throws {
+    private static func saveSynchronously(_ key: String, account: String = "dictionary-read-key") throws {
+        let query = query(account: account)
         if key.isEmpty {
             let status = SecItemDelete(query as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else { throw StorageError(status: status) }

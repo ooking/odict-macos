@@ -21,32 +21,76 @@ private final class DesignDictionary: DictionaryServing {
     func search(_ query: String, translation: Bool) async throws -> [Suggestion] { try await suggestions(query) }
 }
 
-@MainActor
-private final class PreviewDelegate: NSObject, NSApplicationDelegate {
-    let model = LookupModel(dictionary: DesignDictionary())
-    var panel: PreviewPanel!
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        panel = PreviewPanel(contentRect: NSRect(x: 0, y: 0, width: 640, height: 440),
-            styleMask: [.borderless], backing: .buffered, defer: false)
-        panel.title = "ODict 设计验证"
-        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
-        let hosting = NSHostingView(rootView: LookupView(model: model, openSettings: {}, close: { [weak self] in
-            self?.model.suspend(); NSApp.terminate(nil)
-        }, resize: { [weak self] size in self?.panel.setContentSize(size) }))
-        hosting.autoresizingMask = [.width, .height]
-        if #available(macOS 26.0, *) {
-            let glass = NSGlassEffectView(); glass.style = .regular; glass.cornerRadius = 16
-            glass.contentView = hosting; panel.contentView = glass
-        } else {
-            let material = NSVisualEffectView(); material.material = .popover; material.blendingMode = .behindWindow
-            material.addSubview(hosting); panel.contentView = material
-        }
-        model.query = "play"; model.queryChanged()
-        panel.center(); panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+private actor PreviewAI: AIQueryServing {
+    func answer(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?) async throws -> AIAnswer {
+        try await Task.sleep(nanoseconds: 150_000_000)
+        return AIAnswer(kind: kind.resolved(for: text), translation: "这是用于检查布局的模拟译文。",
+                        explanation: "此预览只使用本机模拟数据。", examples: [])
     }
 }
-private final class PreviewPanel: NSPanel { override var canBecomeKey: Bool { true } }
 
+@MainActor
+private final class PreviewDelegate: NSObject, NSApplicationDelegate {
+    private let suite = "ODict.ResizePreview.\(UUID().uuidString)"
+    private var defaults: UserDefaults!
+    private var model: LookupModel!
+    private var status: MenuBarController!
+    private var controller: LookupWindowController!
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        defaults = UserDefaults(suiteName: suite)!
+        let store = LocalDictionaryStore(defaults: defaults)
+        try! store.save([], mode: .onlineOnly)
+        var configuration = AIConfiguration()
+        configuration.address = "https://fixture.invalid/v1"
+        configuration.model = "界面模拟"
+        let fixtureConfiguration = configuration
+        model = LookupModel(router: DictionaryRouter(remote: DesignDictionary(), local: LocalDictionaryLibrary(), store: store),
+                            history: RecentWordsStore(defaults: defaults), preferences: defaults,
+                            ai: AIQueryModel(client: PreviewAI(), configuration: { fixtureConfiguration }))
+        status = MenuBarController()
+        controller = LookupWindowController(model: model, status: status, actions: LookupWindowActions(
+            openSettings: {}, captureSelection: {}, captureScreenshot: {}, editQuery: {}, interacted: {},
+            dismissed: { [weak self] in self?.model.suspend() }), preferences: defaults)
+        status.onToggle = { [weak self] in self?.controller.show(anchor: nil) }
+        let menu = NSMenu()
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu()
+        let quit = NSMenuItem(title: "退出预览", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        appMenu.addItem(quit); appItem.submenu = appMenu; menu.addItem(appItem)
+        let checks = NSMenuItem(title: "布局验证", action: nil, keyEquivalent: "")
+        let checksMenu = NSMenu()
+        for (title, action, key) in [("默认尺寸", #selector(defaultSize), "1"), ("最小尺寸", #selector(minimumSize), "2"), ("放大窗口", #selector(largeSize), "3"), ("重新打开", #selector(reopen), "4")] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.target = self; checksMenu.addItem(item)
+        }
+        checks.submenu = checksMenu; menu.addItem(checks); NSApp.mainMenu = menu
+        controller.show(anchor: nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    private func resizeFixture(_ size: NSSize) {
+        guard let window = NSApp.windows.first(where: { $0.title == "ODict 查词" }) else { return }
+        precondition(window.styleMask.contains(.resizable))
+        let top = window.frame.maxY
+        window.setContentSize(size)
+        window.setFrameOrigin(NSPoint(x: window.frame.minX, y: top - window.frame.height))
+        controller.screenChanged()
+        controller.windowDidEndLiveResize(Notification(name: NSWindow.didEndLiveResizeNotification, object: window))
+        FileHandle.standardError.write(Data("Preview size: \(window.frame.width) x \(window.frame.height)\n".utf8))
+    }
+    @objc private func defaultSize() { resizeFixture(LookupWindowLayout.defaultSize) }
+    @objc private func minimumSize() { resizeFixture(LookupWindowLayout.minimumSize) }
+    @objc private func largeSize() { resizeFixture(NSSize(width: 700, height: 580)) }
+    @objc private func reopen() {
+        controller.hide()
+        controller.show(anchor: nil)
+    }
+    func applicationWillTerminate(_ notification: Notification) {
+        controller.hide()
+        status.stop()
+        defaults.removePersistentDomain(forName: suite)
+    }
+}
 @main
 private struct DesignPreviewApp {
     @MainActor

@@ -76,6 +76,11 @@ private struct ScreenCaptureChecks {
         precondition(punctuation == "don't re-enter")
         precondition(boundary.count == 255)
         rejects(.tooLong) { try CaptureText.normalize(String(repeating: "a", count: 256), emptyError: .noText) }
+        let sentence = try CaptureText.normalize(" first line \r\n second line ", emptyError: .noText, maximumCount: 4000, preserveLines: true)
+        precondition(sentence == "first line\nsecond line")
+        let aiBoundary = try CaptureText.normalize(String(repeating: "中", count: 4000), emptyError: .noText, maximumCount: 4000, preserveLines: true)
+        precondition(aiBoundary.count == 4000)
+        rejects(.tooLong) { try CaptureText.normalize(String(repeating: "a", count: 4001), emptyError: .noText, maximumCount: 4000, preserveLines: true) }
         rejects(.noText) { try CaptureText.normalize(" \t\n", emptyError: .noText) }
         rejects(.noSelection) { try CaptureText.normalize("", emptyError: .noSelection) }
 

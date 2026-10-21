@@ -6,7 +6,8 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
     case capture = "取词方式"
     case shortcuts = "快捷键"
     case dictionaries = "词典来源"
-    case service = "在线服务"
+    case service = "在线词典"
+    case ai = "AI"
     case privacy = "权限与隐私"
 
     var id: Self { self }
@@ -16,6 +17,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         case .shortcuts: return "command"
         case .dictionaries: return "books.vertical"
         case .service: return "network"
+        case .ai: return "sparkles"
         case .privacy: return "hand.raised"
         }
     }
@@ -25,6 +27,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         case .shortcuts: return "设置全局快捷键，无需切换应用即可查词。"
         case .dictionaries: return "管理本地词典、查询顺序和词典资源。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
+        case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
         case .privacy: return "管理取词所需的系统权限，了解数据如何使用。"
         }
     }
@@ -44,6 +47,7 @@ struct SettingsView: View {
     @StateObject private var dictionaryModel = LocalDictionarySettingsModel()
     @AppStorage(HoverLookupController.preferenceKey) private var hoverEnabled = false
     @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
+    @AppStorage(QueryMode.captureKey) private var captureMode = QueryMode.dictionary.rawValue
     @State private var category = SettingsCategory.capture
     @State private var accessibilityAllowed = false
     @State private var screenAllowed = false
@@ -68,7 +72,8 @@ struct SettingsView: View {
         }
         .font(AppTypography.body)
         .frame(minWidth: 760, minHeight: 480)
-        .onAppear { refreshPermissions(); model.load() }
+        .onAppear { refreshPermissions(); if model.showAI { category = .ai } }
+        .onChange(of: model.showAI) { value in if value { category = .ai } }
         .onChange(of: hoverEnabled) { _ in notifyHoverPreferenceChanged() }
         .onChange(of: hoverTrigger) { _ in notifyHoverPreferenceChanged() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -114,13 +119,21 @@ struct SettingsView: View {
         case .shortcuts: shortcutSettings
         case .dictionaries:
             settingsGroup { LocalDictionarySettingsView(model: dictionaryModel) }
-        case .service: serviceSettings
+        case .service: serviceSettings.onAppear { model.load() }
+        case .ai: AISettingsView(model: model.ai)
         case .privacy: privacySettings
         }
     }
 
     private var captureSettings: some View {
         VStack(spacing: 18) {
+            settingsGroup {
+                Text("查询模式").font(AppTypography.section)
+                Picker("取词后使用", selection: $captureMode) {
+                    ForEach(QueryMode.allCases) { Text($0.title).tag($0.rawValue) }
+                }.pickerStyle(.segmented)
+                helpText("选中、截图和悬停取词共用此设置。手动查询窗口单独记住上次模式；两种模式不会自动互相兜底。")
+            }
             settingsGroup {
                 HStack {
                     Text("悬停取词").font(AppTypography.section)
@@ -219,7 +232,7 @@ struct SettingsView: View {
             settingsGroup {
                 Text("数据与隐私").font(AppTypography.section)
                 helpText("选中取词读取当前应用选中的文字；悬停取词读取鼠标处文字，必要时仅截取附近区域。")
-                helpText("所有图片均在本机识别，不上传图片。仅将取出的文字交给词典服务查询。")
+                helpText("所有图片均在本机识别，不上传图片。词典模式只将查询文字交给词典服务；AI 模式将文字发送至你配置的 AI 服务。")
             }
         }
     }

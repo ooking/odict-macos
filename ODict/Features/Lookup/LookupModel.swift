@@ -3,6 +3,39 @@ import SwiftUI
 @MainActor
 final class LookupModel: ObservableObject {
     @Published var query = ""
+    @Published private(set) var mode: QueryMode
+    let ai: AIQueryModel
+    private let preferences: UserDefaults
+    private var captureContext = false
+
+    func setMode(_ value: QueryMode) {
+        guard value != mode else { return }
+        cancelRequests()
+        ai.reset()
+        result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
+        mode = value
+        pronunciation.stop()
+        if value == .ai {
+            let router = dictionary
+            Task { await router.releaseLocalResources() }
+        }
+        if !captureContext { preferences.set(value.rawValue, forKey: QueryMode.manualKey) }
+        focusRequest = UUID()
+    }
+
+    func beginManual() {
+        captureContext = false
+        setMode(QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary)
+    }
+
+    func lookupCaptured(_ text: String) {
+        captureContext = true
+        setMode(QueryMode(rawValue: preferences.string(forKey: QueryMode.captureKey) ?? "") ?? .dictionary)
+        lookup(text)
+    }
+
+    func aiSettingsChanged() { ai.settingsChanged() }
+
     @Published private(set) var result: LookupResult?
     var entry: Entry? { result?.remote }
     var localArticle: LocalArticle? { result?.local }
@@ -29,11 +62,16 @@ final class LookupModel: ObservableObject {
     private var revision = UUID()
     private var detailRevision = UUID()
 
-    convenience init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore()) {
-        self.init(router: DictionaryRouter(remote: dictionary), history: history)
+    convenience init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore(),
+                     preferences: UserDefaults = .standard) {
+        self.init(router: DictionaryRouter(remote: dictionary), history: history, preferences: preferences)
     }
 
-    init(router: DictionaryLookupServing, history: RecentWordsStore = RecentWordsStore()) {
+    init(router: DictionaryLookupServing, history: RecentWordsStore = RecentWordsStore(),
+         preferences: UserDefaults = .standard, ai: AIQueryModel? = nil) {
+        self.preferences = preferences
+        self.mode = QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary
+        self.ai = ai ?? AIQueryModel()
         self.dictionary = router
         self.history = history
         let saved = history.load()
@@ -54,6 +92,7 @@ final class LookupModel: ObservableObject {
     }
 
     func presentCaptureStatus(_ text: String, busy: Bool) {
+        ai.reset()
         cancelRequests()
         query = ""
         result = nil
@@ -89,11 +128,13 @@ final class LookupModel: ObservableObject {
     }
 
     func submit() {
+        if mode == .ai { ai.submit(query); return }
         if let selected = selectedSuggestion { preview(selected.word, remember: true) }
         else { lookup() }
     }
 
     func queryChanged() {
+        ai.reset()
         contentVisible = true
         cancelRequests()
         result = nil
@@ -101,6 +142,7 @@ final class LookupModel: ObservableObject {
         selectedSuggestionIndex = nil
         message = nil
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard mode == .dictionary else { return }
         guard !text.isEmpty, text.count <= 255 else { return }
         let token = revision
         isSuggesting = true
@@ -180,6 +222,13 @@ final class LookupModel: ObservableObject {
     }
 
     func lookup(_ word: String? = nil) {
+        if mode == .ai {
+            if let word { query = word }
+            contentVisible = true
+            cancelRequests()
+            ai.submit(query)
+            return
+        }
         contentVisible = true
         if let word { query = word }
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -189,7 +238,7 @@ final class LookupModel: ObservableObject {
         selectedSuggestionIndex = nil
         message = nil
         guard !text.isEmpty else { return }
-        guard text.count <= 255 else { message = "请输入 255 字以内的单词或短语。"; return }
+        guard text.count <= 255 else { message = "词典支持 255 字以内的单词或短语。查询句子请切换到 AI。"; return }
         let token = revision
         isLoading = true
         task = Task {
@@ -280,6 +329,7 @@ final class LookupModel: ObservableObject {
     }
 
     func resume() {
+        if mode == .ai { contentVisible = true; return }
         let reload = !contentVisible && result == nil && !query.isEmpty && !isLoading && !isSuggesting && captureStatus == nil
         contentVisible = true
         if reload { lookup() }
@@ -293,6 +343,7 @@ final class LookupModel: ObservableObject {
     }
 
     func suspend() {
+        ai.reset()
         contentVisible = false
         cancelRequests()
         // Dropping HTML and its WebView releases the renderer and resource tasks.

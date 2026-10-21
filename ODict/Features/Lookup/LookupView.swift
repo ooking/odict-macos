@@ -1,6 +1,11 @@
 import SwiftUI
 import AppKit
 
+enum LookupWindowLayout {
+    static let defaultSize = NSSize(width: 480, height: 440)
+    static let minimumSize = NSSize(width: 440, height: 360)
+}
+
 enum LookupPresentationMode {
     case manual
     case capture
@@ -21,56 +26,75 @@ struct LookupView: View {
     @ObservedObject var model: LookupModel
     let openSettings: () -> Void
     let close: () -> Void
-    let resize: (NSSize) -> Void
     var captureSelection: () -> Void = {}
     var captureScreenshot: () -> Void = {}
     var editQuery: () -> Void = {}
+    var openAISettings: () -> Void = {}
     @ObservedObject var presentation = LookupPresentation()
     var togglePin: () -> Void = {}
     var dragWindow: (NSEvent) -> Void = { _ in }
     @State private var searchFocused = false
     @StateObject private var localRenderer = LocalArticleRenderer()
 
-    private var panelSize: NSSize {
-        if presentation.mode == .capture { return NSSize(width: 440, height: 440) }
-        return NSSize(width: model.hasMultipleSuggestions ? 640 : 440,
-               height: model.query.isEmpty && model.recent.isEmpty && model.captureStatus == nil ? 280 : 440)
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            if presentation.mode == .manual {
-                searchBar.padding(.horizontal, 16).padding(.vertical, 12)
-                Divider()
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 8) {
+                    if presentation.mode == .manual {
+                        LookupModePicker(selection: Binding(get: { model.mode }, set: { editQuery(); model.setMode($0) }))
+                            .frame(width: 136, height: 28)
+                    } else {
+                        Label(model.mode.title, systemImage: model.mode == .ai ? "sparkles" : "book.closed")
+                            .font(AppTypography.navigation).foregroundColor(secondaryInk)
+                            .allowsHitTesting(false)
+                    }
+                    Spacer().allowsHitTesting(false)
+                }
+                .frame(maxWidth: .infinity, minHeight: 28, maxHeight: 28, alignment: .leading)
+                .background { LookupDragArea(drag: dragWindow) }
+                if presentation.mode == .manual {
+                    if model.mode == .ai {
+                        AIComposerView(model: model.ai, text: model.query, focusRequest: model.focusRequest,
+                            allowsFocus: model.acceptsSearchFocus, changed: { text in
+                                editQuery(); model.editQuery(text, composing: false)
+                            }, close: close)
+                    } else { searchBar }
+                }
+            }.padding(.horizontal, 16).padding(.vertical, 12)
+            Divider()
+            GeometryReader { geometry in
+                HStack(alignment: .top, spacing: 0) {
+                    if presentation.mode == .manual && model.hasMultipleSuggestions {
+                        candidateSidebar.frame(width: min(220, geometry.size.width * 0.36))
+                        Divider()
+                    }
+                    if model.mode == .ai && model.captureStatus == nil {
+                        AIResultView(model: model.ai, query: model.query, openSettings: openAISettings, isPresentation: presentation.mode == .capture)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let article = model.localArticle, model.contentVisible {
+                        VStack(alignment: .leading, spacing: 0) {
+                            LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
+                            if let notice = model.message {
+                                Text(notice).font(AppTypography.secondary).foregroundColor(.secondary).padding(12)
+                            }
+                        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        detailPane.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            HStack(alignment: .top, spacing: 0) {
-                if presentation.mode == .manual && model.hasMultipleSuggestions {
-                    candidateSidebar.frame(width: 220)
-                    Divider()
-                }
-                if let article = model.localArticle, model.contentVisible {
-                    VStack(alignment: .leading, spacing: 0) {
-                        LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
-                        if let notice = model.message {
-                            Text(notice).font(AppTypography.secondary).foregroundColor(.secondary).padding(12)
-                        }
-                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    detailPane.frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             footer
         }
         .background(presentation.mode == .capture ? Color.white : Color.clear)
         .environment(\.colorScheme, presentation.mode == .capture ? .light : systemColorScheme)
         .font(AppTypography.body)
-        .frame(width: panelSize.width, height: panelSize.height)
-        .onAppear { resize(panelSize) }
-        .onChange(of: panelSize) { resize($0) }
+        .frame(minWidth: LookupWindowLayout.minimumSize.width, maxWidth: .infinity,
+               minHeight: LookupWindowLayout.minimumSize.height, maxHeight: .infinity)
         .onChange(of: model.contentVisible) { visible in
             if !visible { localRenderer.release() }
         }
+        .onChange(of: model.mode) { _ in localRenderer.release() }
         .onChange(of: model.entry != nil) { online in
             if online { localRenderer.release() }
         }
@@ -78,19 +102,15 @@ struct LookupView: View {
         .onExitCommand(perform: close)
     }
 
-    private var captureWindowButtons: some View {
-        Group {
-            Button(action: togglePin) {
-                Image(systemName: presentation.isPinned ? "pin.fill" : "pin")
-                    .frame(width: 28, height: 28).contentShape(Rectangle())
-            }
-            .foregroundColor(presentation.isPinned ? .accentColor : secondaryInk)
-            .help(presentation.isPinned ? "取消固定，点击外部可关闭" : "固定窗口，切换应用时保留")
-            .accessibilityLabel(presentation.isPinned ? "取消固定窗口" : "固定窗口")
-            captureButton("关闭（Esc）", icon: "xmark", action: close)
+    private var pinButton: some View {
+        Button(action: togglePin) {
+            Image(systemName: presentation.isPinned ? "pin.fill" : "pin")
+                .font(.system(size: 14)).frame(width: 28, height: 28).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .font(.system(size: 14))
+        .foregroundColor(presentation.isPinned ? .accentColor : secondaryInk)
+        .help(presentation.isPinned ? "取消固定，点击外部可关闭" : "固定窗口，切换应用时保留")
+        .accessibilityLabel(presentation.isPinned ? "取消固定窗口" : "固定窗口")
     }
 
     private var searchBar: some View {
@@ -177,6 +197,9 @@ struct LookupView: View {
                     .font(AppTypography.secondary).foregroundColor(secondaryInk)
                     HStack(spacing: 12) {
                         Button("重试") { model.submit() }
+                        if presentation.mode == .manual, model.mode == .dictionary, model.query.count > 255 {
+                            Button("切换到 AI") { model.setMode(.ai) }
+                        }
                         Button("打开设置", action: openSettings)
                     }.controlSize(.small)
                 }
@@ -197,14 +220,15 @@ struct LookupView: View {
             Spacer().allowsHitTesting(false)
             captureButton("选中取词", icon: "text.cursor", action: captureSelection)
             captureButton("截图取词", icon: "viewfinder", action: captureScreenshot)
-            Button(action: openSettings) {
+            Button(action: model.mode == .ai ? openAISettings : openSettings) {
                 Image(systemName: "gearshape").font(.system(size: 14))
                     .frame(width: 28, height: 28).contentShape(Rectangle())
             }
             .buttonStyle(.plain).foregroundColor(secondaryInk)
             .help("设置（⌘,）").accessibilityLabel("设置").keyboardShortcut(",", modifiers: .command)
+            pinButton
             if presentation.mode == .capture {
-                captureWindowButtons
+                captureButton("关闭（Esc）", icon: "xmark", action: close)
             } else {
                 Menu {
                     Button("清空查词记录") { model.clearHistory() }.disabled(model.recent.isEmpty)
@@ -216,9 +240,7 @@ struct LookupView: View {
             }
         }
         .padding(.horizontal, 18).padding(.vertical, 5)
-        .background {
-            if presentation.mode == .capture { LookupDragArea(drag: dragWindow) }
-        }
+        .background { LookupDragArea(drag: dragWindow) }
     }
 
     private func captureButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -378,7 +400,7 @@ private struct CandidateRow: View {
     }
 }
 
-/// Native drag handling is restricted to the footer background, preserving text selection.
+/// Drag only the header/footer background, preserving input controls and selectable results.
 private struct LookupDragArea: NSViewRepresentable {
     let drag: (NSEvent) -> Void
     func makeNSView(context: Context) -> DragView { DragView(drag: drag) }
@@ -391,6 +413,36 @@ private struct LookupDragArea: NSViewRepresentable {
             super.init(frame: .zero)
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
         override func mouseDown(with event: NSEvent) { drag(event) }
+    }
+}
+
+
+/// An unlabeled native control with explicit bounds, aligned with the input's leading edge.
+private struct LookupModePicker: NSViewRepresentable {
+    @Binding var selection: QueryMode
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSSegmentedControl {
+        let control = NSSegmentedControl(labels: QueryMode.allCases.map(\.title), trackingMode: .selectOne,
+                                         target: context.coordinator, action: #selector(Coordinator.selectMode(_:)))
+        control.segmentDistribution = .fill
+        control.segmentStyle = .rounded
+        control.controlSize = .regular
+        control.setAccessibilityLabel("查询模式")
+        control.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return control
+    }
+    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        context.coordinator.parent = self
+        control.selectedSegment = selection == .dictionary ? 0 : 1
+    }
+    final class Coordinator: NSObject {
+        var parent: LookupModePicker
+        init(_ parent: LookupModePicker) { self.parent = parent }
+        @objc func selectMode(_ sender: NSSegmentedControl) {
+            guard QueryMode.allCases.indices.contains(sender.selectedSegment) else { return }
+            parent.selection = QueryMode.allCases[sender.selectedSegment]
+        }
     }
 }

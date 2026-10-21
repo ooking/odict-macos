@@ -10,9 +10,10 @@ final class HTTPTransport: HTTPTransporting {
     private let session: URLSession
     private let delegate: ResponseDelegate
 
-    init(maximumResponseBytes: Int = 4 * 1024 * 1024, configuration: URLSessionConfiguration = .ephemeral) {
-        configuration.timeoutIntervalForRequest = 15
-        configuration.timeoutIntervalForResource = 20
+    init(maximumResponseBytes: Int = 4 * 1024 * 1024, configuration: URLSessionConfiguration = .ephemeral,
+         requestTimeout: TimeInterval = 15, resourceTimeout: TimeInterval = 20) {
+        configuration.timeoutIntervalForRequest = requestTimeout
+        configuration.timeoutIntervalForResource = resourceTimeout
         configuration.urlCache = nil
         configuration.urlCredentialStorage = nil
         configuration.httpCookieStorage = nil

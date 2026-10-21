@@ -41,7 +41,7 @@ private struct LookupModelChecks {
         let suite = "odict.lookup.fixture.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        let model = LookupModel(dictionary: fixture, history: RecentWordsStore(defaults: defaults))
+        let model = LookupModel(dictionary: fixture, history: RecentWordsStore(defaults: defaults), preferences: defaults)
         precondition(!model.moveSuggestion(by: 1))
         model.query = "play"; model.queryChanged()
         precondition(model.isSuggesting)

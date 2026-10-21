@@ -30,7 +30,7 @@ final class SelectedTextService: SelectedTextReading {
                 var raw: CFTypeRef?
                 guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &raw) == .success,
                       let value = raw as? String else { throw CaptureError.noSelection }
-                let text = try CaptureText.normalize(value, emptyError: .noSelection)
+                let text = try CaptureText.normalize(value, emptyError: .noSelection, maximumCount: AIConfiguration.maximumInput, preserveLines: true)
                 try cancellation.check()
                 var anchor = fallbackAnchor
                 var range: CFTypeRef?

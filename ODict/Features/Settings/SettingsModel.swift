@@ -2,6 +2,8 @@ import SwiftUI
 
 @MainActor
 final class SettingsModel: ObservableObject {
+    @Published var showAI = false
+    let ai = AISettingsModel()
     @Published var address = UserDefaults.standard.string(forKey: "apiURL") ?? ServiceSettingsStore.defaultAddress
     @Published var key = ""
     @Published private(set) var message: String?
@@ -67,6 +69,7 @@ final class SettingsModel: ObservableObject {
     }
 
     func close() {
+        ai.close()
         revision = UUID()
         task?.cancel()
         task = nil

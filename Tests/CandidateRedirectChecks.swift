@@ -31,7 +31,7 @@ private final class UnusedOnline: DictionaryServing {
         let store = LocalDictionaryStore(defaults:defaults)
         try store.save([dictionary],mode:.localFirst)
         let online = UnusedOnline(), library = LocalDictionaryLibrary()
-        let model = LookupModel(router:DictionaryRouter(remote:online,local:library,store:store),history:RecentWordsStore(defaults:defaults))
+        let model = LookupModel(router:DictionaryRouter(remote:online,local:library,store:store),history:RecentWordsStore(defaults:defaults),preferences:defaults)
         model.editQuery("reco",composing:false)
         try await settled(model)
         precondition(model.suggestions.contains { $0.word == "recoated" })

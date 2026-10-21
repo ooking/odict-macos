@@ -163,14 +163,16 @@ final class ScreenTextService: ScreenTextRecognizing {
             var lines: [String] = []
             var length = 0
             for row in rows {
+                var fragments: [String] = []
                 for observation in row.sorted(by: { $0.boundingBox.minX < $1.boundingBox.minX }) {
                     guard let text = observation.topCandidates(1).first?.string else { continue }
-                    length += text.count + (lines.isEmpty ? 0 : 1)
-                    guard length <= 1024 else { throw CaptureError.tooLong }
-                    lines.append(text)
+                    length += text.count + 1
+                    guard length <= AIConfiguration.maximumInput + 1 else { throw CaptureError.tooLong }
+                    fragments.append(text)
                 }
+                if !fragments.isEmpty { lines.append(fragments.joined(separator: " ")) }
             }
-            return try CaptureText.normalize(lines.joined(separator: " "), emptyError: .noText)
+            return try CaptureText.normalize(lines.joined(separator: "\n"), emptyError: .noText, maximumCount: AIConfiguration.maximumInput, preserveLines: true)
         }
     }
 

@@ -20,7 +20,7 @@ final class ApplicationCoordinator: NSObject {
             self?.hover.cancel(dismiss: false)
             self?.capture.cancel()
             self?.model.suspend()
-        }))
+        }, openAISettings: { [weak self] in self?.showSettings(ai: true) }))
     private lazy var hover: HoverLookupController = {
         let controller = HoverLookupController()
         controller.canBegin = { [weak self] in
@@ -30,7 +30,7 @@ final class ApplicationCoordinator: NSObject {
         controller.containsPanel = { [weak self] point in self?.lookup.contains(point) ?? false }
         controller.onResult = { [weak self] result in
             guard let self else { return }
-            self.model.lookup(result.text)
+            self.model.lookupCaptured(result.text)
             self.lookup.show(anchor: result.anchor, hover: true)
         }
         controller.onFailure = { [weak self] message, anchor in
@@ -50,7 +50,7 @@ final class ApplicationCoordinator: NSObject {
         let coordinator = CaptureCoordinator()
         coordinator.onResult = { [weak self] result in
             guard let self else { return }
-            self.model.lookup(result.text)
+            self.model.lookupCaptured(result.text)
             self.lookup.show(anchor: result.anchor, mode: .capture)
         }
         coordinator.onFailure = { [weak self] message, anchor in
@@ -95,6 +95,8 @@ final class ApplicationCoordinator: NSObject {
         _ = lookup
         NotificationCenter.default.addObserver(self, selector: #selector(hoverPreferenceChanged),
             name: HoverLookupController.preferenceChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(aiSettingsChanged),
+            name: AISettingsStore.changed, object: nil)
         hover.updateEnabled()
         KeyboardShortcuts.onKeyUp(for: .toggleDictionary) { [weak self] in self?.toggleLookup() }
         KeyboardShortcuts.onKeyUp(for: .selectedTextLookup) { [weak self] in self?.startSelection() }
@@ -111,6 +113,8 @@ final class ApplicationCoordinator: NSObject {
         LifecycleDiagnostics.record("launch.ready")
     }
 
+    @objc private func aiSettingsChanged() { model.aiSettingsChanged() }
+
     @objc private func dictionarySourcesChanged() { model.sourcesChanged() }
 
     @objc private func cancelHover() { hover.cancel() }
@@ -124,10 +128,10 @@ final class ApplicationCoordinator: NSObject {
         lookup.show(anchor: nil)
     }
 
-    private func showSettings() {
+    private func showSettings(ai: Bool = false) {
         hover.cancel()
         lookup.hide()
-        settings.show()
+        settings.show(ai: ai)
     }
 
     private func rememberSource() {
