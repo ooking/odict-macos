@@ -51,6 +51,7 @@ struct SettingsView: View {
     @State private var selectedCaptureMethod = CaptureMethod.selection
     @State private var accessibilityAllowed = false
     @State private var screenAllowed = false
+    @State private var screenAuthorizationRequested = false
     @State private var showCaptureAuthorization = false
     @State private var authorizationMethod: CaptureMethod?
     @State private var pendingAuthorization: Set<CaptureMethod> = []
@@ -81,7 +82,7 @@ struct SettingsView: View {
                isPresented: $showCaptureAuthorization, presenting: authorizationMethod) { method in
             Button("前往授权") {
                 pendingAuthorization.insert(method)
-                CapturePermissions.openSettings(screenRecording: method.usesScreenPermission)
+                authorizePermission(screenRecording: method.usesScreenPermission)
             }
             Button("取消", role: .cancel) { pendingAuthorization.remove(method) }
         } message: { method in
@@ -189,8 +190,8 @@ struct SettingsView: View {
                 }
             }
             if isCaptureEnabled(method) || pendingAuthorization.contains(method) {
-                permissionRow(method.permissionTitle, allowed: permissionAllowed(method)) {
-                    CapturePermissions.openSettings(screenRecording: method.usesScreenPermission)
+                permissionRow(method.permissionTitle, allowed: permissionAllowed(method), screenRecording: method.usesScreenPermission) {
+                    authorizePermission(screenRecording: method.usesScreenPermission)
                 }
             }
             if isCaptureEnabled(method) {
@@ -212,8 +213,8 @@ struct SettingsView: View {
                     }
                     shortcutRow("开启 / 关闭悬停取词", name: .toggleHoverLookup)
                     Divider()
-                    permissionRow("屏幕录制（可选）", allowed: screenAllowed) {
-                        CapturePermissions.openSettings(screenRecording: true)
+                    permissionRow("屏幕录制（可选）", allowed: screenAllowed, screenRecording: true) {
+                        authorizePermission(screenRecording: true)
                     }
                     helpText("直接读取不到文字时，授权屏幕录制可截取鼠标附近区域，在本机识别。")
                 }
@@ -301,8 +302,8 @@ struct SettingsView: View {
                     CapturePermissions.openSettings(screenRecording: false)
                 }
                 Divider()
-                permissionRow("屏幕录制", allowed: screenAllowed) {
-                    CapturePermissions.openSettings(screenRecording: true)
+                permissionRow("屏幕录制", allowed: screenAllowed, screenRecording: true) {
+                    authorizePermission(screenRecording: true)
                 }
                 helpText("授权后请重新触发取词；屏幕录制权限可能需要按系统提示重新打开应用。")
             }
@@ -341,7 +342,12 @@ struct SettingsView: View {
         NotificationCenter.default.post(name: HoverLookupController.preferenceChanged, object: nil)
     }
 
-    private func permissionRow(_ title: String, allowed: Bool, action: @escaping () -> Void) -> some View {
+    private func authorizePermission(screenRecording: Bool) {
+        CapturePermissions.authorize(screenRecording: screenRecording)
+        refreshPermissions()
+    }
+
+    private func permissionRow(_ title: String, allowed: Bool, screenRecording: Bool = false, action: @escaping () -> Void) -> some View {
         HStack(spacing: 10) {
             Image(systemName: allowed ? "checkmark.circle" : "lock.circle").foregroundColor(.secondary)
             VStack(alignment: .leading, spacing: 4) {
@@ -349,13 +355,14 @@ struct SettingsView: View {
                 Text(allowed ? "已授权" : "未授权").font(AppTypography.caption).foregroundColor(.secondary)
             }
             Spacer()
-            Button(allowed ? "查看权限" : "授权…", action: action)
+            Button(allowed ? "查看权限" : (screenRecording && screenAuthorizationRequested ? "打开系统设置" : "授权…"), action: action)
         }.padding(.vertical, 4)
     }
 
     private func refreshPermissions() {
         accessibilityAllowed = CapturePermissions.accessibility
         screenAllowed = CapturePermissions.screenRecording
+        screenAuthorizationRequested = CapturePermissions.hasRequestedScreenRecording
         for method in CaptureMethod.allCases where pendingAuthorization.contains(method) && permissionAllowed(method) {
             pendingAuthorization.remove(method)
             setCaptureEnabled(method, true)

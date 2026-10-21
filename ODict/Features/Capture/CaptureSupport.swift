@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import HoverLookupKit
 
 enum CaptureSource: Sendable { case selection, screenshot }
 
@@ -112,6 +113,23 @@ enum CaptureGeometry {
 enum CapturePermissions {
     static var accessibility: Bool { AXIsProcessTrusted() }
     static var screenRecording: Bool { CGPreflightScreenCaptureAccess() }
+    // Session-only state: a stored flag could outlive a reset of system permissions.
+    private(set) static var hasRequestedScreenRecording = false
+
+    static func requestScreenRecording() {
+        guard !screenRecording else { return }
+        hasRequestedScreenRecording = true
+        _ = CGRequestScreenCaptureAccess()
+    }
+
+    static func authorize(screenRecording: Bool) {
+        if screenRecording, !self.screenRecording, !hasRequestedScreenRecording {
+            // Let the system prompt handle navigation on the first request.
+            requestScreenRecording()
+        } else {
+            openSettings(screenRecording: screenRecording)
+        }
+    }
 
     static func requestAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
@@ -138,55 +156,8 @@ final class CaptureCancellation: @unchecked Sendable {
     }
 }
 
-struct HoverWordHit: Sendable {
-    let text: String
-    let anchor: CGRect
-}
-
-enum HoverWords {
-    private static let componentSeparators: Set<Character> = [".", "．", "/", "\\", "_", ":", "@"]
-
-    /// Keep the original String ranges: repeated words must retain separate boxes.
-    static func ranges(in text: String) -> [Range<String.Index>] {
-        var ranges: [Range<String.Index>] = []
-        func append(_ range: Range<String.Index>) {
-            guard !range.isEmpty else { return }
-            if let previous = ranges.last {
-                let separator = text[previous.upperBound..<range.lowerBound]
-                if separator == "-" || separator == "'" || separator == "’" {
-                    ranges[ranges.count - 1] = previous.lowerBound..<range.upperBound
-                    return
-                }
-            }
-            ranges.append(range)
-        }
-        text.enumerateSubstrings(in: text.startIndex..<text.endIndex, options: [.byWords, .localized]) { _, range, _, _ in
-            // Foundation may return dotted names/URLs as a single word. Split
-            // components before AX/OCR hit testing, retaining exact source indices.
-            var start = range.lowerBound
-            for index in text[range].indices where componentSeparators.contains(text[index]) {
-                append(start..<index)
-                start = text.index(after: index)
-            }
-            append(start..<range.upperBound)
-        }
-        return ranges
-    }
-
-    static func valid(_ rect: CGRect) -> Bool {
-        !rect.isNull && !rect.isInfinite && !rect.isEmpty && rect.minX.isFinite && rect.minY.isFinite
-            && rect.maxX.isFinite && rect.maxY.isFinite
-    }
-
-    static func screenRect(_ box: CGRect, region: CGRect) -> CGRect {
-        CGRect(x: region.minX + box.minX * region.width, y: region.minY + box.minY * region.height,
-               width: box.width * region.width, height: box.height * region.height)
-    }
-
-    static func region(around point: CGPoint, screen: CGRect) -> CGRect {
-        CGRect(x: point.x - 320, y: point.y - 80, width: 640, height: 160).intersection(screen)
-    }
-}
+typealias HoverWordHit = HoverLookupKit.HoverWordHit
+typealias HoverWords = HoverLookupKit.HoverWords
 
 /// The hover gesture is independent of the shortcut that turns the feature on/off.
 /// Keep the previous Control behavior when upgrading or encountering an invalid preference.
@@ -216,19 +187,7 @@ enum HoverTrigger: String, CaseIterable, Identifiable {
         case .shift: return "按住 Shift，将鼠标停在单词上约 0.3 秒即可取词。"
         }
     }
-    private var modifier: NSEvent.ModifierFlags {
-        switch self {
-        case .none: return []
-        case .command: return .command
-        case .control: return .control
-        case .option: return .option
-        case .shift: return .shift
-        }
-    }
-    func matches(_ flags: NSEvent.ModifierFlags) -> Bool {
-        flags.intersection([.control, .option, .command, .shift]) == modifier
-    }
-    func isHeld(in flags: NSEvent.ModifierFlags) -> Bool {
-        self == .none ? matches(flags) : flags.contains(modifier)
-    }
+    var moduleModifier: HoverModifier { HoverModifier(rawValue: rawValue) ?? .control }
+    func matches(_ flags: NSEvent.ModifierFlags) -> Bool { moduleModifier.matches(flags) }
+    func isHeld(in flags: NSEvent.ModifierFlags) -> Bool { moduleModifier.isHeld(in: flags) }
 }

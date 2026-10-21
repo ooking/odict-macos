@@ -26,7 +26,7 @@ final class CaptureCoordinator {
          accessibilityAllowed: @escaping () -> Bool = { CapturePermissions.accessibility },
          screenAllowed: @escaping () -> Bool = { CapturePermissions.screenRecording },
          requestAccessibility: @escaping () -> Void = { CapturePermissions.requestAccessibility() },
-         requestScreen: @escaping () -> Void = { _ = CGRequestScreenCaptureAccess() },
+         requestScreen: @escaping () -> Void = { CapturePermissions.requestScreenRecording() },
          selection: ScreenRegionSelecting? = nil,
          screenImage: ScreenImageCapturing = ScreenImageService(),
          screenText: ScreenTextRecognizing = ScreenTextService()) {

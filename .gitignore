@@ -11,3 +11,5 @@ xcuserdata/
 *.p8
 *.key
 *.mobileprovision
+
+Packages/*/.build/

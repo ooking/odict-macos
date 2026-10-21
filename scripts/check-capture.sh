@@ -5,7 +5,9 @@ mkdir -p build/Checks
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 sdk_path="$(xcrun --sdk macosx --show-sdk-path)"
+sh scripts/build-hover-check-module.sh
 xcrun swiftc -swift-version 5 -sdk "$sdk_path" -target "$(uname -m)-apple-macosx12.0" -parse-as-library \
+    -I build/Checks -L build/Checks -lHoverLookupKit -Xlinker -rpath -Xlinker @loader_path \
     ODict/Models/AIModels.swift \
     ODict/Features/Capture/CaptureSupport.swift \
     ODict/Features/Capture/ScreenSelectionController.swift \
