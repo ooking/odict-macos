@@ -7,6 +7,9 @@ final class LookupModel: ObservableObject {
     let ai: AIQueryModel
     private let preferences: UserDefaults
     private var captureContext = false
+    // Only edits in the manual input field update this session-only draft.
+    // Captures and result/history navigation share query, but never this value.
+    private var manualQuery = ""
 
     func setMode(_ value: QueryMode) {
         guard value != mode else { return }
@@ -24,8 +27,20 @@ final class LookupModel: ObservableObject {
     }
 
     func beginManual() {
+        let restoreDraft = captureContext || query != manualQuery
         captureContext = false
         setMode(QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary)
+        guard restoreDraft else { return }
+        cancelRequests()
+        ai.reset()
+        pronunciation.stop()
+        result = nil
+        suggestions = []
+        selectedSuggestionIndex = nil
+        message = nil
+        query = manualQuery
+        // The window's resume restores results only for the manual draft.
+        contentVisible = false
     }
 
     func lookupCaptured(_ text: String) {
@@ -93,6 +108,7 @@ final class LookupModel: ObservableObject {
     }
 
     func editQuery(_ text: String, composing: Bool) {
+        manualQuery = text
         contentVisible = true
         query = text
         if mode == .ai {
@@ -109,6 +125,7 @@ final class LookupModel: ObservableObject {
     }
 
     func presentCaptureStatus(_ text: String, busy: Bool) {
+        captureContext = true
         ai.reset()
         cancelRequests()
         query = ""

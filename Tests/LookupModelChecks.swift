@@ -59,6 +59,41 @@ private struct LookupModelChecks {
         localModel.clearHistory()
         precondition(history.load().isEmpty && history.loadTranslations(for: ["apple"]).isEmpty,
                      "clear words and their summaries together")
+        let draftModel = LookupModel(router: localRouter, history: history, preferences: defaults)
+        draftModel.lookupHovered("hover-only")
+        try await settled(draftModel)
+        draftModel.suspend()
+        draftModel.beginManual()
+        draftModel.resume()
+        precondition(draftModel.query.isEmpty && draftModel.result == nil && !draftModel.isLoading,
+                     "hover without a manual draft must reopen an empty input and no captured result")
+        draftModel.editQuery("typed-draft", composing: true)
+        draftModel.suspend()
+        draftModel.beginManual()
+        precondition(draftModel.query == "typed-draft", "manual input must survive closing")
+        for captured in ["selected-word", "screenshot-word"] {
+            draftModel.lookupCaptured(captured)
+            try await settled(draftModel)
+            draftModel.suspend()
+            draftModel.beginManual()
+            precondition(draftModel.query == "typed-draft" && draftModel.result == nil,
+                         "captured queries must not overwrite the manual draft or retain captured results")
+        }
+        draftModel.presentCaptureStatus("未识别到文字", busy: false)
+        draftModel.beginManual()
+        precondition(draftModel.query == "typed-draft" && draftModel.captureStatus == nil,
+                     "capture status must restore the manual draft too")
+        draftModel.lookup("history-or-link")
+        try await settled(draftModel)
+        draftModel.beginManual()
+        precondition(draftModel.query == "typed-draft", "result navigation must not overwrite manual input")
+        draftModel.editQuery("", composing: false)
+        draftModel.lookupHovered("after-clear")
+        try await settled(draftModel)
+        draftModel.beginManual()
+        draftModel.resume()
+        precondition(draftModel.query.isEmpty && draftModel.result == nil && !draftModel.isLoading,
+                     "explicitly clearing the input must clear the saved manual draft")
         // Repeated hits at different screen positions must share the visible
         // capture request/result, but hide, failure and source changes must retry.
         let hoverFixture = FixtureDictionary()

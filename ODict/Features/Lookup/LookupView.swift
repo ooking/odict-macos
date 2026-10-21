@@ -16,7 +16,6 @@ enum LookupPresentationMode {
 final class LookupPresentation: ObservableObject {
     @Published var mode: LookupPresentationMode = .manual
     @Published var isPinned = false
-    @Published var isHoverPresentation = false
 }
 
 // Keep supporting text readable over both native glass and reduced-transparency surfaces.
@@ -39,7 +38,7 @@ struct LookupView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !presentation.isHoverPresentation {
+            if presentation.mode == .manual {
                 header
                 Divider()
             }
@@ -86,26 +85,18 @@ struct LookupView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
-                if presentation.mode == .manual {
-                    LookupModePicker(selection: Binding(get: { model.mode }, set: { editQuery(); model.setMode($0) }))
-                        .frame(width: 136, height: 28)
-                } else {
-                    Label(model.mode.title, systemImage: model.mode == .ai ? "sparkles" : "book.closed")
-                        .font(AppTypography.navigation).foregroundColor(secondaryInk)
-                        .allowsHitTesting(false)
-                }
+                LookupModePicker(selection: Binding(get: { model.mode }, set: { editQuery(); model.setMode($0) }))
+                    .frame(width: 136, height: 28)
                 Spacer().allowsHitTesting(false)
             }
             .frame(maxWidth: .infinity, minHeight: 28, maxHeight: 28, alignment: .leading)
             .background { LookupDragArea(drag: dragWindow) }
-            if presentation.mode == .manual {
-                if model.mode == .ai {
-                    AIComposerView(model: model.ai, text: model.query, focusRequest: model.focusRequest,
-                        allowsFocus: model.acceptsSearchFocus, changed: { text in
-                            editQuery(); model.editQuery(text, composing: false)
-                        }, close: close)
-                } else { searchBar }
-            }
+            if model.mode == .ai {
+                AIComposerView(model: model.ai, text: model.query, focusRequest: model.focusRequest,
+                    allowsFocus: model.acceptsSearchFocus, changed: { text in
+                        editQuery(); model.editQuery(text, composing: false)
+                    }, close: close)
+            } else { searchBar }
         }.padding(.horizontal, 16).padding(.vertical, 12)
     }
 
@@ -135,7 +126,7 @@ struct LookupView: View {
             }
             if !model.query.isEmpty {
                 Button {
-                    editQuery(); model.query = ""; model.queryChanged(); model.focusRequest = UUID()
+                    editQuery(); model.editQuery("", composing: false); model.focusRequest = UUID()
                 } label: {
                     Image(systemName: "xmark.circle.fill").frame(width: 24, height: 24)
                 }

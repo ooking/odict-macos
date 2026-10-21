@@ -133,7 +133,6 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             userPositioned = false
         }
         if presentation.mode != mode { presentation.mode = mode }
-        if presentation.isHoverPresentation != hover { presentation.isHoverPresentation = hover }
         if mode == .manual { model.beginManual() }
         // Match native controls and WebKit's prefers-color-scheme to the white card.
         panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
