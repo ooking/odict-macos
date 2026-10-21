@@ -25,7 +25,7 @@ final class ApplicationCoordinator: NSObject {
         let controller = HoverLookupController()
         controller.canBegin = { [weak self] in
             guard let self else { return false }
-            return !self.settings.isVisible && !self.capture.isRunning && (!self.lookup.isVisible || self.lookup.isHover)
+            return !self.settings.isVisible && !self.capture.isRunning && self.lookup.acceptsHoverLookup
         }
         controller.containsPanel = { [weak self] point in self?.lookup.contains(point) ?? false }
         controller.onResult = { [weak self] result in
@@ -51,17 +51,17 @@ final class ApplicationCoordinator: NSObject {
         coordinator.onResult = { [weak self] result in
             guard let self else { return }
             self.model.lookup(result.text)
-            self.lookup.show(anchor: result.anchor)
+            self.lookup.show(anchor: result.anchor, mode: .capture)
         }
         coordinator.onFailure = { [weak self] message, anchor in
             guard let self else { return }
             self.model.presentCaptureStatus(message, busy: false)
-            self.lookup.show(anchor: anchor)
+            self.lookup.show(anchor: anchor, mode: .capture)
         }
         coordinator.onRecognizing = { [weak self] anchor in
             guard let self else { return }
             self.model.presentCaptureStatus("正在本机识别文字…", busy: true)
-            self.lookup.show(anchor: anchor)
+            self.lookup.show(anchor: anchor, mode: .capture)
         }
         coordinator.onCancelled = { [weak self] in
             guard let self else { return }
@@ -119,7 +119,7 @@ final class ApplicationCoordinator: NSObject {
 
     func toggleLookup() {
         hover.cancel()
-        if lookup.isVisible { lookup.hide(); return }
+        if lookup.isVisible && !lookup.isCapture { lookup.hide(); return }
         capture.cancel()
         lookup.show(anchor: nil)
     }
@@ -146,7 +146,7 @@ final class ApplicationCoordinator: NSObject {
         // an expected transition, not the user abandoning the capture operation.
         if capture.isRunning, captureOriginPID == app.processIdentifier { return }
         capture.cancel()
-        if lookup.isVisible { lookup.hide(reason: "externalApplicationActivated") }
+        if lookup.isVisible && !lookup.isPinned { lookup.hide(reason: "externalApplicationActivated") }
     }
 
     private func prepareCapture() -> CGRect {
@@ -173,7 +173,7 @@ final class ApplicationCoordinator: NSObject {
         // the app without abandoning capture. Actual external switches are handled
         // by sourceChanged; deactivation alone must not dismiss the overlay.
         if capture.isRunning, !lookup.isVisible { return }
-        if !lookup.isKeyWindow && !lookup.isHover { lookup.hide(reason: "applicationDeactivated") }
+        if !lookup.isPinned && !lookup.isKeyWindow && !lookup.isHover { lookup.hide(reason: "applicationDeactivated") }
     }
 
     func screenChanged() {

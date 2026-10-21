@@ -44,13 +44,10 @@ final class LocalArticleRenderer: ObservableObject {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(coordinator, forURLScheme: LocalWebCoordinator.scheme)
-        // Generic attachment points only. Styling and optional behavior are authored
-        // in files beside the dictionary, not dictionary-specific Swift adaptations.
+        // Optional behavior remains dictionary-authored. CSS is included in the
+        // transport document so its first visible frame already has the overrides.
         let script = """
         (() => {
-          const css = document.createElement('link');
-          css.rel = 'stylesheet'; css.href = '/odict-overrides.css';
-          (document.head || document.documentElement).appendChild(css);
           const js = document.createElement('script'); js.src = '/odict-overrides.js';
           (document.body || document.documentElement).appendChild(js);
         })();
@@ -108,6 +105,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     func update(_ view: WKWebView, article: LocalArticle, lookup: @escaping (String) -> Void) {
         self.lookup = lookup
         guard self.article?.id != article.id else { return }
+        // Hide the previous surface synchronously before starting another navigation.
+        view.isHidden = true
         view.stopLoading()
         cancelAll()
         self.article = article
@@ -119,6 +118,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     }
 
     func clear(_ view: WKWebView, unloadDocument: Bool = true) {
+        // Hide the previous surface synchronously before starting another navigation.
+        view.isHidden = true
         view.stopLoading()
         cancelAll()
         article = nil
@@ -144,7 +145,12 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
                     // A low-priority native reading baseline. Dictionary styles and
                     // user overrides retain control over specialized typography.
                     let typography = "<style>:where(body) { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: 15px; line-height: 1.6; }</style>"
-                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">" + typography + "</head><body>" + article.html + Self.sourceFooter(article) + "</body></html>"
+                    let overrides = try await LocalDictionaryLibrary.shared.resource("/odict-overrides.css", in: article.dictionary)
+                    try Task.checkCancellation()
+                    // Keep overrides last in the cascade, without a second asynchronous CSS load.
+                    let css = String(decoding: overrides, as: UTF8.self)
+                        .replacingOccurrences(of: "</style", with: "<\\/style", options: .caseInsensitive)
+                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">" + typography + "</head><body>" + article.html + Self.sourceFooter(article) + "<style>" + css + "</style></body></html>"
                     data = Data(document.utf8); mime = "text/html"
                 } else {
                     data = try await LocalDictionaryLibrary.shared.resource(url.path, in: article.dictionary)
@@ -161,6 +167,12 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             }
         }
     }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // about:blank and superseded documents must never reveal an old surface.
+        guard let pageURL, webView.url == pageURL else { return }
+        webView.isHidden = false
+    }
+
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
         requests.removeValue(forKey: ObjectIdentifier(urlSchemeTask as AnyObject))?.cancel()
     }

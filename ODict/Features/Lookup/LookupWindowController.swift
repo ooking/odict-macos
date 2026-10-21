@@ -18,6 +18,8 @@ final class LookupWindowController {
     private let model: LookupModel
     private let status: MenuBarController
     private let actions: LookupWindowActions
+    private let presentation = LookupPresentation()
+    private var userPositioned = false
     private var anchor: CGRect?
     private var outsideClickMonitor: Any?
     private var localClickMonitor: Any?
@@ -31,6 +33,11 @@ final class LookupWindowController {
 
     private(set) var isHover = false
     func contains(_ point: CGPoint) -> Bool { panel.isVisible && panel.frame.contains(point) }
+
+    var isPinned: Bool { presentation.isPinned }
+    var isCapture: Bool { presentation.mode == .capture }
+    // Pinning keeps the card in place; it does not disable new hover lookups.
+    var acceptsHoverLookup: Bool { !isVisible || isHover || (isCapture && isPinned) }
 
     var isVisible: Bool { panel.isVisible }
     var isKeyWindow: Bool { panel.isKeyWindow }
@@ -52,7 +59,9 @@ final class LookupWindowController {
             close: { [weak self] in self?.hide() },
             resize: { [weak self] size in self?.resize(size) },
             captureSelection: actions.captureSelection, captureScreenshot: actions.captureScreenshot,
-            editQuery: actions.editQuery))
+            editQuery: actions.editQuery, presentation: presentation,
+            togglePin: { [weak self] in self?.togglePin() },
+            dragWindow: { [weak self] event in self?.dragWindow(event) }))
         hostingView.autoresizingMask = [.width, .height]
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView()
@@ -102,24 +111,32 @@ final class LookupWindowController {
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    func show(anchor: CGRect?, hover: Bool = false) {
+    func show(anchor: CGRect?, hover: Bool = false, mode: LookupPresentationMode = .manual) {
+        let mode: LookupPresentationMode = hover ? .capture : mode
+        if !panel.isVisible || presentation.mode != mode {
+            presentation.isPinned = false
+            userPositioned = false
+        }
+        presentation.mode = mode
+        // Match native controls and WebKit's prefers-color-scheme to the white card.
+        panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
         model.resume()
         LifecycleDiagnostics.record("lookup.show.begin", panel: panel)
         self.anchor = anchor
-        isHover = hover
-        panel.acceptsKeyboard = !hover
-        model.acceptsSearchFocus = !hover
-        position()
+        isHover = hover && !isPinned
+        panel.acceptsKeyboard = !isHover
+        model.acceptsSearchFocus = mode == .manual
+        if !userPositioned && !isPinned { position() }
         if hover {
-            panel.makeFirstResponder(nil)
+            if !isPinned { panel.makeFirstResponder(nil) }
             panel.orderFrontRegardless()
         } else {
             panel.makeKeyAndOrderFront(nil)
-            model.focusRequest = UUID()
+            if mode == .manual { model.focusRequest = UUID() }
         }
         status.highlight(true)
         removeMonitors()
-        if !hover { installMonitors() }
+        if !isHover { installMonitors() }
         LifecycleDiagnostics.record("lookup.show.end", panel: panel)
     }
 
@@ -127,7 +144,7 @@ final class LookupWindowController {
         guard isHover else { return }
         isHover = false
         panel.acceptsKeyboard = true
-        model.acceptsSearchFocus = true
+        model.acceptsSearchFocus = presentation.mode == .manual
         actions.interacted()
         panel.makeKey()
         installMonitors()
@@ -136,11 +153,11 @@ final class LookupWindowController {
     private func installMonitors() {
         removeMonitors()
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self, !self.status.containsPointer else { return }
+            guard let self, !self.isPinned, !self.status.containsPointer else { return }
             self.hide(reason: "outsideClick")
         }
         localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-            guard let self else { return event }
+            guard let self, !self.isPinned else { return event }
             if event.window !== self.panel && event.window !== self.status.window {
                 // Native menu tracking runs its own event loop; don't dismiss its owner.
                 if event.window?.level == .popUpMenu { return event }
@@ -154,15 +171,48 @@ final class LookupWindowController {
         LifecycleDiagnostics.record("lookup.hide.\(reason)", panel: panel)
         panel.orderOut(nil)
         isHover = false
+        presentation.isPinned = false
+        userPositioned = false
         status.highlight(false)
         removeMonitors()
         if notifyDismissed { actions.dismissed() }
     }
 
-    func screenChanged() { if panel.isVisible { position() } }
+    private func togglePin() {
+        guard isCapture else { return }
+        promote()
+        presentation.isPinned.toggle()
+    }
+
+    private func dragWindow(_ event: NSEvent) {
+        guard isCapture else { return }
+        promote()
+        userPositioned = true
+        panel.performDrag(with: event)
+    }
+
+    private func constrainToScreen() {
+        guard let screen = panel.screen ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        let frame = panel.frame
+        panel.setFrameOrigin(NSPoint(
+            x: max(visible.minX, min(frame.minX, visible.maxX - frame.width)),
+            y: max(visible.minY, min(frame.minY, visible.maxY - frame.height))))
+    }
+
+    func screenChanged() {
+        guard panel.isVisible else { return }
+        if userPositioned || isPinned { constrainToScreen() } else { position() }
+    }
     private func resize(_ size: NSSize) {
+        let top = panel.frame.maxY
         panel.setContentSize(size)
-        if panel.isVisible { position() }
+        if panel.isVisible {
+            if userPositioned || isPinned {
+                panel.setFrameOrigin(NSPoint(x: panel.frame.minX, y: top - size.height))
+                constrainToScreen()
+            } else { position() }
+        }
     }
     private func removeMonitors() {
         if let monitor = outsideClickMonitor { NSEvent.removeMonitor(monitor) }

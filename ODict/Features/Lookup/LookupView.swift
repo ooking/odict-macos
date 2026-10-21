@@ -1,10 +1,23 @@
 import SwiftUI
 import AppKit
 
+enum LookupPresentationMode {
+    case manual
+    case capture
+}
+
+/// Shared presentation state; the window controller owns behavior and lifetime.
+@MainActor
+final class LookupPresentation: ObservableObject {
+    @Published var mode: LookupPresentationMode = .manual
+    @Published var isPinned = false
+}
+
 // Keep supporting text readable over both native glass and reduced-transparency surfaces.
 private let secondaryInk = Color(nsColor: .labelColor).opacity(0.72)
 
 struct LookupView: View {
+    @Environment(\.colorScheme) private var systemColorScheme
     @ObservedObject var model: LookupModel
     let openSettings: () -> Void
     let close: () -> Void
@@ -12,20 +25,26 @@ struct LookupView: View {
     var captureSelection: () -> Void = {}
     var captureScreenshot: () -> Void = {}
     var editQuery: () -> Void = {}
+    @ObservedObject var presentation = LookupPresentation()
+    var togglePin: () -> Void = {}
+    var dragWindow: (NSEvent) -> Void = { _ in }
     @State private var searchFocused = false
     @StateObject private var localRenderer = LocalArticleRenderer()
 
     private var panelSize: NSSize {
-        NSSize(width: model.hasMultipleSuggestions ? 640 : 440,
+        if presentation.mode == .capture { return NSSize(width: 440, height: 440) }
+        return NSSize(width: model.hasMultipleSuggestions ? 640 : 440,
                height: model.query.isEmpty && model.recent.isEmpty && model.captureStatus == nil ? 280 : 440)
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            searchBar.padding(.horizontal, 16).padding(.vertical, 12)
-            Divider()
+            if presentation.mode == .manual {
+                searchBar.padding(.horizontal, 16).padding(.vertical, 12)
+                Divider()
+            }
             HStack(alignment: .top, spacing: 0) {
-                if model.hasMultipleSuggestions {
+                if presentation.mode == .manual && model.hasMultipleSuggestions {
                     candidateSidebar.frame(width: 220)
                     Divider()
                 }
@@ -43,6 +62,8 @@ struct LookupView: View {
             Divider()
             footer
         }
+        .background(presentation.mode == .capture ? Color.white : Color.clear)
+        .environment(\.colorScheme, presentation.mode == .capture ? .light : systemColorScheme)
         .font(AppTypography.body)
         .frame(width: panelSize.width, height: panelSize.height)
         .onAppear { resize(panelSize) }
@@ -55,6 +76,21 @@ struct LookupView: View {
         }
         .onDisappear { localRenderer.release() }
         .onExitCommand(perform: close)
+    }
+
+    private var captureWindowButtons: some View {
+        Group {
+            Button(action: togglePin) {
+                Image(systemName: presentation.isPinned ? "pin.fill" : "pin")
+                    .frame(width: 28, height: 28).contentShape(Rectangle())
+            }
+            .foregroundColor(presentation.isPinned ? .accentColor : secondaryInk)
+            .help(presentation.isPinned ? "取消固定，点击外部可关闭" : "固定窗口，切换应用时保留")
+            .accessibilityLabel(presentation.isPinned ? "取消固定窗口" : "固定窗口")
+            captureButton("关闭（Esc）", icon: "xmark", action: close)
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 14))
     }
 
     private var searchBar: some View {
@@ -156,8 +192,9 @@ struct LookupView: View {
     private var footer: some View {
         HStack(spacing: 8) {
             Image(systemName: "book.closed.fill").font(.system(size: 14)).foregroundColor(.accentColor)
-            Text("ODict").font(.system(size: 12, weight: .semibold))
-            Spacer()
+                .allowsHitTesting(false)
+            Text("ODict").font(.system(size: 12, weight: .semibold)).allowsHitTesting(false)
+            Spacer().allowsHitTesting(false)
             captureButton("选中取词", icon: "text.cursor", action: captureSelection)
             captureButton("截图取词", icon: "viewfinder", action: captureScreenshot)
             Button(action: openSettings) {
@@ -166,14 +203,22 @@ struct LookupView: View {
             }
             .buttonStyle(.plain).foregroundColor(secondaryInk)
             .help("设置（⌘,）").accessibilityLabel("设置").keyboardShortcut(",", modifiers: .command)
-            Menu {
-                Button("清空查词记录") { model.clearHistory() }.disabled(model.recent.isEmpty)
-                Divider()
-                Button("退出 ODict") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
-            } label: { Image(systemName: "ellipsis.circle").font(.system(size: 14)).frame(width: 22, height: 28) }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                .foregroundColor(secondaryInk).help("更多").accessibilityLabel("更多操作")
-        }.padding(.horizontal, 18).padding(.vertical, 5)
+            if presentation.mode == .capture {
+                captureWindowButtons
+            } else {
+                Menu {
+                    Button("清空查词记录") { model.clearHistory() }.disabled(model.recent.isEmpty)
+                    Divider()
+                    Button("退出 ODict") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
+                } label: { Image(systemName: "ellipsis.circle").font(.system(size: 14)).frame(width: 22, height: 28) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .foregroundColor(secondaryInk).help("更多").accessibilityLabel("更多操作")
+            }
+        }
+        .padding(.horizontal, 18).padding(.vertical, 5)
+        .background {
+            if presentation.mode == .capture { LookupDragArea(drag: dragWindow) }
+        }
     }
 
     private func captureButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -330,5 +375,22 @@ private struct CandidateRow: View {
         }
         .buttonStyle(.plain).onHover { hovered = $0 }
         .accessibilityValue(selected ? "已选中" : "")
+    }
+}
+
+/// Native drag handling is restricted to the footer background, preserving text selection.
+private struct LookupDragArea: NSViewRepresentable {
+    let drag: (NSEvent) -> Void
+    func makeNSView(context: Context) -> DragView { DragView(drag: drag) }
+    func updateNSView(_ view: DragView, context: Context) { view.drag = drag }
+
+    final class DragView: NSView {
+        var drag: (NSEvent) -> Void
+        init(drag: @escaping (NSEvent) -> Void) {
+            self.drag = drag
+            super.init(frame: .zero)
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+        override func mouseDown(with event: NSEvent) { drag(event) }
     }
 }
