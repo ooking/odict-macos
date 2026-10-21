@@ -3,28 +3,40 @@
    Dictionary-specific selectors belong in this file, not in the app. */
 :root {
   color-scheme: light dark;
-  --odict-text: CanvasText;
-  --odict-secondary: rgba(35, 35, 40, .72);
+  --odict-background: #d8dadd;
+  --odict-text: #202327;
+  --odict-secondary: #4d535c;
   --odict-accent: #155a98;
-  --odict-example: #176861;
-  --odict-grammar: #2b6a39;
-  --odict-emphasis: #a13737;
-  --odict-rule: rgba(30, 30, 35, .2);
+  --odict-example: #30363d;
+  --odict-grammar: #4d535c;
+  --odict-emphasis: #242629;
+  --odict-rule: rgba(30, 30, 35, .18);
   --odict-section: rgba(30, 30, 35, .045);
 }
 html, body {
   background: transparent !important;
   color: var(--odict-text) !important;
 }
-body { margin: 14px; font-size: 15px; overflow-wrap: anywhere; }
+html { min-height: 100%; }
+body {
+  margin: 0;
+  padding: 16px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", sans-serif !important;
+  font-size: 18px !important;
+  line-height: 1.5 !important;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
 img, video, table { max-width: 100%; }
 @media (prefers-color-scheme: dark) {
   :root {
-    --odict-secondary: rgba(235, 235, 245, .76);
+    --odict-background: #202226;
+    --odict-text: #edf0f3;
+    --odict-secondary: #b8bec7;
     --odict-accent: #a6ceff;
-    --odict-example: #99d9d0;
-    --odict-grammar: #a7d4a2;
-    --odict-emphasis: #ffb5ad;
+    --odict-example: #dce1e7;
+    --odict-grammar: #b8bec7;
+    --odict-emphasis: #edf0f3;
     --odict-rule: rgba(235, 235, 245, .24);
     --odict-section: rgba(235, 235, 245, .055);
   }
@@ -71,3 +83,95 @@ span.italic, span.neutral, ul.exas li, .verbtable .geo {
   color: var(--odict-accent) !important;
 }
 .arrow, .spokensect, .verbtable td { border-color: var(--odict-rule) !important; }
+
+/* Reading layout: preserve dictionary markup, disclosure states and audio links. */
+.entry, .verbtable {
+  font-family: inherit !important;
+  font-size: 18px !important;
+  line-height: 1.5 !important;
+}
+.entry + .entry { margin-top: 28px; }
+.hyphenation {
+  color: var(--odict-text) !important;
+  font-size: 30px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+.gram, .pos, .pron, .proname, .pronbre {
+  font-size: 16px !important;
+  color: var(--odict-secondary) !important;
+}
+.gram, .pos { font-style: normal !important; }
+.sense { margin-top: 14px; }
+.def, .def en {
+  font-size: 18px !important;
+  line-height: 1.5 !important;
+  font-weight: 400 !important;
+}
+.def tran {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px !important;
+  line-height: 1.5 !important;
+  font-weight: 400 !important;
+}
+.example {
+  margin: 10px 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--odict-rule);
+  font-size: 17px !important;
+  line-height: 1.5 !important;
+  font-weight: 400 !important;
+}
+.example example {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+.syn, .opp, .lexunit, .lexvar, .collo, .phrvbhwd {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+.entry a { color: var(--odict-accent) !important; }
+.entry a:hover { text-decoration: underline; }
+.entry a:focus-visible, .popup-button:focus-visible {
+  outline: 2px solid var(--odict-accent);
+  outline-offset: 3px;
+}
+.buttons {
+  margin-top: 8px;
+  margin-bottom: 10px;
+  line-height: 1.8;
+}
+.popup-button {
+  padding: 3px 7px !important;
+  margin: 0 5px 5px 0 !important;
+  border-radius: 5px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+}
+.ac, .arrow, .signpost {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-color: var(--odict-rule) !important;
+}
+.collobox, .thesbox, .usagebox, .grambox, .f2nbox {
+  margin: 18px 0;
+  padding: 12px;
+  border-radius: 6px;
+}
+/* Keep the dictionary's audio images; neutralize their competing red/green. */
+a[href^="sound:"] { display: inline-block; }
+img[src*="spkr_"] {
+  filter: grayscale(1);
+  opacity: 0.85;
+}
+@media (prefers-color-scheme: dark) {
+  img[src*="spkr_"] { filter: grayscale(1) brightness(0) invert(0.85); }
+}
+@media (max-width: 420px) {
+  body { padding: 16px; }
+  .hyphenation { font-size: 28px !important; }
+}

@@ -13,6 +13,7 @@ struct LookupView: View {
     var captureScreenshot: () -> Void = {}
     var editQuery: () -> Void = {}
     @State private var searchFocused = false
+    @StateObject private var localRenderer = LocalArticleRenderer()
 
     private var panelSize: NSSize {
         NSSize(width: model.hasMultipleSuggestions ? 640 : 440,
@@ -30,7 +31,7 @@ struct LookupView: View {
                 }
                 if let article = model.localArticle, model.contentVisible {
                     VStack(alignment: .leading, spacing: 0) {
-                        LocalArticleView(article: article, lookup: { model.lookup($0) })
+                        LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
                         if let notice = model.message {
                             Text(notice).font(AppTypography.secondary).foregroundColor(.secondary).padding(12)
                         }
@@ -46,6 +47,13 @@ struct LookupView: View {
         .frame(width: panelSize.width, height: panelSize.height)
         .onAppear { resize(panelSize) }
         .onChange(of: panelSize) { resize($0) }
+        .onChange(of: model.contentVisible) { visible in
+            if !visible { localRenderer.release() }
+        }
+        .onChange(of: model.entry != nil) { online in
+            if online { localRenderer.release() }
+        }
+        .onDisappear { localRenderer.release() }
         .onExitCommand(perform: close)
     }
 

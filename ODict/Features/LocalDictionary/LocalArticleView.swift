@@ -22,6 +22,7 @@ enum LocalRendererDiagnostics {
 /// and never rewrites dictionary-specific tags, classes, or definition content.
 struct LocalArticleView: View {
     let article: LocalArticle
+    let renderer: LocalArticleRenderer
     let lookup: (String) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,19 +34,26 @@ struct LocalArticleView: View {
             }
             .font(AppTypography.caption).foregroundColor(.secondary)
             .textSelection(.enabled).padding(.horizontal, 16).padding(.vertical, 8)
-            LocalArticleWebView(article: article, lookup: lookup).id(article.id)
+            LocalArticleWebView(article: article, renderer: renderer, lookup: lookup)
         }
     }
 }
 
-private struct LocalArticleWebView: NSViewRepresentable {
-    let article: LocalArticle
-    let lookup: (String) -> Void
-    func makeCoordinator() -> LocalWebCoordinator { LocalWebCoordinator(article: article, lookup: lookup) }
-    func makeNSView(context: Context) -> WKWebView {
+/// One renderer per lookup window, retained across the temporary empty/loading view.
+/// The window releases it when hidden; there is no global WebView pool.
+final class LocalArticleRenderer: ObservableObject {
+    fileprivate var view: WKWebView?
+    fileprivate var coordinator: LocalWebCoordinator?
+
+    fileprivate func acquire(article: LocalArticle, lookup: @escaping (String) -> Void) -> WKWebView {
+        if let view, let coordinator {
+            coordinator.update(view, article: article, lookup: lookup)
+            return view
+        }
+        let coordinator = LocalWebCoordinator()
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
-        configuration.setURLSchemeHandler(context.coordinator, forURLScheme: LocalWebCoordinator.scheme)
+        configuration.setURLSchemeHandler(coordinator, forURLScheme: LocalWebCoordinator.scheme)
         // Generic attachment points only. Styling and optional behavior are authored
         // in files beside the dictionary, not dictionary-specific Swift adaptations.
         let script = """
@@ -62,45 +70,84 @@ private struct LocalArticleWebView: NSViewRepresentable {
         #if ODICT_CHECKS
         LocalRendererDiagnostics.track(view)
         #endif
-        view.navigationDelegate = context.coordinator
+        view.navigationDelegate = coordinator
         view.setValue(false, forKey: "drawsBackground")
-        view.load(URLRequest(url: context.coordinator.pageURL))
+        self.view = view
+        self.coordinator = coordinator
+        coordinator.update(view, article: article, lookup: lookup)
         return view
     }
-    func updateNSView(_ view: WKWebView, context: Context) {}
-    static func dismantleNSView(_ view: WKWebView, coordinator: LocalWebCoordinator) {
-        view.stopLoading()
+
+    func release() {
+        guard let view else { return }
+        coordinator?.clear(view, unloadDocument: false)
         view.navigationDelegate = nil
         view.configuration.userContentController.removeAllUserScripts()
-        coordinator.cancelAll()
+        self.view = nil
+        coordinator = nil
     }
 }
 
-private final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigationDelegate {
-    static let scheme = "odict-local"
+private struct LocalArticleWebView: NSViewRepresentable {
     let article: LocalArticle
+    let renderer: LocalArticleRenderer
     let lookup: (String) -> Void
-    let pageURL: URL
+    func makeCoordinator() -> LocalArticleRenderer { renderer }
+    func makeNSView(context: Context) -> WKWebView {
+        renderer.acquire(article: article, lookup: lookup)
+    }
+    func updateNSView(_ view: WKWebView, context: Context) {
+        _ = renderer.acquire(article: article, lookup: lookup)
+    }
+    static func dismantleNSView(_ view: WKWebView, coordinator: LocalArticleRenderer) {
+        // Drop the document and audio during loading, but keep the engine reusable.
+        // A hide may have already released this renderer before SwiftUI dismantles it.
+        if coordinator.view === view { coordinator.coordinator?.clear(view) }
+    }
+}
+
+fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigationDelegate {
+    static let scheme = "odict-local"
+    private var article: LocalArticle?
+    private var lookup: ((String) -> Void)?
+    private var pageURL: URL?
     private var requests: [ObjectIdentifier: Task<Void, Never>] = [:]
     private var audio: NSSound?
     private var audioTask: Task<Void, Never>?
 
-    init(article: LocalArticle, lookup: @escaping (String) -> Void) {
-        self.article = article; self.lookup = lookup
-        pageURL = URL(string: "\(Self.scheme)://\(article.dictionary.id.uuidString.lowercased())/__odict_article.html")!
+    func update(_ view: WKWebView, article: LocalArticle, lookup: @escaping (String) -> Void) {
+        self.lookup = lookup
+        guard self.article?.id != article.id else { return }
+        view.stopLoading()
+        cancelAll()
+        self.article = article
+        // A fresh origin for every document rejects late requests from old pages,
+        // even when two consecutive entries come from the same dictionary.
+        let url = URL(string: "\(Self.scheme)://\(article.id.uuidString.lowercased())/__odict_article.html")!
+        pageURL = url
+        view.load(URLRequest(url: url))
+    }
+
+    func clear(_ view: WKWebView, unloadDocument: Bool = true) {
+        view.stopLoading()
+        cancelAll()
+        article = nil
+        lookup = nil
+        pageURL = nil
+        if unloadDocument { view.loadHTMLString("", baseURL: nil) }
     }
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         let id = ObjectIdentifier(urlSchemeTask as AnyObject)
-        guard let url = urlSchemeTask.request.url, url.host == pageURL.host else {
+        guard let article, let pageURL, let url = urlSchemeTask.request.url,
+              url.host == pageURL.host else {
             urlSchemeTask.didFailWithError(LocalDictionaryError.missingResource); return
         }
-        let article = article
         requests[id] = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.requests[id] = nil }
             do {
                 let data: Data, mime: String
-                if url.path == self.pageURL.path {
+                if url.path == pageURL.path {
                     // A transport document supplies resource isolation. The dictionary's
                     // HTML itself passes through unchanged, with no per-dictionary parsing.
                     let policy = "default-src 'none'; img-src \(Self.scheme): data:; style-src \(Self.scheme): 'unsafe-inline'; font-src \(Self.scheme): data:; script-src \(Self.scheme): 'unsafe-inline'; media-src \(Self.scheme): data:; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
@@ -134,16 +181,22 @@ private final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigat
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
+        if url.absoluteString == "about:blank", navigationAction.navigationType == .other {
+            decisionHandler(.allow); return
+        }
+        guard let pageURL else { decisionHandler(.cancel); return }
         if url.scheme == Self.scheme, url.host == pageURL.host, navigationAction.targetFrame?.isMainFrame == true {
             // Same-page anchors are allowed; other local HTML stays within this renderer.
             decisionHandler(.allow); return
         }
         decisionHandler(.cancel)
+        if let source = navigationAction.sourceFrame.request.url,
+           source.scheme == Self.scheme, source.host != pageURL.host { return }
         guard navigationAction.navigationType == .linkActivated else { return }
         switch url.scheme?.lowercased() {
         case "entry", "bword", "gdlookup":
             let word = Self.target(url).components(separatedBy: "#")[0]
-            if !word.isEmpty, word.count <= 255 { lookup(word) }
+            if !word.isEmpty, word.count <= 255 { lookup?(word) }
         case "sound": play(Self.target(url))
         case "https", "http": NSWorkspace.shared.open(url)
         default: break
@@ -156,7 +209,7 @@ private final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigat
     }
     private func play(_ path: String) {
         audioTask?.cancel(); audio?.stop(); audio = nil
-        let dictionary = article.dictionary
+        guard let dictionary = article?.dictionary else { return }
         audioTask = Task { @MainActor [weak self] in
             guard let data = try? await LocalDictionaryLibrary.shared.resource(path, in: dictionary), !Task.isCancelled else { return }
             self?.audio = NSSound(data: data)
