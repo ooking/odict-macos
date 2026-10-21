@@ -52,12 +52,12 @@ private final class InspectingTransport: HTTPTransporting {
                 FileHandle.standardError.write(Data("FAIL: task=\(kind.rawValue), finish=\(transport.finishReason), finalAnswer=\(transport.finalContent)\n".utf8))
                 throw error
             }
-            precondition(answer.kind == kind && !answer.translation.isEmpty)
+            precondition(!answer.markdown.isEmpty)
             if thinking { precondition(transport.reasoningCharacters > 0, "thinking-enabled request returned no separate reasoning") }
             else { precondition(transport.reasoningCharacters == 0, "thinking-off request still returned reasoning") }
             let elapsed = String(format: "%.2f", ProcessInfo.processInfo.systemUptime - start)
             FileHandle.standardError.write(Data("PASS: \(configuration.model), task=\(kind.rawValue), thinking=\(thinking), elapsed=\(elapsed)s, separateReasoning=\(transport.reasoningCharacters > 0)\n".utf8))
-            print("RESULT: \(answer.translation)")
+            print("RESULT: \(answer.markdown)")
         }
         print("PASS: live localhost Ollama, three requests through the production AI client. No saved settings or Keychain accessed.")
     }

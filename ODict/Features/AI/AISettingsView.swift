@@ -46,7 +46,7 @@ struct AISettingsView: View {
             }
             group {
                 Text("提示语").font(AppTypography.section)
-                help("调整解释和翻译要求；返回格式与语言约束由程序管理，不可通过提示语覆盖。每份最多 6000 字。")
+                help("调整解释和翻译的内容偏好，直接返回 Markdown 结果，无需约定字段。每份最多 6000 字。")
                 prompt("单词 / 短语解释", text: setting(\.wordPrompt), defaultValue: AIConfiguration.defaultWordPrompt)
                 Divider()
                 prompt("句子翻译", text: setting(\.translationPrompt), defaultValue: AIConfiguration.defaultTranslationPrompt)

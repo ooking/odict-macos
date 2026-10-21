@@ -9,6 +9,6 @@ xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-l
     ODict/Models/DictionaryModels.swift ODict/Models/AIModels.swift \
     ODict/Services/BlockingWorkQueue.swift ODict/Services/KeychainStore.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift \
-    ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift \
+    ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift ODict/Services/AIStreamTransport.swift ODict/Services/AIStreamDecoder.swift \
     Tests/OllamaAIChecks.swift -o build/Checks/OllamaAIChecks
 build/Checks/OllamaAIChecks

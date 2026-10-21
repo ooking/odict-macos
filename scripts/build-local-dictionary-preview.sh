@@ -9,7 +9,7 @@ cat > "$preview_app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>ODictLocalPreview</string><key>CFBundleIdentifier</key><string>com.touchany.odict.local-preview</string><key>CFBundleName</key><string>ODictLocalPreview</string><key>CFBundlePackageType</key><string>APPL</string><key>NSHighResolutionCapable</key><true/></dict></plist>
 PLIST
 xcrun swiftc -O -D ODICT_CHECKS -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-library \
-    ODict/Models/AIModels.swift ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift ODict/Features/AI/AIQueryModel.swift ODict/Features/AI/AITextInput.swift ODict/Features/AI/AIComposerView.swift ODict/Features/AI/AIResultView.swift \
+    ODict/Models/AIModels.swift ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift ODict/Services/AIStreamTransport.swift ODict/Services/AIStreamDecoder.swift ODict/Features/AI/AIQueryModel.swift ODict/Features/AI/AITextInput.swift ODict/Features/AI/AIComposerView.swift ODict/Features/AI/AIResultView.swift ODict/Features/AI/AIMarkdownView.swift \
     ODict/Models/DictionaryModels.swift ODict/LocalDictionary/*.swift \
     ODict/Services/DictionaryClient.swift ODict/Services/KeychainStore.swift ODict/Services/BlockingWorkQueue.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift ODict/Services/RequestRateLimit.swift \

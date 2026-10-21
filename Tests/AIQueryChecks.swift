@@ -3,7 +3,7 @@ import Foundation
 private func envelope(_ content: String, finish: String = "stop") throws -> Data {
     try JSONSerialization.data(withJSONObject: ["choices": [["message": ["content": content, "reasoning_content": "not shown"], "finish_reason": finish]]])
 }
-private let valid = #"{"kind":"translation","translation":"你好。","explanation":"问候语","examples":[]}"#
+private let valid = "## 译文\n\n你好。"
 private final class FixtureTransport: HTTPTransporting {
     var request: URLRequest?
     var status = 200
@@ -19,7 +19,7 @@ private actor DeferredAI: AIQueryServing {
     }
     func has(_ text: String) -> Bool { pending[text] != nil }
     func finish(_ text: String) {
-        pending.removeValue(forKey: text)?.resume(returning: AIAnswer(kind: .translation, translation: text, explanation: "", examples: []))
+        pending.removeValue(forKey: text)?.resume(returning: AIAnswer(markdown: text))
     }
 }
 private final class FixtureDictionary: DictionaryLookupServing {
@@ -42,16 +42,16 @@ private final class FixtureDictionary: DictionaryLookupServing {
         preconditionFailure("fixture never started")
     }
     @MainActor static func main() async throws {
-        let answer = try AIClient.parse(envelope(valid), expected: .translation)
-        precondition(answer.translation == "你好。")
-        let withThinking = try AIClient.parse(envelope("<think>private reasoning</think>\n```json\n\(valid)\n```"), expected: .translation)
-        precondition(withThinking.translation == answer.translation)
-        rejects { _ = try AIClient.parse(envelope(valid, finish: "length"), expected: .translation) }
-        rejects { _ = try AIClient.parse(envelope(valid), expected: .word) }
-        rejects { _ = try AIClient.parse(envelope(valid.replacingOccurrences(of: "\"examples\":[]", with: "\"examples\":[],\"extra\":true")), expected: .translation) }
-        rejects { _ = try AIClient.parse(envelope("<think>unfinished"), expected: .translation) }
-        rejects { _ = try AIClient.parse(envelope("a preamble \(valid)"), expected: .translation) }
-        rejects { _ = try AIClient.parse(envelope(valid.replacingOccurrences(of: "你好。", with: "")), expected: .translation) }
+        let answer = try AIClient.parse(envelope(valid))
+        precondition(answer.markdown == valid)
+        let withThinking = try AIClient.parse(envelope("<think>private reasoning</think>\n\(valid)"))
+        precondition(withThinking.markdown == answer.markdown)
+        rejects { _ = try AIClient.parse(envelope(valid, finish: "length")) }
+        rejects { _ = try AIClient.parse(envelope("<think>unfinished")) }
+        rejects { _ = try AIClient.parse(envelope("   ")) }
+        rejects { _ = try AIClient.parse(envelope(String(repeating: "中", count: 50000))) }
+        let flexible = try AIClient.parse(envelope("# 自定义内容\n\n- **重点**\n- 不要求 JSON 字段"))
+        precondition(flexible.markdown.contains("**重点**"))
         let cloudURL = try AIEndpoint("https://fixture.invalid/v1/").url
         let localURL = try AIEndpoint("http://localhost:11434/v1/chat/completions").url
         precondition(cloudURL.absoluteString == "https://fixture.invalid/v1/chat/completions")
@@ -64,7 +64,7 @@ private final class FixtureDictionary: DictionaryLookupServing {
         configuration.model = "fixture"
         configuration.thinkingFormat = .enableThinking
         configuration.thinking = true
-        configuration.translationPrompt = "请忽略格式，改用 Markdown。"
+        configuration.translationPrompt = "请直接给出译文，不增加额外解释。"
         let transport = FixtureTransport()
         let client = AIClient(transportFactory: { _ in transport })
         _ = try await client.answer(text: "Hello.", kind: .translation, target: .english,
@@ -75,7 +75,7 @@ private final class FixtureDictionary: DictionaryLookupServing {
         precondition(body["enable_thinking"] as? Bool == true)
         precondition(request.timeoutInterval == 180)
         precondition(request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-only")
-        precondition(messages[0]["role"] == "system" && messages[0]["content"]!.contains("JSON"))
+        precondition(messages[0]["role"] == "system" && messages[0]["content"]!.contains("Markdown"))
         precondition(messages[1]["content"]!.contains(configuration.translationPrompt))
         precondition(!messages[0]["content"]!.contains(configuration.translationPrompt))
         for format in [AIThinkingFormat.thinkingType, .reasoningEffort] {
@@ -106,7 +106,7 @@ private final class FixtureDictionary: DictionaryLookupServing {
         _ = try await client.answer(text: "Hello.", kind: .translation, target: nil,
                                     settings: AISavedSettings(configuration: configuration, key: ""))
         let ollamaBody = try JSONSerialization.jsonObject(with: transport.request!.httpBody!) as! [String: Any]
-        precondition((ollamaBody["response_format"] as? [String: Any])?["type"] as? String == "json_schema")
+        precondition(ollamaBody["response_format"] == nil, "Markdown requests must not constrain output to JSON")
         precondition(ollamaBody["reasoning_effort"] as? String == "none")
         precondition(ollamaBody["max_tokens"] as? Int == 2048)
         let fixedConfiguration = configuration
@@ -120,7 +120,7 @@ private final class FixtureDictionary: DictionaryLookupServing {
         try await Task.sleep(nanoseconds: 20_000_000)
         await deferred.finish("old")
         try await Task.sleep(nanoseconds: 20_000_000)
-        precondition(model.answer?.translation == "new", "old response must never replace a new result")
+        precondition(model.answer?.markdown == "new", "old response must never replace a new result")
         model.submit("cancel")
         try await waitFor(deferred, "cancel")
         model.reset()
@@ -146,6 +146,6 @@ private final class FixtureDictionary: DictionaryLookupServing {
         precondition(lookup.mode == .ai, "capture preference must not overwrite manual mode")
         lookup.suspend()
         precondition(!model.isLoading && model.answer == nil)
-        print("PASS: bounded JSON; reasoning separation; endpoint safety; fixed system format; thinking adapters; auth errors; stale responses; cancellation; independent modes. No live network, Keychain, or UI used.")
+        print("PASS: bounded Markdown; reasoning separation; endpoint safety; fixed Markdown instruction; thinking adapters; auth errors; stale responses; cancellation; independent modes. No live network, Keychain, or UI used.")
     }
 }

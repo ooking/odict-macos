@@ -10,7 +10,11 @@ enum AISettingsStore {
     static let changed = Notification.Name("ODictAISettingsChanged")
     static var configuration: AIConfiguration {
         guard let data = UserDefaults.standard.data(forKey: preferenceKey),
-              let value = try? JSONDecoder().decode(AIConfiguration.self, from: data) else { return AIConfiguration() }
+              var value = try? JSONDecoder().decode(AIConfiguration.self, from: data) else { return AIConfiguration() }
+        // Refresh the previous built-in JSON-oriented default, preserving custom wording.
+        if value.translationPrompt == "请自然、准确地翻译原文，保留语气、段落和专有名词。译文放在 translation 中；必要的关键词、表达或语法说明放在 explanation 中，避免逐字生硬翻译。" {
+            value.translationPrompt = AIConfiguration.defaultTranslationPrompt
+        }
         return value
     }
     static func load() async throws -> AISavedSettings {

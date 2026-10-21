@@ -8,11 +8,11 @@ private actor SettingsFixtureClient: AIQueryServing {
         case "failure": throw AIError.http(401)
         case "timeout": throw URLError(.timedOut)
         case "delayed": return try await withCheckedThrowingContinuation { pending = $0 }
-        default: return AIAnswer(kind: .translation, translation: "你好", explanation: "", examples: [])
+        default: return AIAnswer(markdown: "你好")
         }
     }
     func finish() {
-        pending?.resume(returning: AIAnswer(kind: .translation, translation: "迟到结果", explanation: "", examples: []))
+        pending?.resume(returning: AIAnswer(markdown: "迟到结果"))
         pending = nil
     }
 }

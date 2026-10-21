@@ -53,6 +53,9 @@
 		000000000000000000000E06 /* ODict/Features/AI/AISettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D06 /* ODict/Features/AI/AISettingsModel.swift */; };
 		000000000000000000000E07 /* ODict/Features/AI/AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D07 /* ODict/Features/AI/AISettingsView.swift */; };
 		000000000000000000000E08 /* ODict/Features/AI/AIComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D08 /* ODict/Features/AI/AIComposerView.swift */; };
+		000000000000000000000F01 /* ODict/Features/AI/AIMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F00 /* ODict/Features/AI/AIMarkdownView.swift */; };
+		000000000000000000000F03 /* ODict/Services/AIStreamTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */; };
+		000000000000000000000F05 /* ODict/Services/AIStreamDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -105,6 +108,9 @@
 		000000000000000000000D06 /* ODict/Features/AI/AISettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AISettingsModel.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000D07 /* ODict/Features/AI/AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AISettingsView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000D08 /* ODict/Features/AI/AIComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIComposerView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000F00 /* ODict/Features/AI/AIMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIMarkdownView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIStreamTransport.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIStreamDecoder.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,6 +128,9 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */,
+				000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */,
+				000000000000000000000F00 /* ODict/Features/AI/AIMarkdownView.swift */,
 				000000000000000000000D08 /* ODict/Features/AI/AIComposerView.swift */,
 				000000000000000000000D07 /* ODict/Features/AI/AISettingsView.swift */,
 				000000000000000000000D06 /* ODict/Features/AI/AISettingsModel.swift */,
@@ -268,6 +277,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000000F05 /* ODict/Services/AIStreamDecoder.swift in Sources */,
+				000000000000000000000F03 /* ODict/Services/AIStreamTransport.swift in Sources */,
+				000000000000000000000F01 /* ODict/Features/AI/AIMarkdownView.swift in Sources */,
 				000000000000000000000E08 /* ODict/Features/AI/AIComposerView.swift in Sources */,
 				000000000000000000000E07 /* ODict/Features/AI/AISettingsView.swift in Sources */,
 				000000000000000000000E06 /* ODict/Features/AI/AISettingsModel.swift in Sources */,

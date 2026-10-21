@@ -82,6 +82,10 @@ final class LookupModel: ObservableObject {
     func editQuery(_ text: String, composing: Bool) {
         contentVisible = true
         query = text
+        if mode == .ai {
+            captureStatus = nil; captureIsBusy = false
+            return
+        }
         if composing {
             cancelRequests()
             result = nil
@@ -134,7 +138,7 @@ final class LookupModel: ObservableObject {
     }
 
     func queryChanged() {
-        ai.reset()
+        if mode == .ai { return }
         contentVisible = true
         cancelRequests()
         result = nil
@@ -343,7 +347,9 @@ final class LookupModel: ObservableObject {
     }
 
     func suspend() {
-        ai.reset()
+        // Release active work when hidden, while keeping one bounded answer and its source.
+        // Draft editing and focus transitions must not erase the last successful query.
+        ai.cancel()
         contentVisible = false
         cancelRequests()
         // Dropping HTML and its WebView releases the renderer and resource tasks.

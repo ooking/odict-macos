@@ -24,8 +24,7 @@ private final class DesignDictionary: DictionaryServing {
 private actor PreviewAI: AIQueryServing {
     func answer(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?) async throws -> AIAnswer {
         try await Task.sleep(nanoseconds: 150_000_000)
-        return AIAnswer(kind: kind.resolved(for: text), translation: "这是用于检查布局的模拟译文。",
-                        explanation: "此预览只使用本机模拟数据。", examples: [])
+        return AIAnswer(markdown: "## 模拟译文\n\n这是用于检查布局的模拟译文。\n\n- 此预览只使用本机模拟数据。")
     }
 }
 

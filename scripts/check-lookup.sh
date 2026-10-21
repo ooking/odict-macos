@@ -6,7 +6,7 @@ DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 sdk_path="$(xcrun --sdk macosx --show-sdk-path)"
 xcrun swiftc -swift-version 5 -sdk "$sdk_path" -parse-as-library \
-    ODict/Models/AIModels.swift ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift ODict/Features/AI/AIQueryModel.swift \
+    ODict/Models/AIModels.swift ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift ODict/Services/AIStreamTransport.swift ODict/Services/AIStreamDecoder.swift ODict/Features/AI/AIQueryModel.swift \
     ODict/Models/DictionaryModels.swift ODict/Services/DictionaryClient.swift \
     ODict/Services/KeychainStore.swift ODict/Services/BlockingWorkQueue.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift \

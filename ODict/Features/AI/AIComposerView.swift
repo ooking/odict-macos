@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// The editor owns the full width; actions never narrow the native text container.
 struct AIComposerView: View {
     @ObservedObject var model: AIQueryModel
     let text: String
@@ -7,32 +8,42 @@ struct AIComposerView: View {
     let allowsFocus: Bool
     let changed: (String) -> Void
     let close: () -> Void
-    private var inputHeight: CGFloat {
-        let lines = max(text.components(separatedBy: "\n").count, (text.count / 48) + 1)
-        return CGFloat(min(4, max(2, lines))) * 23 + 12
-    }
+    @State private var inputHeight: CGFloat = 35
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 6) {
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
-                    Text("输入单词、短语或句子…").font(.system(size: 16)).foregroundColor(.secondary)
+                    Text("输入或粘贴要查询的内容…")
+                        .font(.system(size: 16)).foregroundColor(.secondary)
                         .padding(.horizontal, 8).padding(.top, 7).allowsHitTesting(false)
                 }
-                AITextInput(text: text, focusRequest: focusRequest, allowsFocus: allowsFocus,
-                            changed: changed, rejected: model.rejectOversizedPaste, submit: { model.submit(text) }, cancel: close)
+                AITextInput(text: text, focusRequest: focusRequest, allowsFocus: allowsFocus, isEditable: !model.isLoading,
+                    changed: { value in if !model.isLoading { changed(value) } }, rejected: model.rejectOversizedPaste,
+                    measuredHeight: { value in if abs(value - inputHeight) > 0.5 { inputHeight = value } },
+                    submit: { if !model.isLoading { model.submit(text) } }, cancel: close)
                     .frame(height: inputHeight)
-            }
+            }.frame(maxWidth: .infinity)
             HStack(spacing: 8) {
-                Spacer(minLength: 0)
-                Text("\(text.count)/4000").font(.system(size: 10)).foregroundColor(text.count > 4000 ? .red : .secondary)
-                Button { model.submit(text) } label: {
-                    Image(systemName: "arrow.up").font(.system(size: 13, weight: .semibold)).frame(width: 22, height: 22)
-                }.buttonStyle(.borderedProminent)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 4000 || model.isLoading)
-                    .help("查询（Enter）；Shift + Enter 换行").accessibilityLabel("提交 AI 查询")
-            }.controlSize(.small)
+                Text(model.isLoading ? "正在翻译，结束后可编辑" : "Enter 查询 · Shift + Enter 换行")
+                    .font(.system(size: 10)).foregroundColor(.secondary)
+                Spacer(minLength: 4)
+                if text.count >= 3600 {
+                    Text("\(text.count)/4000").font(.system(size: 10))
+                        .foregroundColor(text.count > 4000 ? .red : .secondary)
+                }
+                Button {
+                    if model.isLoading { model.cancel() } else { model.submit(text) }
+                } label: {
+                    Label(model.isLoading ? "停止" : "查询", systemImage: model.isLoading ? "stop.fill" : "arrow.up")
+                        .font(.system(size: 11, weight: .medium))
+                }.buttonStyle(.borderedProminent).controlSize(.small)
+                    .disabled(!model.isLoading && (text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 4000))
+                    .help(model.isLoading ? "停止生成，保留已有内容" : "查询（Enter）")
+                    .accessibilityLabel(model.isLoading ? "停止生成" : "提交 AI 查询")
+            }.padding(.horizontal, 4)
         }.padding(10)
-            .background(Color.primary.opacity(0.04)).cornerRadius(10)
+            .background(Color(nsColor: .textBackgroundColor).opacity(0.92)).cornerRadius(10)
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.1)))
     }
 }
