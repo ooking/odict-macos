@@ -16,6 +16,7 @@ private final class FixtureDictionary: DictionaryServing {
     }
     func entry(_ word: String) async throws -> Entry {
         entryRequests.append(word)
+        if word == "entry-failure" { throw DictionaryError.server(503) }
         if word == "misspelled" { throw DictionaryError.notFound }
         try await Task.sleep(nanoseconds: 40_000_000)
         return Entry(id: 1, word: word, phonetic: nil, definition: "A definition", translation: "释义",
@@ -58,6 +59,44 @@ private struct LookupModelChecks {
         localModel.clearHistory()
         precondition(history.load().isEmpty && history.loadTranslations(for: ["apple"]).isEmpty,
                      "clear words and their summaries together")
+        // Repeated hits at different screen positions must share the visible
+        // capture request/result, but hide, failure and source changes must retry.
+        let hoverFixture = FixtureDictionary()
+        let hoverModel = LookupModel(dictionary: hoverFixture, history: history, preferences: defaults)
+        hoverModel.lookupHovered("echo")
+        hoverModel.lookupHovered("echo")
+        try await settled(hoverModel)
+        precondition(hoverFixture.entryRequests == ["echo"], "duplicate hover must share its in-flight query")
+        hoverModel.lookupHovered(" echo ")
+        precondition(hoverModel.entry?.word == "echo" && !hoverModel.isLoading,
+                     "same visible hover must retain its answer without a loading flash")
+        try await settled(hoverModel)
+        precondition(hoverFixture.entryRequests == ["echo"], "same visible word must not request again")
+        hoverModel.lookupHovered("next")
+        try await settled(hoverModel)
+        precondition(hoverModel.entry?.word == "next" && hoverFixture.entryRequests == ["echo", "next"])
+        hoverModel.suspend()
+        hoverModel.lookupHovered("next")
+        try await settled(hoverModel)
+        precondition(hoverFixture.entryRequests.count == 3, "hidden capture must not reuse cancelled work")
+        hoverModel.sourcesChanged()
+        hoverModel.lookupHovered("next")
+        try await settled(hoverModel)
+        precondition(hoverFixture.entryRequests.count == 4, "source changes must invalidate reuse")
+        hoverModel.lookupHovered("entry-failure")
+        try await settled(hoverModel)
+        hoverModel.lookupHovered("entry-failure")
+        try await settled(hoverModel)
+        precondition(hoverFixture.entryRequests.filter { $0 == "entry-failure" }.count == 2,
+                     "failed queries must remain retryable")
+        localModel.lookupHovered("local-hover")
+        try await settled(localModel)
+        let localID = localModel.localArticle?.id
+        localModel.lookupHovered("local-hover")
+        precondition(localID != nil && localModel.localArticle?.id == localID,
+                     "same local hover must retain the HTML document identity")
+        localModel.suspend()
+        precondition(localModel.localArticle == nil, "hidden local HTML must still be released")
         precondition(!model.moveSuggestion(by: 1))
         model.query = "play"; model.queryChanged()
         precondition(model.isSuggesting)
@@ -129,7 +168,7 @@ private struct LookupModelChecks {
         model.presentCaptureStatus("正在识别", busy: true)
         model.suspend()
         precondition(model.captureStatus == nil && !model.captureIsBusy)
-        print("PASS: auto preview; two-column/single-column state; debounced keyboard previews; click/Return; single Chinese/fuzzy result; stale response rejection; candidate cap; failure and close cleanup")
+        print("PASS: hover request/result reuse and invalidation; auto preview; two-column/single-column state; debounced keyboard previews; click/Return; single Chinese/fuzzy result; stale response rejection; candidate cap; failure and close cleanup")
     }
 }
 

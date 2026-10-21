@@ -30,7 +30,7 @@ final class ApplicationCoordinator: NSObject {
         controller.containsPanel = { [weak self] point in self?.lookup.contains(point) ?? false }
         controller.onResult = { [weak self] result in
             guard let self else { return }
-            self.model.lookupCaptured(result.text)
+            self.model.lookupHovered(result.text)
             self.lookup.show(anchor: result.anchor, hover: true)
         }
         controller.onFailure = { [weak self] message, anchor in

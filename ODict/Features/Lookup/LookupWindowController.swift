@@ -132,7 +132,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             presentation.isPinned = false
             userPositioned = false
         }
-        presentation.mode = mode
+        if presentation.mode != mode { presentation.mode = mode }
+        if presentation.isHoverPresentation != hover { presentation.isHoverPresentation = hover }
         if mode == .manual { model.beginManual() }
         // Match native controls and WebKit's prefers-color-scheme to the white card.
         panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
@@ -141,7 +142,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         self.anchor = anchor
         isHover = hover && !isPinned
         panel.acceptsKeyboard = !isHover
-        model.acceptsSearchFocus = mode == .manual
+        let acceptsSearchFocus = mode == .manual
+        if model.acceptsSearchFocus != acceptsSearchFocus { model.acceptsSearchFocus = acceptsSearchFocus }
         if !userPositioned && !isPinned { position() }
         if hover {
             if !isPinned { panel.makeFirstResponder(nil) }

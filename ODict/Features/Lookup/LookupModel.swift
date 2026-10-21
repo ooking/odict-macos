@@ -34,6 +34,19 @@ final class LookupModel: ObservableObject {
         lookup(text)
     }
 
+    /// Reuse only the visible capture's exact query or its current request. No
+    /// additional result cache, case folding, failed-answer reuse or hidden HTML.
+    func lookupHovered(_ text: String) {
+        let word = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let captureMode = QueryMode(rawValue: preferences.string(forKey: QueryMode.captureKey) ?? "") ?? .dictionary
+        if captureContext, mode == .dictionary, captureMode == .dictionary,
+           contentVisible, captureStatus == nil, query == word,
+           (result != nil && message == result?.notice) || (isLoading && message == nil) {
+            return
+        }
+        lookupCaptured(word)
+    }
+
     func aiSettingsChanged() { ai.settingsChanged() }
 
     @Published private(set) var result: LookupResult?
@@ -310,6 +323,7 @@ final class LookupModel: ObservableObject {
     }
 
     func resume() {
+        guard !contentVisible else { return }
         if mode == .ai { contentVisible = true; return }
         let reload = !contentVisible && result == nil && !query.isEmpty && !isLoading && !isSuggesting && captureStatus == nil
         contentVisible = true
