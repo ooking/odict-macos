@@ -5,6 +5,7 @@ import AppKit
 private enum SettingsCategory: String, CaseIterable, Identifiable {
     case capture = "取词方式"
     case dictionaries = "词典来源"
+    case cache = "查询缓存"
     case service = "在线词典"
     case ai = "AI"
     case privacy = "权限与隐私"
@@ -14,6 +15,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .capture: return "text.cursor"
         case .dictionaries: return "books.vertical"
+        case .cache: return "clock.arrow.circlepath"
         case .service: return "network"
         case .ai: return "sparkles"
         case .privacy: return "hand.raised"
@@ -23,6 +25,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .capture: return "选择一种方式，了解用法并按需开启。"
         case .dictionaries: return "管理本地词典、查询顺序和词典资源。"
+        case .cache: return "保留最近的词典结果，加快重复查询。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
         case .privacy: return "管理取词所需的系统权限，了解数据如何使用。"
@@ -47,6 +50,7 @@ struct SettingsView: View {
     @AppStorage(CaptureMethod.hover.preferenceKey) private var hoverEnabled = false
     @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
     @AppStorage(QueryMode.captureKey) private var captureMode = QueryMode.dictionary.rawValue
+    @AppStorage(LookupCacheSettings.capacityKey) private var cacheCapacity = LookupCacheSettings.defaultCapacity
     @State private var category = SettingsCategory.capture
     @State private var selectedCaptureMethod = CaptureMethod.selection
     @State private var accessibilityAllowed = false
@@ -89,6 +93,9 @@ struct SettingsView: View {
             Text("请在系统设置的「隐私与安全性 → \(method.permissionTitle)」中允许 ODict。授权后返回，将自动开启\(method.title)。" + (method.usesScreenPermission ? "若系统提示需要重新打开应用，请重开后再次开启。" : ""))
         }
         .onChange(of: hoverEnabled) { _ in notifyHoverPreferenceChanged() }
+        .onChange(of: cacheCapacity) { _ in
+            NotificationCenter.default.post(name: LookupCacheSettings.changed, object: nil)
+        }
         .onChange(of: hoverTrigger) { _ in notifyHoverPreferenceChanged() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshPermissions()
@@ -132,6 +139,7 @@ struct SettingsView: View {
         case .capture: captureSettings
         case .dictionaries:
             settingsGroup { LocalDictionarySettingsView(model: dictionaryModel) }
+        case .cache: cacheSettings
         case .service: serviceSettings.onAppear { model.load() }
         case .ai: AISettingsView(model: model.ai)
         case .privacy: privacySettings
@@ -163,6 +171,35 @@ struct SettingsView: View {
                 helpText("设置自动保存。点击快捷键框后按组合键，按删除键清除。")
             }
         }
+    }
+
+    private var cacheSettings: some View {
+        settingsGroup {
+            Text("最近查询结果").font(AppTypography.section)
+            HStack {
+                Text("缓存数量")
+                Spacer()
+                TextField("缓存数量", value: boundedCacheCapacity, format: .number.grouping(.never))
+                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                    .frame(width: 64)
+                Text("条").foregroundColor(.secondary)
+                Stepper("缓存数量", value: boundedCacheCapacity, in: LookupCacheSettings.capacityRange)
+                    .labelsHidden().fixedSize()
+            }
+            helpText("默认 20 条，可设置为 0–100 条；0 表示关闭。修改后自动保存并立即生效。")
+            Divider()
+            helpText("本地与在线词典共用缓存，重复查询优先复用已有结果，最久未查询的结果会被移除。")
+            helpText("缓存仅保留在内存中，退出应用、清空最近查询或更换词典与在线服务时清除。AI 回答不在此缓存范围内。")
+            helpText("缓存内容总大小上限约 8 MB；较大的词条可能使实际保留数量少于设置值。")
+        }
+    }
+
+    private var boundedCacheCapacity: Binding<Int> {
+        Binding(get: {
+            min(max(cacheCapacity, LookupCacheSettings.capacityRange.lowerBound), LookupCacheSettings.capacityRange.upperBound)
+        }, set: { value in
+            cacheCapacity = min(max(value, LookupCacheSettings.capacityRange.lowerBound), LookupCacheSettings.capacityRange.upperBound)
+        })
     }
 
     private func captureInstruction(_ method: CaptureMethod) -> String {

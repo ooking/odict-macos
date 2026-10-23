@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import WebKit
+import os
 
 #if ODICT_CHECKS
 /// Weak probes are compiled only into the isolated validation app, never Release.
@@ -19,7 +20,7 @@ enum LocalRendererDiagnostics {
 #endif
 
 /// Local presentation has its own lifecycle. It never consumes or mutates Entry,
-/// and never rewrites dictionary-specific tags, classes, or definition content.
+/// and preserves dictionary-specific tags, classes, and definition content.
 struct LocalArticleView: View {
     let article: LocalArticle
     let renderer: LocalArticleRenderer
@@ -44,16 +45,10 @@ final class LocalArticleRenderer: ObservableObject {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(coordinator, forURLScheme: LocalWebCoordinator.scheme)
-        // Optional behavior remains dictionary-authored. CSS is included in the
-        // transport document so its first visible frame already has the overrides.
-        let script = """
-        (() => {
-          const js = document.createElement('script'); js.src = '/odict-overrides.js';
-          (document.body || document.documentElement).appendChild(js);
-        })();
-        """
-        configuration.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         let view = WKWebView(frame: .zero, configuration: configuration)
+        #if DEBUG
+        LocalDictionaryDebug.trace("renderer.created", articleID: article.id)
+        #endif
         #if ODICT_CHECKS
         LocalRendererDiagnostics.track(view)
         #endif
@@ -67,6 +62,9 @@ final class LocalArticleRenderer: ObservableObject {
 
     func release() {
         guard let view else { return }
+        #if DEBUG
+        LocalDictionaryDebug.trace("renderer.release")
+        #endif
         coordinator?.clear(view, unloadDocument: false)
         view.navigationDelegate = nil
         view.configuration.userContentController.removeAllUserScripts()
@@ -94,10 +92,12 @@ private struct LocalArticleWebView: NSViewRepresentable {
 }
 
 fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigationDelegate {
-    static let scheme = "odict-local"
+    static let scheme = LocalArticleDocument.scheme
+    private static let log = Logger(subsystem: "com.touchany.odict.mac", category: "LocalArticle")
     private var article: LocalArticle?
     private var lookup: ((String) -> Void)?
     private var pageURL: URL?
+    private var activeNavigation: WKNavigation?
     private var requests: [ObjectIdentifier: Task<Void, Never>] = [:]
     private var audio: NSSound?
     private var audioTask: Task<Void, Never>?
@@ -107,6 +107,11 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         guard self.article?.id != article.id else { return }
         // Hide the previous surface synchronously before starting another navigation.
         view.isHidden = true
+        #if DEBUG
+        LocalDictionaryDebug.trace("page.hidden.switch", articleID: article.id,
+                                   "previous=\(self.article?.id.uuidString.lowercased() ?? "-")")
+        #endif
+        activeNavigation = nil
         view.stopLoading()
         cancelAll()
         self.article = article
@@ -114,12 +119,19 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         // even when two consecutive entries come from the same dictionary.
         let url = URL(string: "\(Self.scheme)://\(article.id.uuidString.lowercased())/__odict_article.html")!
         pageURL = url
-        view.load(URLRequest(url: url))
+        activeNavigation = view.load(URLRequest(url: url))
+        #if DEBUG
+        LocalDictionaryDebug.trace("navigation.started", articleID: article.id)
+        #endif
     }
 
     func clear(_ view: WKWebView, unloadDocument: Bool = true) {
+        #if DEBUG
+        LocalDictionaryDebug.trace("page.hidden.clear", articleID: article?.id, "unloadDocument=\(unloadDocument)")
+        #endif
         // Hide the previous surface synchronously before starting another navigation.
         view.isHidden = true
+        activeNavigation = nil
         view.stopLoading()
         cancelAll()
         article = nil
@@ -131,27 +143,22 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         let id = ObjectIdentifier(urlSchemeTask as AnyObject)
         guard let article, let pageURL, let url = urlSchemeTask.request.url,
               url.host == pageURL.host else {
+            #if DEBUG
+            LocalDictionaryDebug.trace("resource.rejected.stale", "origin=\(urlSchemeTask.request.url?.host ?? "-")")
+            #endif
             urlSchemeTask.didFailWithError(LocalDictionaryError.missingResource); return
         }
+        #if DEBUG
+        LocalDictionaryDebug.trace("resource.request", articleID: article.id, "path=\(String(reflecting: url.path))")
+        #endif
         requests[id] = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.requests[id] = nil }
             do {
                 let data: Data, mime: String
                 if url.path == pageURL.path {
-                    // A transport document supplies resource isolation. The dictionary's
-                    // HTML itself passes through unchanged, with no per-dictionary parsing.
-                    let policy = "default-src 'none'; img-src \(Self.scheme): data:; style-src \(Self.scheme): 'unsafe-inline'; font-src \(Self.scheme): data:; script-src \(Self.scheme): 'unsafe-inline'; media-src \(Self.scheme): data:; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
-                    // A low-priority native reading baseline. Dictionary styles and
-                    // user overrides retain control over specialized typography.
-                    let typography = "<style>:where(body) { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: 15px; line-height: 1.6; }</style>"
-                    let overrides = try await LocalDictionaryLibrary.shared.resource("/odict-overrides.css", in: article.dictionary)
-                    try Task.checkCancellation()
-                    // Keep overrides last in the cascade, without a second asynchronous CSS load.
-                    let css = String(decoding: overrides, as: UTF8.self)
-                        .replacingOccurrences(of: "</style", with: "<\\/style", options: .caseInsensitive)
-                    let document = "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">" + typography + "</head><body>" + article.html + Self.sourceFooter(article) + "<style>" + css + "</style></body></html>"
-                    data = Data(document.utf8); mime = "text/html"
+                    data = try await LocalDictionaryLibrary.shared.document(article)
+                    mime = "text/html"
                 } else {
                     data = try await LocalDictionaryLibrary.shared.resource(url.path, in: article.dictionary)
                     mime = Self.mime(url.pathExtension)
@@ -161,22 +168,98 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
                     textEncodingName: mime.hasPrefix("text/") || mime == "application/javascript" ? "utf-8" : nil))
                 urlSchemeTask.didReceive(data)
                 urlSchemeTask.didFinish()
-            } catch is CancellationError { /* WebKit has already stopped this request. */ }
+                #if DEBUG
+                LocalDictionaryDebug.trace("resource.delivered", articleID: article.id,
+                                           "path=\(String(reflecting: url.path)) type=\(mime) bytes=\(data.count)")
+                #endif
+            } catch is CancellationError {
+                #if DEBUG
+                LocalDictionaryDebug.trace("resource.cancelled", articleID: article.id, "path=\(String(reflecting: url.path))")
+                #endif
+            }
             catch {
-                if !Task.isCancelled { urlSchemeTask.didFailWithError(error) }
+                if !Task.isCancelled {
+                    // No headwords, HTML, file paths or script contents in logs.
+                    Self.report(error, event: "resource.failed", kind: Self.mime(url.pathExtension))
+                    urlSchemeTask.didFailWithError(error)
+                }
             }
         }
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // about:blank and superseded documents must never reveal an old surface.
-        guard let pageURL, webView.url == pageURL else { return }
-        webView.isHidden = false
+        guard let navigation, navigation === activeNavigation, let pageURL,
+              LocalArticleLink.isSameDocument(webView.url, as: pageURL) else {
+            #if DEBUG
+            LocalDictionaryDebug.trace("navigation.finished.ignored", articleID: article?.id,
+                                       "origin=\(webView.url?.host ?? "-") sameNavigation=\(navigation != nil && navigation === activeNavigation)")
+            #endif
+            return
+        }
+        #if DEBUG
+        LocalDictionaryDebug.trace("navigation.finished", articleID: article?.id, "checkingFinalStyles=true")
+        #endif
+        // A previous navigation's completion can arrive after webView.url already
+        // points at the next document. Check navigation identity again after JS,
+        // and flush layout with the final inline stylesheet before showing it.
+        let ready = """
+        (() => {
+          if (document.readyState !== 'complete' || !document.getElementById('odict-local-overrides')?.sheet) return false;
+          void document.documentElement.offsetHeight;
+          return true;
+        })()
+        """
+        webView.evaluateJavaScript(ready) { [weak self, weak webView] result, error in
+            guard let self, let webView, navigation === self.activeNavigation,
+                  self.pageURL == pageURL, LocalArticleLink.isSameDocument(webView.url, as: pageURL) else {
+                #if DEBUG
+                LocalDictionaryDebug.trace("page.ready.ignored.stale", articleID: UUID(uuidString: pageURL.host ?? ""))
+                #endif
+                return
+            }
+            if let error { Self.report(error, event: "document.readiness.failed", kind: "document"); return }
+            guard result as? Bool == true else {
+                #if DEBUG
+                LocalDictionaryDebug.trace("page.notReady", articleID: self.article?.id)
+                #endif
+                return
+            }
+            self.activeNavigation = nil
+            webView.isHidden = false
+            #if DEBUG
+            LocalDictionaryDebug.trace("page.visible", articleID: self.article?.id, "finalStylesReady=true")
+            #endif
+        }
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        Self.report(error, event: "navigation.failed", kind: "document")
+    }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        Self.report(error, event: "navigation.failed", kind: "provisional")
+    }
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        Self.log.error("event=webcontent.terminated")
+    }
+    private static func report(_ error: Error, event: String, kind: String) {
+        let error = error as NSError
+        guard error.domain != NSURLErrorDomain || error.code != NSURLErrorCancelled else { return }
+        log.error("event=\(event, privacy: .public) kind=\(kind, privacy: .public) domain=\(error.domain, privacy: .public) code=\(error.code)")
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
+        #if DEBUG
+        LocalDictionaryDebug.trace("resource.stopped", articleID: UUID(uuidString: urlSchemeTask.request.url?.host ?? ""),
+                                   "path=\(String(reflecting: urlSchemeTask.request.url?.path ?? ""))")
+        #endif
         requests.removeValue(forKey: ObjectIdentifier(urlSchemeTask as AnyObject))?.cancel()
     }
     func cancelAll() {
+        #if DEBUG
+        if !requests.isEmpty || audioTask != nil {
+            LocalDictionaryDebug.trace("requests.cancelAll", articleID: article?.id, "pending=\(requests.count)")
+        }
+        #endif
         requests.values.forEach { $0.cancel() }; requests.removeAll()
         audioTask?.cancel(); audioTask = nil; audio?.stop(); audio = nil
     }
@@ -187,40 +270,36 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             decisionHandler(.allow); return
         }
         guard let pageURL else { decisionHandler(.cancel); return }
+        // Programmatic .other navigations may still report the previous source
+        // frame while a new article is replacing it. Only user links need this gate.
+        if navigationAction.navigationType == .linkActivated,
+           let source = navigationAction.sourceFrame.request.url,
+           source.scheme == Self.scheme, source.host != pageURL.host {
+            decisionHandler(.cancel); return
+        }
         if url.scheme == Self.scheme, url.host == pageURL.host, navigationAction.targetFrame?.isMainFrame == true {
             // Same-page anchors are allowed; other local HTML stays within this renderer.
             decisionHandler(.allow); return
         }
         decisionHandler(.cancel)
-        if let source = navigationAction.sourceFrame.request.url,
-           source.scheme == Self.scheme, source.host != pageURL.host { return }
         guard navigationAction.navigationType == .linkActivated else { return }
         switch url.scheme?.lowercased() {
         case "entry", "bword", "gdlookup":
-            let word = Self.target(url).components(separatedBy: "#")[0]
-            if !word.isEmpty, word.count <= 255 { lookup?(word) }
+            switch LocalArticleLink.target(url) {
+            case .word(let word): lookup?(word)
+            case .anchor(let anchor):
+                guard LocalArticleLink.isSameDocument(webView.url, as: pageURL),
+                      let script = LocalArticleLink.anchorScript(anchor) else { return }
+                webView.evaluateJavaScript(script) { _, error in
+                    if let error { Self.report(error, event: "anchor.failed", kind: "navigation") }
+                }
+            case nil: break
+            }
         case "sound": play(Self.target(url))
         case "https", "http": NSWorkspace.shared.open(url)
         default: break
         }
     }
-    /// Transport metadata follows all dictionary content and scrolls with it.
-    private static func sourceFooter(_ article: LocalArticle) -> String {
-        func escape(_ text: String) -> String {
-            text.replacingOccurrences(of: "&", with: "&amp;")
-                .replacingOccurrences(of: "<", with: "&lt;")
-                .replacingOccurrences(of: ">", with: "&gt;")
-                .replacingOccurrences(of: "\"", with: "&quot;")
-                .replacingOccurrences(of: "'", with: "&#39;")
-        }
-        var lines = ["来源：\(article.dictionary.name) · 本地"]
-        if !article.correspondingHeadwords.isEmpty {
-            lines.append("\(article.word) → \(article.correspondingHeadwords.joined(separator: "、"))（词典对应词条）")
-        }
-        let content = lines.map { "<div>\(escape($0))</div>" }.joined()
-        return "<footer id=\"odict-source-footer\" style=\"display:block;clear:both;margin-top:24px;padding:12px 0 4px;border-top:1px solid var(--odict-rule,rgba(128,128,128,.25));font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;line-height:1.6;font-weight:400;color:var(--odict-secondary,GrayText);overflow-wrap:anywhere;\">" + content + "</footer>"
-    }
-
     private static func target(_ url: URL) -> String {
         let value = url.absoluteString
         let raw = value.components(separatedBy: "://").dropFirst().joined(separator: "://")

@@ -22,19 +22,45 @@ actor LocalDictionaryLibrary {
         return value
     }
     func article(_ word: String, in dictionary: LocalDictionaryConfiguration) throws -> LocalArticle? {
+        #if DEBUG
+        LocalDictionaryDebug.trace("lookup.begin", "word=\(String(reflecting: word)) dictionary=\(String(reflecting: dictionary.name))")
+        #endif
         try Task.checkCancellation()
         let entries = try reader(dictionary.mdxPath).articles(word)
-        guard !entries.isEmpty else { return nil }
+        guard !entries.isEmpty else {
+            #if DEBUG
+            LocalDictionaryDebug.trace("lookup.miss", "word=\(String(reflecting: word)) dictionary=\(String(reflecting: dictionary.name))")
+            #endif
+            return nil
+        }
         var seen = Set<String>()
         let headwords = entries.map(\.0).filter { seen.insert($0).inserted }
         let html = entries.map(\.1).joined(separator: "\n")
-        return LocalArticle(dictionary: dictionary, word: word, headwords: headwords,
+        let article = LocalArticle(dictionary: dictionary, word: word, headwords: headwords,
                             html: html, summary: LocalArticleSummary.extract(from: html))
+        #if DEBUG
+        LocalDictionaryDebug.trace("lookup.hit", articleID: article.id, "records=\(entries.count) headwords=\(headwords)")
+        LocalDictionaryDebug.html(html, stage: "raw", article: article)
+        #endif
+        return article
     }
     func words(_ query: String, in dictionary: LocalDictionaryConfiguration, exact: Bool) throws -> [Suggestion] {
         try reader(dictionary.mdxPath).words(query, prefix: !exact, limit: exact ? 1 : 10).map {
             Suggestion(word: $0, phonetic: nil, translationPreview: nil, translation: nil)
         }
+    }
+    /// Build on this serial background owner, never scan large HTML on the UI actor.
+    func document(_ article: LocalArticle) throws -> Data {
+        try Task.checkCancellation()
+        let css = try resource("/odict-overrides.css", in: article.dictionary)
+        try Task.checkCancellation()
+        let document = try LocalArticleDocument.make(article: article,
+                    overridesCSS: String(decoding: css, as: UTF8.self))
+        #if DEBUG
+        LocalDictionaryDebug.trace("document.built", articleID: article.id, "htmlBytes=\(document.utf8.count) inlineCSSBytes=\(css.count)")
+        LocalDictionaryDebug.html(document, stage: "document", article: article)
+        #endif
+        return Data(document.utf8)
     }
     func resource(_ path: String, in dictionary: LocalDictionaryConfiguration) throws -> Data {
         try Task.checkCancellation()
@@ -53,15 +79,33 @@ actor LocalDictionaryLibrary {
             let handle = try FileHandle(forReadingFrom: file)
             defer { try? handle.close() }
             let data = try handle.read(upToCount: MDXCompression.limit) ?? Data()
+            #if DEBUG
+            LocalDictionaryDebug.trace("resource.resolved", "path=\(String(reflecting: normalized)) source=disk bytes=\(data.count)")
+            #endif
             return normalized == LocalDictionaryOverrides.cssName ? LocalDictionaryOverrides.upgradedCSS(data) : data
         }
-        if normalized == LocalDictionaryOverrides.jsName { return Data() }
-        if normalized == LocalDictionaryOverrides.cssName { return Data(LocalDictionaryOverrides.defaultCSS.utf8) }
+        if normalized == LocalDictionaryOverrides.jsName {
+            #if DEBUG
+            LocalDictionaryDebug.trace("resource.resolved", "path=\(normalized) source=optional-empty")
+            #endif
+            return Data()
+        }
+        if normalized == LocalDictionaryOverrides.cssName {
+            #if DEBUG
+            LocalDictionaryDebug.trace("resource.resolved", "path=\(normalized) source=builtin")
+            #endif
+            return Data(LocalDictionaryOverrides.defaultCSS.utf8)
+        }
         var failure: Error?
         for resource in dictionary.resources {
             try Task.checkCancellation()
             do {
-                if let data = try reader(resource, resource: true).resourceData(normalized) { return data }
+                if let data = try reader(resource, resource: true).resourceData(normalized) {
+                    #if DEBUG
+                    LocalDictionaryDebug.trace("resource.resolved", "path=\(String(reflecting: normalized)) source=mdd bytes=\(data.count)")
+                    #endif
+                    return data
+                }
             } catch is CancellationError { throw CancellationError() }
             catch { failure = error }
         }

@@ -12,5 +12,5 @@ xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-l
     ODict/Services/DictionaryClient.swift ODict/Services/RequestRateLimit.swift \
     ODict/Services/RecentWordsStore.swift ODict/Services/PronunciationService.swift \
     ODict/LocalDictionary/*.swift ODict/Features/AI/AIQueryModel.swift \
-    ODict/Features/Lookup/LookupModel.swift Tests/AIQueryChecks.swift -lz -o build/Checks/AIQueryChecks
+    ODict/Services/LookupResultCache.swift ODict/Features/Lookup/LookupModel.swift Tests/AIQueryChecks.swift -lz -o build/Checks/AIQueryChecks
 build/Checks/AIQueryChecks

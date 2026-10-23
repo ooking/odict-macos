@@ -58,6 +58,10 @@
 		000000000000000000000F03 /* ODict/Services/AIStreamTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */; };
 		000000000000000000000F05 /* ODict/Services/AIStreamDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */; };
 		000000000000000000001003 /* HoverLookupKit in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000001002 /* HoverLookupKit */; };
+		000000000000000000000A08 /* ODict/LocalDictionary/LocalArticleDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */; };
+		000000000000000000000A09 /* ODict/LocalDictionary/LocalArticleLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */; };
+		000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */; };
+		000000000000000000001201 /* LookupResultCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001200 /* LookupResultCache.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -114,6 +118,10 @@
 		000000000000000000000F00 /* ODict/Features/AI/AIMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIMarkdownView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIStreamTransport.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIStreamDecoder.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleDocument.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleLink.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalDictionaryDebug.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001200 /* LookupResultCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/LookupResultCache.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -148,6 +156,9 @@
 				000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */,
 				000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */,
 				000000000000000000000903 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift */,
+				000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */,
+				000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */,
+				00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */,
 				000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */,
 				000000000000000000000902 /* ODict/LocalDictionary/LocalDictionaryStore.swift */,
 				000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */,
@@ -164,6 +175,7 @@
 				000000000000000000000508 /* ODict/Services/HTTPTransport.swift */,
 				000000000000000000000509 /* ODict/Services/PronunciationService.swift */,
 				00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */,
+				000000000000000000001200 /* LookupResultCache.swift */,
 				00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */,
 				00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */,
 				000000000000000000000306 /* ODict/Assets.xcassets */,
@@ -300,6 +312,10 @@
 				000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */,
 				000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */,
 				000000000000000000000A03 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift in Sources */,
+				000000000000000000000A09 /* ODict/LocalDictionary/LocalArticleLink.swift in Sources */,
+				000000000000000000000A08 /* ODict/LocalDictionary/LocalArticleDocument.swift in Sources */,
+				000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */,
+				000000000000000000001201 /* LookupResultCache.swift in Sources */,
 				000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */,
 				000000000000000000000A02 /* ODict/LocalDictionary/LocalDictionaryStore.swift in Sources */,
 				000000000000000000000A01 /* ODict/LocalDictionary/MDXReader.swift in Sources */,

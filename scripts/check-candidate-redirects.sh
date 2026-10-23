@@ -10,5 +10,5 @@ xcrun swiftc -O -D ODICT_CHECKS -swift-version 5 -parse-as-library \
     ODict/Services/DictionaryClient.swift ODict/Services/KeychainStore.swift ODict/Services/BlockingWorkQueue.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift ODict/Services/RequestRateLimit.swift \
     ODict/Services/RecentWordsStore.swift ODict/Services/PronunciationService.swift \
-    ODict/Features/Lookup/LookupModel.swift Tests/CandidateRedirectChecks.swift -lz -o build/Checks/CandidateRedirectChecks
+    ODict/Services/LookupResultCache.swift ODict/Features/Lookup/LookupModel.swift Tests/CandidateRedirectChecks.swift -lz -o build/Checks/CandidateRedirectChecks
 build/Checks/CandidateRedirectChecks "$@"

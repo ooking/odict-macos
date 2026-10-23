@@ -67,6 +67,7 @@ private enum Fixture {
         catch { print("FAIL:",error.localizedDescription); exit(1) }
     }
     static func run() async throws {
+        try LocalArticleDocumentChecks.run()
         let oxford = """
         <div class="def-g"><span class="oalecd8e_chn">进化</span></div>
         <div class="x-g"><span class="oalecd8e_chn">不应收录的例句</span></div>

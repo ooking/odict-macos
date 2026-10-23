@@ -2,6 +2,20 @@
 
 轻量的原生菜单栏词典。点击菜单栏的书本图标，或使用自己录制的全局快捷键查词。
 
+## 本地词典 Debug 日志
+
+Xcode 使用 Debug 配置运行时，可按 `[ODict.Local]` 过滤控制台输出。`article` 是同一词条贯穿查询和展示流程的 UUID；`t` 是诊断初始化后的毫秒数。
+
+- `route.begin → lookup.begin → lookup.hit → route.local`：本地查询命中；未命中后用 `route.online` 标记在线兜底。
+- `stage=raw`：MDX 读取、跳转解析后合并的词条原始 HTML。
+- `stage=document`：包含规范化文档外壳、最终覆盖 CSS 和脚本引用的 WebKit 输入 HTML。
+- `resource.request/resolved/delivered`：资源路径、来源（同目录文件／MDD／内置回退）、类型和大小。
+- `page.hidden.switch → navigation.started → navigation.finished → page.visible`：旧页面隐藏、开始导航、加载结束、确认最终样式就绪后显示。旧回调会标记 `ignored`，取消请求会标记 `cancelled` 或 `stopped`，便于排查闪旧内容。
+
+HTML 按 UTF-8 分块打印，每阶段默认上限 256 KiB，头部的 `truncated` 明确说明是否截断。可在 Scheme → Run → Arguments → Environment Variables 设置 `ODICT_LOCAL_HTML`：`full` 输出两个阶段全文，`raw`／`document` 只输出相应阶段，`off` 关闭 HTML 转储但保留流程日志，`both` 为默认值。每个分块都带词条 ID 和阶段，便于识别交错输出。完整 HTML 输出会增加 Debug 控制台开销，排查时可用 `off` 对照。
+
+这些详细诊断由 `#if DEBUG` 编译隔离，Release 不包含；应用不额外写入日志文件、不保留 HTML 日志缓存，也不输出在线服务密钥。
+
 ## 首版功能
 
 - 英文单词、短语查词，输入联想（350ms 防抖）。
@@ -17,6 +31,7 @@
 - 截图取词：按独立快捷键框选图片、视频或应用中的文字，使用 Apple Vision 在本机识别后查词；Escape 取消。支持各显示器内框选，不支持跨屏拼接。
 - 点击菜单栏图标打开词典，footer 中提供“选中取词”和“截图取词”图标按钮，与设置同一行，悬停显示功能名称。手动查词窗口中的“选中取词”会把来源应用的选中文字填入当前输入框并立即查询，保持窗口位置和当前查询模式；失败时原地提示并保留输入。独立快捷键及取词结果窗口中的取词入口仍在取词区域附近显示无 header 的结果面板。
 - 最近 20 条成功查词记录，支持清空。
+- 本地和在线词典完整结果使用独立的内存缓存，默认最近 20 条；在「设置 → 查询缓存」中可调整为 0–100 条，0 表示关闭。按最近使用顺序淘汰，缓存内容估算上限 8 MiB；超大词条不缓存。退出应用、清空最近查询或修改词典来源／服务配置后清空，失败与带来源警告的结果不缓存；AI 回答不参与。
 - 独立设置窗口，可配置 HTTPS API 地址和只读 API 密钥；首次启动自动展示设置。
 - Escape 收起，点击外部收起，菜单中退出。应用不显示 Dock 图标。
 

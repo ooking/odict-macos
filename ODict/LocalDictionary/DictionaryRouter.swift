@@ -29,17 +29,32 @@ final class DictionaryRouter: DictionaryLookupServing {
         store.mode == .onlineOnly ? [] : store.load().filter(\.enabled)
     }
     func entry(_ word: String) async throws -> LookupResult {
+        let active = dictionaries
+        #if DEBUG
+        LocalDictionaryDebug.trace("route.begin", "word=\(String(reflecting: word)) localDictionaries=\(active.count)")
+        #endif
         var unavailable: [String] = []
-        for dictionary in dictionaries {
+        for dictionary in active {
             try Task.checkCancellation()
             do {
                 if let article = try await local.article(word, in: dictionary) {
+                    #if DEBUG
+                    LocalDictionaryDebug.trace("route.local", articleID: article.id)
+                    #endif
                     return LookupResult(remote: nil, local: article, notice: notice(unavailable))
                 }
             } catch is CancellationError { throw CancellationError() }
-            catch { unavailable.append("\(dictionary.name)：\(error.localizedDescription)") }
+            catch {
+                #if DEBUG
+                LocalDictionaryDebug.trace("lookup.failed", "dictionary=\(String(reflecting: dictionary.name)) domain=\((error as NSError).domain) code=\((error as NSError).code)")
+                #endif
+                unavailable.append("\(dictionary.name)：\(error.localizedDescription)")
+            }
         }
         try Task.checkCancellation()
+        #if DEBUG
+        LocalDictionaryDebug.trace("route.online", "localUnavailable=\(unavailable.count)")
+        #endif
         do { return LookupResult(remote: try await remote.entry(word), local: nil, notice: notice(unavailable)) }
         catch is CancellationError { throw CancellationError() }
         catch {

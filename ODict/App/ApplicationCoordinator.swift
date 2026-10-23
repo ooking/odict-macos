@@ -92,6 +92,8 @@ final class ApplicationCoordinator: NSObject {
         settings.didSave = { [weak self] in self?.model.sourcesChanged() }
         NotificationCenter.default.addObserver(self, selector: #selector(dictionarySourcesChanged),
             name: LocalDictionaryStore.changed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(cacheSettingsChanged),
+            name: LookupCacheSettings.changed, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(sourceChanged(_:)),
             name: NSWorkspace.didActivateApplicationNotification, object: nil)
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification,
@@ -127,6 +129,8 @@ final class ApplicationCoordinator: NSObject {
     @objc private func aiSettingsChanged() { model.aiSettingsChanged() }
 
     @objc private func dictionarySourcesChanged() { model.sourcesChanged() }
+
+    @objc private func cacheSettingsChanged() { model.cacheSettingsChanged() }
 
     @objc private func cancelHover() { hover.cancel() }
 

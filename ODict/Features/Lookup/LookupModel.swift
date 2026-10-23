@@ -78,7 +78,7 @@ final class LookupModel: ObservableObject {
     }
 
     /// Reuse only the visible capture's exact query or its current request. No
-    /// additional result cache, case folding, failed-answer reuse or hidden HTML.
+    /// case folding or failed-answer reuse. Completed lookups use the bounded cache.
     func lookupHovered(_ text: String) {
         let word = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let captureMode = QueryMode(rawValue: preferences.string(forKey: QueryMode.captureKey) ?? "") ?? .dictionary
@@ -110,6 +110,7 @@ final class LookupModel: ObservableObject {
     @Published var acceptsSearchFocus = true
     private let dictionary: DictionaryLookupServing
     private let history: RecentWordsStore
+    private let resultCache: LookupResultCache
     private let pronunciation = PronunciationService()
     private var task: Task<Void, Never>?
     private var detailTask: Task<Void, Never>?
@@ -126,6 +127,7 @@ final class LookupModel: ObservableObject {
     init(router: DictionaryLookupServing, history: RecentWordsStore = RecentWordsStore(),
          preferences: UserDefaults = .standard, ai: AIQueryModel? = nil) {
         self.preferences = preferences
+        self.resultCache = LookupResultCache(preferences: preferences)
         self.mode = QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary
         self.ai = ai ?? AIQueryModel()
         self.dictionary = router
@@ -225,7 +227,7 @@ final class LookupModel: ObservableObject {
         }
     }
 
-    // Only the selected entry is held in memory. Keyboard repeats cancel and debounce
+    // Keyboard repeats cancel and debounce
     // previews; hovering never requests data. One unique candidate skips the sidebar.
     private func acceptSuggestions(_ results: [Suggestion]) {
         var seen = Set<String>()
@@ -271,7 +273,7 @@ final class LookupModel: ObservableObject {
             }
             do {
                 if delay { try await Task.sleep(nanoseconds: 150_000_000) }
-                let result = try await dictionary.entry(word)
+                let result = try await cachedEntry(word)
                 guard !Task.isCancelled, token == detailRevision else { return }
                 self.result = result
                 message = result.notice
@@ -314,7 +316,7 @@ final class LookupModel: ObservableObject {
                     if results.isEmpty { message = "没有找到相关词条，请换一个中文关键词。" }
                 } else {
                     do {
-                        let result = try await dictionary.entry(text)
+                        let result = try await cachedEntry(text)
                         guard !Task.isCancelled, token == revision else { return }
                         self.result = result
                         message = result.notice
@@ -337,6 +339,17 @@ final class LookupModel: ObservableObject {
         text.unicodeScalars.contains { (0x3400...0x9FFF).contains($0.value) }
     }
 
+    private func cachedEntry(_ word: String) async throws -> LookupResult {
+        try Task.checkCancellation()
+        if let cached = resultCache.value(for: word) { return cached }
+        let result = try await dictionary.entry(word)
+        try Task.checkCancellation()
+        resultCache.insert(result, for: word)
+        return result
+    }
+
+    func cacheSettingsChanged() { resultCache.trim() }
+
     private func rememberEntry(_ entry: LookupResult) {
         recent = history.remember(entry.word, in: recent)
         recentTranslations = recentTranslations.filter { recent.contains($0.key) }
@@ -347,6 +360,7 @@ final class LookupModel: ObservableObject {
     func pronounce(_ word: String) { pronunciation.speak(word) }
 
     func clearHistory() {
+        resultCache.clear()
         recent = []
         recentTranslations = [:]
         history.clear()
@@ -376,6 +390,7 @@ final class LookupModel: ObservableObject {
     }
 
     func sourcesChanged() {
+        resultCache.clear()
         suspend()
         result = nil
         suggestions = []

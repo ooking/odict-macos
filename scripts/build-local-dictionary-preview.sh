@@ -14,7 +14,7 @@ xcrun swiftc -O -D ODICT_CHECKS -swift-version 5 -target "$(uname -m)-apple-maco
     ODict/Services/DictionaryClient.swift ODict/Services/KeychainStore.swift ODict/Services/BlockingWorkQueue.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift ODict/Services/RequestRateLimit.swift \
     ODict/Services/RecentWordsStore.swift ODict/Services/PronunciationService.swift \
-    ODict/Features/Lookup/LookupModel.swift ODict/Features/Lookup/LookupView.swift ODict/Features/Lookup/CandidateSearchField.swift \
+    ODict/Services/LookupResultCache.swift ODict/Features/Lookup/LookupModel.swift ODict/Features/Lookup/LookupView.swift ODict/Features/Lookup/CandidateSearchField.swift \
     ODict/Features/LocalDictionary/*.swift Tests/LocalDictionaryPreviewApp.swift -lz \
     -o "$preview_app/Contents/MacOS/ODictLocalPreview"
 codesign --force --sign "Apple Development" --options runtime "$preview_app"
