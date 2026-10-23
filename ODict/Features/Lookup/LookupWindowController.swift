@@ -11,7 +11,7 @@ struct LookupWindowActions {
     var openAISettings: () -> Void = {}
 }
 
-/// Owns only the native lookup window, its placement and temporary mouse monitors.
+/// Owns the native lookup window and its placement. Dismissal is always explicit.
 @MainActor
 final class LookupWindowController: NSObject, NSWindowDelegate {
     private let panel = LookupPanel(contentRect: CGRect(origin: .zero, size: LookupWindowLayout.defaultSize),
@@ -24,8 +24,6 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     private static let sizeKey = "lookup.windowSize.v1"
     private var userPositioned = false
     private var anchor: CGRect?
-    private var outsideClickMonitor: Any?
-    private var localClickMonitor: Any?
 
     init(model: LookupModel, status: MenuBarController, actions: LookupWindowActions, preferences: UserDefaults = .standard) {
         self.model = model
@@ -39,16 +37,15 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     private(set) var isHover = false
     func contains(_ point: CGPoint) -> Bool { panel.isVisible && panel.frame.contains(point) }
 
-    var isPinned: Bool { presentation.isPinned }
     var isCapture: Bool { presentation.mode == .capture }
-    // Pinning keeps the card in place; it does not disable new hover lookups.
-    var acceptsHoverLookup: Bool { !isVisible || isHover || (isCapture && isPinned) }
+    // A persistent capture window can still receive subsequent hover results.
+    var acceptsHoverLookup: Bool { !isVisible || isCapture }
 
     var isVisible: Bool { panel.isVisible }
-    var isKeyWindow: Bool { panel.isKeyWindow }
 
     private func configure() {
         panel.delegate = self
+        panel.onInteraction = { [weak self] in self?.promote() }
         panel.contentMinSize = LookupWindowLayout.minimumSize
         if let saved = preferences.array(forKey: Self.sizeKey) as? [Double], saved.count == 2,
            saved.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 4096 }) {
@@ -72,7 +69,6 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             close: { [weak self] in self?.hide() },
             captureSelection: actions.captureSelection, captureScreenshot: actions.captureScreenshot,
             editQuery: actions.editQuery, openAISettings: actions.openAISettings, presentation: presentation,
-            togglePin: { [weak self] in self?.togglePin() },
             dragWindow: { [weak self] event in self?.dragWindow(event) }))
         hostingView.autoresizingMask = [.width, .height]
         if #available(macOS 13.0, *) { hostingView.sizingOptions = [] }
@@ -128,8 +124,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
 
     func show(anchor: CGRect?, hover: Bool = false, mode: LookupPresentationMode = .manual) {
         let mode: LookupPresentationMode = hover ? .capture : mode
+        let updatingHover = hover && panel.isVisible && presentation.mode == .capture
         if !panel.isVisible || presentation.mode != mode {
-            presentation.isPinned = false
             userPositioned = false
         }
         if presentation.mode != mode { presentation.mode = mode }
@@ -139,22 +135,22 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         model.resume()
         LifecycleDiagnostics.record("lookup.show.begin", panel: panel)
         self.anchor = anchor
-        isHover = hover && !isPinned
+        isHover = hover && !panel.isKeyWindow
         panel.acceptsKeyboard = !isHover
         let acceptsSearchFocus = mode == .manual
         if model.acceptsSearchFocus != acceptsSearchFocus { model.acceptsSearchFocus = acceptsSearchFocus }
-        if !userPositioned && !isPinned { position() }
+        // A subsequent hover replaces the current card's result in place.
+        // Keep its location, including a location chosen by dragging the card.
+        if !updatingHover && !userPositioned { position() }
         if hover {
-            if !isPinned { panel.makeFirstResponder(nil) }
+            if isHover { panel.makeFirstResponder(nil) }
             panel.orderFrontRegardless()
         } else {
             panel.makeKeyAndOrderFront(nil)
             if mode == .manual { model.focusRequest = UUID() }
         }
         status.highlight(true)
-        removeMonitors()
-        if !isHover { installMonitors() }
-        LifecycleDiagnostics.record("lookup.show.end", panel: panel)
+        LifecycleDiagnostics.record(updatingHover ? "lookup.hoverUpdated" : "lookup.show.end", panel: panel)
     }
 
     func promote() {
@@ -164,40 +160,18 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         model.acceptsSearchFocus = presentation.mode == .manual
         actions.interacted()
         panel.makeKey()
-        installMonitors()
     }
 
-    private func installMonitors() {
-        removeMonitors()
-        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self, !self.isPinned, !self.status.containsPointer else { return }
-            self.hide(reason: "outsideClick")
-        }
-        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-            guard let self, !self.isPinned else { return event }
-            if event.window !== self.panel && event.window !== self.status.window {
-                // Native menu tracking runs its own event loop; don't dismiss its owner.
-                if event.window?.level == .popUpMenu { return event }
-                self.hide(reason: "localOutsideClick")
-            }
-            return event
-        }
-    }
-
-    func hide(reason: String = "requested", notifyDismissed: Bool = true) {
-        LifecycleDiagnostics.record("lookup.hide.\(reason)", panel: panel)
+    func hide() {
+        LifecycleDiagnostics.record("lookup.hide.requested", panel: panel)
+        model.acceptsSearchFocus = false
+        panel.endEditing(for: nil)
+        panel.makeFirstResponder(nil)
         panel.orderOut(nil)
         isHover = false
-        presentation.isPinned = false
         userPositioned = false
         status.highlight(false)
-        removeMonitors()
-        if notifyDismissed { actions.dismissed() }
-    }
-
-    private func togglePin() {
-        promote()
-        presentation.isPinned.toggle()
+        actions.dismissed()
     }
 
     private func dragWindow(_ event: NSEvent) {
@@ -218,7 +192,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     func screenChanged() {
         guard panel.isVisible else { return }
         if let screen = panel.screen { fitToScreen(screen) }
-        if userPositioned || isPinned { constrainToScreen() } else { position() }
+        if userPositioned { constrainToScreen() } else { position() }
     }
     // Native live resizing drives the flexible hosting view directly; no per-frame published state.
     func windowWillStartLiveResize(_ notification: Notification) {
@@ -239,16 +213,18 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
                           height: min(panel.frame.height, panel.contentMaxSize.height))
         if size != panel.frame.size { panel.setContentSize(size) }
     }
-    private func removeMonitors() {
-        if let monitor = outsideClickMonitor { NSEvent.removeMonitor(monitor) }
-        if let monitor = localClickMonitor { NSEvent.removeMonitor(monitor) }
-        outsideClickMonitor = nil
-        localClickMonitor = nil
-    }
+
 }
 
 private final class LookupPanel: NSPanel {
     var acceptsKeyboard = true
+    var onInteraction: (() -> Void)?
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown || event.type == .rightMouseDown { onInteraction?() }
+        super.sendEvent(event)
+    }
+
     override var canBecomeKey: Bool { acceptsKeyboard }
     override var canBecomeMain: Bool { false }
 }

@@ -17,19 +17,25 @@ public final class AccessibilityWordReader: HoverTextReading {
                 try cancellation.check()
                 var hit: AXUIElement?
                 guard AXUIElementCopyElementAtPosition(root, Float(position.x), Float(position.y), &hit) == .success,
-                      let hit else { throw HoverLookupError.accessibilityUnavailable }
+                      let hit else { throw HoverLookupError.accessibilityHitTestFailed }
                 var pid: pid_t = 0
-                guard AXUIElementGetPid(hit, &pid) == .success else { throw HoverLookupError.accessibilityUnavailable }
+                guard AXUIElementGetPid(hit, &pid) == .success else { throw HoverLookupError.accessibilityHitTestFailed }
                 guard pid != ProcessInfo.processInfo.processIdentifier else { throw HoverLookupError.excludedTarget }
 
                 // Security inspection has its own budget. A slow parent cannot
                 // spend the time reserved for reading the hit text. Unknown/slow
                 // security state fails closed instead of exposing pixels to OCR.
-                let security = AXReadContext(cancellation: cancellation, milliseconds: 140)
+                let security = AXReadContext(cancellation: cancellation, milliseconds: 140, failure: .securityInspectionFailed)
                 var elements: [AXUIElement] = []
                 var next: AXUIElement? = hit
-                for _ in 0..<8 {
+                // Web/embedded views can have far more than eight parents.
+                // Inspect only this ancestry, within the original time budget;
+                // never walk siblings or the document's full accessibility tree.
+                for _ in 0..<64 {
                     guard let element = next else { break }
+                    guard !elements.contains(where: { CFEqual($0, element) }) else {
+                        throw HoverLookupError.securityDepthExceeded
+                    }
                     let subrole = try security.attribute(element, kAXSubroleAttribute)
                     if subrole as? String == "AXSecureTextField" { throw HoverLookupError.secureInput }
                     let role = try security.attribute(element, kAXRoleAttribute) as? String
@@ -42,11 +48,13 @@ public final class AccessibilityWordReader: HoverTextReading {
                 }
                 // A deeply nested tree is not assumed safe just because its first
                 // few nodes weren't password fields.
-                guard next == nil else { throw HoverLookupError.accessibilityUnavailable }
+                guard next == nil else { throw HoverLookupError.securityDepthExceeded }
                 let context = AXReadContext(cancellation: cancellation, milliseconds: 240)
                 // Read the hit node first; only read ancestors when it has no word.
                 do {
-                  for element in elements {
+                  // Security may require a deep ancestry check; text extraction
+                  // still probes only the nearest eight nodes with its own budget.
+                  for element in elements.prefix(8) {
                     if let word = try readRangeWord(element, point: position, top: primaryTop, context: context) {
                         return word
                     }
@@ -68,14 +76,17 @@ public final class AccessibilityWordReader: HoverTextReading {
 private struct AXReadContext {
     let cancellation: CaptureCancellation
     let deadline: UInt64
-    init(cancellation: CaptureCancellation, milliseconds: UInt64) {
+    let failure: HoverLookupError
+    init(cancellation: CaptureCancellation, milliseconds: UInt64,
+         failure: HoverLookupError = .accessibilityUnavailable) {
+        self.failure = failure
         self.cancellation = cancellation
         deadline = DispatchTime.now().uptimeNanoseconds + milliseconds * 1_000_000
     }
     private func prepare(_ element: AXUIElement) throws {
         try cancellation.check()
         let now = DispatchTime.now().uptimeNanoseconds
-        guard now < deadline else { throw HoverLookupError.accessibilityUnavailable }
+        guard now < deadline else { throw failure }
         AXUIElementSetMessagingTimeout(element, Float(min(0.04, Double(deadline - now) / 1_000_000_000)))
     }
     func attribute(_ element: AXUIElement, _ name: String) throws -> CFTypeRef? {
@@ -86,7 +97,7 @@ private struct AXReadContext {
         switch error {
         case .success: return value
         case .attributeUnsupported, .noValue, .notImplemented: return nil
-        default: throw HoverLookupError.accessibilityUnavailable
+        default: throw failure
         }
     }
     func parameter(_ element: AXUIElement, _ name: String, _ argument: CFTypeRef) throws -> CFTypeRef? {
@@ -97,7 +108,7 @@ private struct AXReadContext {
         switch error {
         case .success: return value
         case .parameterizedAttributeUnsupported, .attributeUnsupported, .noValue, .notImplemented, .illegalArgument: return nil
-        default: throw HoverLookupError.accessibilityUnavailable
+        default: throw failure
         }
     }
 }

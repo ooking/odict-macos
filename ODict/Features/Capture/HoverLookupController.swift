@@ -39,6 +39,8 @@ final class HoverLookupController {
             switch error {
             case .screenPermission:
                 message = "此处无法直接读取文字，需要屏幕录制权限进行识别。请在设置中授权，或尝试选中取词。"
+            case .timedOut:
+                message = "取词超时，请移动鼠标后重试。"
             case .captureFailed:
                 message = "无法截取鼠标附近的文字，请检查屏幕录制权限，或尝试选中取词。"
             default:
@@ -47,13 +49,14 @@ final class HoverLookupController {
             self?.onFailure?(message, anchor)
         }
         monitor.onDiagnostic = { event in
-            Self.log.debug("stage=\(event.stage.rawValue, privacy: .public) outcome=\(event.outcome.rawValue, privacy: .public) elapsedMs=\(event.milliseconds)")
+            Self.log.debug("stage=\(event.stage.rawValue, privacy: .public) outcome=\(event.outcome.rawValue, privacy: .public) reason=\(event.reason?.rawValue ?? "none", privacy: .public) elapsedMs=\(event.milliseconds)")
         }
     }
 
     func updateEnabled() {
         monitor.setEnabled(UserDefaults.standard.bool(forKey: Self.preferenceKey), modifier: HoverTrigger.current.moduleModifier)
     }
+    func resetInteraction() { monitor.resetInteraction() }
     func stop() { monitor.stop() }
     func cancel(dismiss: Bool = true) { monitor.cancel(dismiss: dismiss) }
 }

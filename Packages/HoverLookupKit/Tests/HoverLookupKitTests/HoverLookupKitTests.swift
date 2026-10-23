@@ -37,7 +37,8 @@ final class HoverLookupKitTests: XCTestCase {
 
     @MainActor
     func testUnsafeTargetsNeverReachCapture() async {
-        for failure in [HoverLookupError.secureInput, .excludedTarget, .accessibilityUnavailable] {
+        for failure in [HoverLookupError.secureInput, .excludedTarget, .accessibilityUnavailable,
+                        .accessibilityHitTestFailed, .securityInspectionFailed, .securityDepthExceeded] {
             let image = FixtureImage()
             let pipeline = HoverLookupPipeline(text: FixtureText(failure: failure), image: image)
             do {

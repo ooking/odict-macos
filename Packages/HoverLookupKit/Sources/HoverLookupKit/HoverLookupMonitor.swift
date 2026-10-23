@@ -29,6 +29,8 @@ public final class HoverLookupMonitor {
     private var trigger = HoverModifier.control
     private var triggerHeld = false
     private var blockedGesture = false
+    private var pressedKeys: Set<UInt16> = []
+    private var lastBlockReason: HoverDiagnostic.Reason?
 
     public init(pipeline: HoverLookupPipeline? = nil) { self.pipeline = pipeline ?? HoverLookupPipeline() }
 
@@ -56,7 +58,7 @@ public final class HoverLookupMonitor {
             stop()
         }
         monitoredTrust = trusted
-        let mask: NSEvent.EventTypeMask = [.flagsChanged, .mouseMoved, .keyDown, .leftMouseDown,
+        let mask: NSEvent.EventTypeMask = [.flagsChanged, .mouseMoved, .keyDown, .keyUp, .leftMouseDown,
                                            .rightMouseDown, .otherMouseDown, .scrollWheel]
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in self?.handle(event) }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
@@ -72,6 +74,8 @@ public final class HoverLookupMonitor {
         localMonitor = nil
         triggerHeld = false
         blockedGesture = false
+        pressedKeys.removeAll()
+        lastBlockReason = nil
         cancel()
         pipeline.releaseResources()
     }
@@ -83,6 +87,16 @@ public final class HoverLookupMonitor {
         currentAnchor = nil
         pipeline.releaseResources()
         if dismiss { onDismiss?() }
+    }
+
+    /// Host window interactions have ended. Retire old responses and gesture
+    /// state, but wait for a new event instead of querying immediately on close.
+    public func resetInteraction() {
+        cancel(dismiss: false)
+        triggerHeld = false
+        blockedGesture = false
+        pressedKeys.removeAll()
+        lastBlockReason = nil
     }
 
     private func cancelCapture() {
@@ -104,25 +118,43 @@ public final class HoverLookupMonitor {
         }
         triggerHeld = held
 
+        if event.type == .keyUp {
+            pressedKeys.remove(event.keyCode)
+            return
+        }
+        if event.type == .mouseMoved {
+            // Recover even if another app consumed a key-up event. Read only
+            // physical state for keys observed during this gesture, never text.
+            pressedKeys = pressedKeys.filter { CGEventSource.keyState(.combinedSessionState, key: $0) }
+            blockedGesture = !pressedKeys.isEmpty || NSEvent.pressedMouseButtons != 0
+        }
         if event.type == .keyDown {
+            pressedKeys.insert(event.keyCode)
             blockedGesture = true
+            currentAnchor = nil
+            reportBlock(.interaction)
             cancelCapture()
             if event.keyCode == 53 || !containsPanel(point) { cancel() }
             return
         }
         if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
             blockedGesture = true
+            currentAnchor = nil
+            reportBlock(.interaction)
             cancelCapture()
             if containsPanel(point) { onInteraction?() } else { cancel() }
             return
         }
         if event.type == .scrollWheel {
             blockedGesture = true
+            currentAnchor = nil
+            reportBlock(.interaction)
             cancelCapture()
             if !containsPanel(point) { cancel() }
             return
         }
         if containsPanel(point) {
+            reportBlock(.ownWindow)
             cancelCapture()
             dismissal?.cancel()
             dismissal = nil
@@ -140,12 +172,20 @@ public final class HoverLookupMonitor {
             cancelCapture()
             return
         }
-        guard trigger.matches(modifiers), !blockedGesture, canBegin(), AXIsProcessTrusted(),
-              !IsSecureEventInputEnabled(), NSEvent.pressedMouseButtons == 0 else {
+        let reason: HoverDiagnostic.Reason?
+        if !trigger.matches(modifiers) { reason = .modifier }
+        else if blockedGesture || !pressedKeys.isEmpty || NSEvent.pressedMouseButtons != 0 { reason = .interaction }
+        else if !canBegin() { reason = .hostBusy }
+        else if !AXIsProcessTrusted() { reason = .permission }
+        else if IsSecureEventInputEnabled() { reason = .secureInput }
+        else { reason = nil }
+        if let reason {
+            reportBlock(reason)
             cancelCapture()
             dismissSoon()
             return
         }
+        lastBlockReason = nil
         // Ignore tiny pointer jitter without pushing the dwell deadline forward.
         if let pendingPoint, stability.accepts(origin: pendingPoint, current: point, extracting: extracting) { return }
         cancelCapture()
@@ -184,7 +224,7 @@ public final class HoverLookupMonitor {
                 // stay quiet. Real capture/recognition/permission failures are actionable.
                 guard let failure = error as? HoverLookupError else { return }
                 switch failure {
-                case .captureFailed, .recognitionFailed, .screenPermission:
+                case .captureFailed, .recognitionFailed, .screenPermission, .timedOut:
                     self.dismissal?.cancel()
                     self.dismissal = nil
                     let anchor = CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)
@@ -196,10 +236,17 @@ public final class HoverLookupMonitor {
         }
     }
 
+    private func reportBlock(_ reason: HoverDiagnostic.Reason) {
+        guard reason != lastBlockReason else { return }
+        lastBlockReason = reason
+        onDiagnostic?(HoverDiagnostic(.request, .blocked,
+            since: ProcessInfo.processInfo.systemUptime, reason: reason))
+    }
+
     private func isCurrent(_ token: UUID, point: CGPoint) -> Bool {
         let flags = NSEvent.modifierFlags.intersection([.control, .option, .command, .shift])
         return !Task.isCancelled && token == revision && trigger.matches(flags) && !blockedGesture
-            && canBegin() && !containsPanel(NSEvent.mouseLocation) && !IsSecureEventInputEnabled()
+            && pressedKeys.isEmpty && canBegin() && !containsPanel(NSEvent.mouseLocation) && !IsSecureEventInputEnabled()
             && NSEvent.pressedMouseButtons == 0
             && stability.accepts(origin: point, current: NSEvent.mouseLocation, extracting: extracting)
     }

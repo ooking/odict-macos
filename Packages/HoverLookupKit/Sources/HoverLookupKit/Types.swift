@@ -21,7 +21,9 @@ public struct ScreenRegion: Sendable {
 
 public enum HoverLookupError: Error {
     case secureInput, excludedTarget, accessibilityUnavailable
+    case accessibilityHitTestFailed, securityInspectionFailed, securityDepthExceeded
     case screenPermission, captureFailed, recognitionFailed, noText, tooLong
+    case timedOut, requestBusy
 }
 
 public protocol HoverTextReading {
@@ -71,12 +73,15 @@ public struct HoverStability: Sendable {
 
 public struct HoverDiagnostic: Sendable {
     public enum Stage: String, Sendable { case accessibility, capture, recognition, request }
-    public enum Outcome: String, Sendable { case started, hit, miss, failed, cancelled, blocked }
+    public enum Outcome: String, Sendable { case started, hit, miss, failed, cancelled, blocked, timedOut }
+    public enum Reason: String, Sendable { case modifier, interaction, ownWindow, hostBusy, permission, secureInput, safetyCheck, hitTestFailed, securityInspection, securityDepth, providerBusy }
+    public let reason: Reason?
     public let stage: Stage
     public let outcome: Outcome
     public let milliseconds: Int
     // Deliberately no text, image, window title, app name, or arbitrary error description.
-    init(_ stage: Stage, _ outcome: Outcome, since start: TimeInterval) {
+    init(_ stage: Stage, _ outcome: Outcome, since start: TimeInterval, reason: Reason? = nil) {
+        self.reason = reason
         self.stage = stage; self.outcome = outcome
         milliseconds = Int(max(0, ProcessInfo.processInfo.systemUptime - start) * 1000)
     }

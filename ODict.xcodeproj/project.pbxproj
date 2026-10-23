@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AB45503A3D4716B94A5916; };
+		DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046ED4425C8D48198BF359B5; };
+		1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1F3B2C19A541A492909AF3; };
+		D319DD8F6C544979B8F8BF52 /* MainLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0234BD0B3249DA8E0D1C3C; };
 		000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */; };
 		000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */; };
 		000000000000000000000016 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000015 /* KeyboardShortcuts */; };
@@ -65,6 +69,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSharedViews.swift; sourceTree = SOURCE_ROOT; };
+		046ED4425C8D48198BF359B5 /* LookupResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupResultView.swift; sourceTree = SOURCE_ROOT; };
+		8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/CaptureLookupView.swift; sourceTree = SOURCE_ROOT; };
+		FE0234BD0B3249DA8E0D1C3C /* MainLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/MainLookupView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/CaptureMethodGuide.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleSummary.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000006 /* ODict.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ODict.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -191,6 +199,10 @@
 				000000000000000000000067 /* ODict/Services/DictionaryClient.swift */,
 				000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */,
 				000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */,
+				47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */,
+				046ED4425C8D48198BF359B5 /* LookupResultView.swift */,
+				8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */,
+				FE0234BD0B3249DA8E0D1C3C /* MainLookupView.swift */,
 				000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */,
 				00000000000000000000006A /* ODict/Features/Settings/SettingsView.swift */,
 				00000000000000000000001E /* ODict/Info.plist */,
@@ -346,6 +358,10 @@
 				0000000000000000000000CB /* ODict/Services/DictionaryClient.swift in Sources */,
 				0000000000000000000000CC /* ODict/Features/Lookup/LookupModel.swift in Sources */,
 				0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */,
+				F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */,
+				DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */,
+				1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */,
+				D319DD8F6C544979B8F8BF52 /* MainLookupView.swift in Sources */,
 				000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */,
 				0000000000000000000000CE /* ODict/Features/Settings/SettingsView.swift in Sources */,
 			);

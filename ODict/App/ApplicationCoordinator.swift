@@ -11,6 +11,7 @@ final class ApplicationCoordinator: NSObject {
     private var lastExternalPID: pid_t?
     private var captureOriginPID: pid_t?
     private var selectionReturnsToInput = false
+    private var isStopping = false
     private lazy var lookup = LookupWindowController(model: model, status: status, actions: LookupWindowActions(
         openSettings: { [weak self] in self?.showSettings() },
         captureSelection: { [weak self] in self?.startSelection(inCurrentWindow: true) },
@@ -18,17 +19,17 @@ final class ApplicationCoordinator: NSObject {
         editQuery: { [weak self] in self?.capture.cancel() },
         interacted: { [weak self] in self?.hover.cancel(dismiss: false) },
         dismissed: { [weak self] in
-            self?.hover.cancel(dismiss: false)
-            self?.capture.cancel()
-            self?.model.suspend()
+            self?.lookupDismissed()
         }, openAISettings: { [weak self] in self?.showSettings(ai: true) }))
     private lazy var hover: HoverLookupController = {
         let controller = HoverLookupController()
         controller.canBegin = { [weak self] in
             guard let self else { return false }
-            return !self.settings.isVisible && !self.capture.isRunning && self.lookup.acceptsHoverLookup
+            return !self.capture.isRunning
         }
-        controller.containsPanel = { [weak self] point in self?.lookup.contains(point) ?? false }
+        controller.containsPanel = { point in
+            NSApp.windows.contains { $0.isVisible && !$0.ignoresMouseEvents && $0.frame.contains(point) }
+        }
         controller.onResult = { [weak self] result in
             guard let self else { return }
             self.model.lookupHovered(result.text)
@@ -40,11 +41,7 @@ final class ApplicationCoordinator: NSObject {
             self.lookup.show(anchor: anchor, hover: true)
         }
         controller.onInteraction = { [weak self] in self?.lookup.promote() }
-        controller.onDismiss = { [weak self] in
-            guard let self, self.lookup.isHover else { return }
-            self.lookup.hide(reason: "hoverEnded", notifyDismissed: false)
-            self.model.suspend()
-        }
+        // Hover completion cancels recognition only; the result stays until closed.
         return controller
     }()
     private lazy var capture: CaptureCoordinator = {
@@ -71,7 +68,9 @@ final class ApplicationCoordinator: NSObject {
         }
         coordinator.onCancelled = { [weak self] in
             guard let self else { return }
-            self.lookup.hide()
+            if self.lookup.isVisible, self.model.captureIsBusy {
+                self.model.presentCaptureStatus("已取消截图取词", busy: false)
+            }
             if let pid = self.captureOriginPID {
                 NSRunningApplication(processIdentifier: pid)?.activate(options: .activateIgnoringOtherApps)
             }
@@ -89,7 +88,7 @@ final class ApplicationCoordinator: NSObject {
         NSApp.setActivationPolicy(.accessory)
         rememberSource()
         status.onToggle = { [weak self] in self?.toggleLookup() }
-        settings.didSave = { [weak self] in self?.model.sourcesChanged() }
+        settings.didSave = { [weak self] in self?.dictionarySourcesChanged() }
         NotificationCenter.default.addObserver(self, selector: #selector(dictionarySourcesChanged),
             name: LocalDictionaryStore.changed, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(cacheSettingsChanged),
@@ -128,7 +127,11 @@ final class ApplicationCoordinator: NSObject {
 
     @objc private func aiSettingsChanged() { model.aiSettingsChanged() }
 
-    @objc private func dictionarySourcesChanged() { model.sourcesChanged() }
+    @objc private func dictionarySourcesChanged() {
+        model.sourcesChanged()
+        // Settings can now remain beside lookup; refresh the visible result in place.
+        if lookup.isVisible { model.resume() }
+    }
 
     @objc private func cacheSettingsChanged() { model.cacheSettingsChanged() }
 
@@ -144,9 +147,21 @@ final class ApplicationCoordinator: NSObject {
         lookup.show(anchor: nil)
     }
 
+    private func lookupDismissed() {
+        hover.resetInteraction()
+        capture.cancel()
+        model.suspend()
+        // Hiding a key accessory panel does not itself reactivate the source.
+        // Restore focus only when ODict still owns it and no settings are open.
+        guard !isStopping, NSApp.isActive, !settings.isVisible,
+              let pid = lastExternalPID,
+              let source = NSRunningApplication(processIdentifier: pid), !source.isTerminated else { return }
+        let restored = source.activate(options: .activateIgnoringOtherApps)
+        LifecycleDiagnostics.record(restored ? "lookup.focusRestored" : "lookup.focusRestoreFailed")
+    }
+
     private func showSettings(ai: Bool = false) {
         hover.cancel()
-        lookup.hide()
         settings.show(ai: ai)
     }
 
@@ -166,7 +181,6 @@ final class ApplicationCoordinator: NSObject {
         // an expected transition, not the user abandoning the capture operation.
         if capture.isRunning, captureOriginPID == app.processIdentifier { return }
         capture.cancel()
-        if lookup.isVisible && !lookup.isPinned { lookup.hide(reason: "externalApplicationActivated") }
     }
 
     private func prepareCapture() -> CGRect {
@@ -174,8 +188,6 @@ final class ApplicationCoordinator: NSObject {
         hover.cancel()
         rememberSource()
         captureOriginPID = lastExternalPID
-        lookup.hide()
-        settings.close()
         return CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 1))
     }
 
@@ -204,18 +216,12 @@ final class ApplicationCoordinator: NSObject {
     func becameActive() { hover.updateEnabled() }
 
     func resignedActive() {
-        guard !NSApp.isActive else { return }
-        // Closing settings or showing a nonactivating selection panel can resign
-        // the app without abandoning capture. Actual external switches are handled
-        // by sourceChanged; deactivation alone must not dismiss the overlay.
-        if capture.isRunning, !lookup.isVisible { return }
-        if !lookup.isPinned && !lookup.isKeyWindow && !lookup.isHover { lookup.hide(reason: "applicationDeactivated") }
+        // Lookup windows stay visible when focus moves to another app.
     }
 
     func screenChanged() {
         hover.cancel()
         capture.cancel()
-        if model.captureStatus != nil { lookup.hide() }
         lookup.screenChanged()
     }
 
@@ -224,6 +230,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     func stop() {
+        isStopping = true
         hover.stop()
         capture.cancel()
         lookup.hide()

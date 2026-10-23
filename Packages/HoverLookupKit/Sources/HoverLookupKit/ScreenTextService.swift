@@ -71,7 +71,9 @@ public enum OCRComputePolicy {
 
 public final class ScreenTextService: HoverWordRecognizing {
     public init() {}
-    private let worker = BlockingWorkQueue(label: "HoverLookupKit.ocr")
+    // A cancelled caller can return before Vision exits. Share one serial worker
+    // so releasing/recreating recognizers cannot overlap abandoned OCR calls.
+    private static let worker = BlockingWorkQueue(label: "HoverLookupKit.ocr")
 
     public func recognize(_ image: CGImage, maximumCount: Int = 4000) async throws -> String {
         try await recognize(image) { observations in
@@ -130,7 +132,7 @@ public final class ScreenTextService: HoverWordRecognizing {
                                   consume: @escaping @Sendable ([VNRecognizedTextObservation]) throws -> Value) async throws -> Value {
         let cancellation = RecognitionCancellation()
         return try await withTaskCancellationHandler(operation: {
-            try await worker.perform {
+            try await Self.worker.perform {
                 try cancellation.check()
                 let observations: [VNRecognizedTextObservation]
                 do { observations = try Self.perform(image, policy: .automatic, cancellation: cancellation) }
