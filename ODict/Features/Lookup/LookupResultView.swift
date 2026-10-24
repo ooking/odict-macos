@@ -107,7 +107,7 @@ struct LookupResultView: View {
 
     private var recentList: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionTitle("最近查过")
+            RecentLookupHeader(clearDisabled: model.recent.isEmpty, clear: model.clearHistory)
                 .padding(.horizontal, 10)
             VStack(spacing: 4) {
                 ForEach(model.recent, id: \.self) { word in
@@ -217,3 +217,55 @@ private struct RecentWordRow: View {
     }
 }
 
+
+/// Shared history controls; each mode keeps its existing record layout.
+struct RecentLookupHeader: View {
+    var isSaving = false
+    var clearDisabled = false
+    let clear: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("最近查过")
+                .font(.system(size: 12, weight: .medium))
+            Spacer()
+            if isSaving {
+                ProgressView().controlSize(.small).help("正在保存历史记录")
+            }
+            Button(action: clear) {
+                HistoryBroomIcon()
+                    .stroke(style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+                    .frame(width: 18, height: 18)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(clearDisabled)
+            .help("清除历史记录")
+            .accessibilityLabel("清除历史记录")
+        }
+        .foregroundColor(lookupSecondaryInk)
+    }
+}
+
+private struct HistoryBroomIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let scale = min(rect.width, rect.height) / 18
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + x * scale, y: rect.minY + y * scale)
+        }
+        path.move(to: point(15, 2))
+        path.addLine(to: point(9, 8))
+        path.move(to: point(7, 7))
+        path.addLine(to: point(11, 11))
+        path.addLine(to: point(8, 16))
+        path.addQuadCurve(to: point(2, 10), control: point(3, 16))
+        path.closeSubpath()
+        path.move(to: point(7, 10))
+        path.addLine(to: point(4, 13))
+        path.move(to: point(9, 12))
+        path.addLine(to: point(6, 15))
+        return path
+    }
+}

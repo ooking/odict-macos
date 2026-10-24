@@ -32,8 +32,6 @@ struct MainLookupView: View {
             LookupFooter(model: model, openSettings: openSettings, openAISettings: openAISettings,
                 captureSelection: captureSelection, captureScreenshot: captureScreenshot, dragWindow: dragWindow) {
                 Menu {
-                    Button("清空查词记录") { model.clearHistory() }.disabled(model.recent.isEmpty)
-                    Divider()
                     Button("退出 ODict") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
                 } label: { Image(systemName: "ellipsis.circle").font(.system(size: 14)).frame(width: 22, height: 28) }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()

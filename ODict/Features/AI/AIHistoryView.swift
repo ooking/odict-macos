@@ -7,13 +7,9 @@ struct AIHistoryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("AI 历史记录", systemImage: "clock.arrow.circlepath").font(AppTypography.section)
-                Spacer()
-                if history.isSaving { ProgressView().controlSize(.small).help("正在保存历史记录") }
-                Button("清空") { confirmClear = true }
-                    .buttonStyle(.borderless).controlSize(.small)
-                    .disabled(history.records.isEmpty || history.isSaving)
+            RecentLookupHeader(isSaving: history.isSaving,
+                clearDisabled: history.records.isEmpty || history.isSaving) {
+                confirmClear = true
             }
             if history.isLoading { ProgressView().controlSize(.small) }
             if let message = history.message {
