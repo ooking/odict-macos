@@ -56,6 +56,28 @@ enum CaptureError: LocalizedError {
     }
 }
 
+/// Keep engine faults distinct from a poor crop: both capture modes share OCR.
+struct OCRFailurePresentation {
+    let message: String
+    let offersScreenshot: Bool
+
+    init(_ failure: OCRFailure) {
+        offersScreenshot = failure.allowsScreenshotRetry
+        switch failure.kind {
+        case .modelResourcesUnavailable:
+            message = "文字识别引擎不可用，检测到模型缓存缺失。请重启 ODict 后重试；若仍失败，请先释放磁盘空间。可暂时使用选中取词或手动输入。"
+        case .engineUnavailable:
+            message = "系统文字识别引擎发生错误，兼容重试也未成功。请重启 ODict 后重试，或暂时使用选中取词、手动输入。"
+        case .invalidImage:
+            message = "无法处理本次图像，请使用截图取词重新框选文字。"
+        case .unsupportedConfiguration:
+            message = "系统不支持当前文字识别配置，请暂时使用选中取词或手动输入。"
+        case .insufficientMemory:
+            message = "系统文字识别引擎报告内存不足，请关闭不需要的应用后重试，或使用选中取词。"
+        }
+    }
+}
+
 enum CaptureText {
     static func normalize(_ raw: String, emptyError: CaptureError, maximumCount: Int = 255, preserveLines: Bool = false) throws -> String {
         guard raw.utf16.prefix(65_537).count <= 65_536 else { throw CaptureError.tooLong }

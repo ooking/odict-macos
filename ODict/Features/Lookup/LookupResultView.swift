@@ -10,6 +10,7 @@ struct LookupResultView: View {
     let captureScreenshot: () -> Void
     let openAISettings: () -> Void
     var isCapture = false
+    var captureSelection: (() -> Void)? = nil
     @StateObject private var localRenderer = LocalArticleRenderer()
     @State private var confirmClearHistory = false
 
@@ -59,8 +60,13 @@ struct LookupResultView: View {
                     }
                     if !model.captureIsBusy {
                         HStack(spacing: 12) {
-                            Button("截图取词", action: captureScreenshot)
-                            Button("打开设置", action: openSettings)
+                            if model.captureOffersScreenshot {
+                                Button("截图取词", action: captureScreenshot)
+                                Button("打开设置", action: openSettings)
+                            } else {
+                                if let captureSelection { Button("选中取词", action: captureSelection) }
+                                Button("退出 ODict") { NSApp.terminate(nil) }
+                            }
                         }.controlSize(.small)
                     }
                 } else if let entry = model.entry {

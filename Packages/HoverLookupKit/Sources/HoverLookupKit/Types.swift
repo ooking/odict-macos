@@ -25,6 +25,7 @@ public enum HoverLookupError: Error {
     case accessibilityCallFailed(operation: HoverDiagnostic.AccessibilityOperation, code: Int32)
     case screenPermission, captureFailed, recognitionFailed, noText, tooLong
     case timedOut, requestBusy, fallbackTargetUnavailable
+    case ocrFailure(OCRFailure)
 }
 
 public protocol HoverTextReading {
@@ -36,7 +37,12 @@ public protocol ScreenImageCapturing {
 }
 
 public protocol HoverWordRecognizing {
+    func prepare() throws
     func recognizeWord(_ image: CGImage, region: CGRect, point: CGPoint) async throws -> HoverWordHit?
+}
+
+public extension HoverWordRecognizing {
+    func prepare() throws {}
 }
 
 public enum HoverModifier: String, Sendable {
@@ -75,7 +81,7 @@ public struct HoverStability: Sendable {
 public struct HoverDiagnostic: Sendable {
     public enum Stage: String, Sendable { case accessibility, capture, recognition, request }
     public enum Outcome: String, Sendable { case started, hit, miss, failed, cancelled, blocked, timedOut, fallback }
-    public enum Reason: String, Sendable { case modifier, interaction, ownWindow, hostBusy, permission, secureInput, safetyCheck, hitTestFailed, securityInspection, securityDepth, providerBusy, unsupportedInterface, fallbackTarget }
+    public enum Reason: String, Sendable { case modifier, interaction, ownWindow, hostBusy, permission, secureInput, safetyCheck, hitTestFailed, securityInspection, securityDepth, providerBusy, unsupportedInterface, fallbackTarget, ocrModelResources, ocrEngine }
     public enum AccessibilityOperation: String, Sendable {
         case elementAtPosition, missingElement, elementProcessID, invalidProcessID
     }

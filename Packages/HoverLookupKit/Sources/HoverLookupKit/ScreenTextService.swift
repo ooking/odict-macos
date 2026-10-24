@@ -1,6 +1,7 @@
 import AppKit
 import CoreML
 import Vision
+import os
 
 // The Vision request is created, configured and read only on the serial OCR queue.
 // Only cancel() may cross threads; the lock protects publication and retirement.
@@ -74,6 +75,10 @@ public final class ScreenTextService: HoverWordRecognizing {
     // A cancelled caller can return before Vision exits. Share one serial worker
     // so releasing/recreating recognizers cannot overlap abandoned OCR calls.
     private static let worker = BlockingWorkQueue(label: "HoverLookupKit.ocr")
+    private static let availability = OCRAvailability()
+    private static let log = Logger(subsystem: "com.touchany.odict.mac", category: "OCRRuntime")
+
+    public func prepare() throws { try Self.availability.check() }
 
     public func recognize(_ image: CGImage, maximumCount: Int = 4000) async throws -> String {
         try await recognize(image) { observations in
@@ -130,19 +135,32 @@ public final class ScreenTextService: HoverWordRecognizing {
 
     private func recognize<Value: Sendable>(_ image: CGImage,
                                   consume: @escaping @Sendable ([VNRecognizedTextObservation]) throws -> Value) async throws -> Value {
+        try prepare()
         let cancellation = RecognitionCancellation()
         return try await withTaskCancellationHandler(operation: {
             try await Self.worker.perform {
                 try cancellation.check()
+                try Self.availability.check()
                 let observations: [VNRecognizedTextObservation]
                 do { observations = try Self.perform(image, policy: .automatic, cancellation: cancellation) }
                 catch {
                     try cancellation.check()
-                    // Retry execution failures once, never empty recognition or word misses.
+                    let automaticError = error
+                    // Retry once, retaining both system error chains without text/images.
                     do { observations = try Self.perform(image, policy: .compatibleCPU, cancellation: cancellation) }
-                    catch { try cancellation.check(); throw HoverLookupError.recognitionFailed }
+                    catch {
+                        try cancellation.check()
+                        let failure = OCRFailure.classify(automatic: automaticError, compatibility: error,
+                            cacheState: OCRCacheInspection.state())
+                        Self.availability.record(failure)
+                        let first = failure.automaticErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
+                        let second = failure.compatibilityErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
+                        Self.log.error("kind=\(failure.kind.rawValue, privacy: .public) cacheState=\(failure.cacheState.rawValue, privacy: .public) automatic=\(first, privacy: .public) compatibility=\(second, privacy: .public)")
+                        throw failure
+                    }
                 }
                 try cancellation.check()
+                Self.availability.recovered()
                 let result = try consume(observations)
                 try cancellation.check()
                 return result
@@ -158,7 +176,7 @@ public final class ScreenTextService: HoverWordRecognizing {
         try cancellation.install(request)
         defer { cancellation.finish() }
         do { try VNImageRequestHandler(cgImage: image, options: [:]).perform([request]) }
-        catch { try cancellation.check(); throw HoverLookupError.recognitionFailed }
+        catch { try cancellation.check(); throw error }
         try cancellation.check()
         return request.results ?? []
     }

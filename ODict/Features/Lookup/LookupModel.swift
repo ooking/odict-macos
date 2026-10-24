@@ -117,6 +117,7 @@ final class LookupModel: ObservableObject {
     @Published private(set) var message: String?
     @Published private(set) var captureStatus: String?
     @Published private(set) var captureIsBusy = false
+    @Published private(set) var captureOffersScreenshot = true
     @Published private(set) var recent: [String]
     @Published private(set) var recentTranslations: [String: String]
     @Published var focusRequest = UUID()
@@ -167,7 +168,8 @@ final class LookupModel: ObservableObject {
         } else { queryChanged() }
     }
 
-    func presentCaptureStatus(_ text: String, busy: Bool, preservingManualInput: Bool = false) {
+    func presentCaptureStatus(_ text: String, busy: Bool, preservingManualInput: Bool = false,
+                              offersScreenshot: Bool = true) {
         if !preservingManualInput { captureContext = true }
         ai.reset()
         cancelRequests()
@@ -178,6 +180,7 @@ final class LookupModel: ObservableObject {
         message = nil
         captureStatus = text
         captureIsBusy = busy
+        if captureOffersScreenshot != offersScreenshot { captureOffersScreenshot = offersScreenshot }
     }
 
     var hasMultipleSuggestions: Bool { suggestions.count > 1 }

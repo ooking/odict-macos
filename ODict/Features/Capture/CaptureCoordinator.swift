@@ -1,4 +1,5 @@
 import AppKit
+import HoverLookupKit
 
 @MainActor
 final class CaptureCoordinator {
@@ -19,6 +20,7 @@ final class CaptureCoordinator {
     var isSelecting: Bool { phase == .selectingRegion }
     var onResult: ((CapturedText) -> Void)?
     var onFailure: ((String, CGRect) -> Void)?
+    private(set) var failureOffersScreenshot = true
     var onRecognizing: ((CGRect) -> Void)?
     var onCancelled: (() -> Void)?
 
@@ -41,6 +43,7 @@ final class CaptureCoordinator {
     }
 
     func cancel() {
+        failureOffersScreenshot = true
         revision = UUID()
         phase = .idle
         task?.cancel()
@@ -109,6 +112,7 @@ final class CaptureCoordinator {
             do {
                 try Task.checkCancellation()
                 guard self?.revision == token else { return }
+                try screenText.prepare()
                 guard let region = try await selection.select() else {
                     if !Task.isCancelled, self?.revision == token { self?.onCancelled?() }
                     return
@@ -147,7 +151,14 @@ final class CaptureCoordinator {
                 self?.onResult?(CapturedText(text: text, source: .screenshot, anchor: region.rect))
             } catch {
                 guard !Task.isCancelled, self?.revision == token else { return }
-                let message = (error as? CaptureError)?.localizedDescription ?? CaptureError.unavailable.localizedDescription
+                let message: String
+                if let failure = error as? HoverLookupKit.OCRFailure {
+                    let presentation = OCRFailurePresentation(failure)
+                    self?.failureOffersScreenshot = presentation.offersScreenshot
+                    message = presentation.message
+                } else {
+                    message = (error as? CaptureError)?.localizedDescription ?? CaptureError.unavailable.localizedDescription
+                }
                 self?.onFailure?(message, resultAnchor)
             }
         }

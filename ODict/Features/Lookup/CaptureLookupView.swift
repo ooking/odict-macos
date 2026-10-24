@@ -16,7 +16,7 @@ struct CaptureLookupView: View {
     var body: some View {
         VStack(spacing: 0) {
             LookupResultView(model: model, openSettings: openSettings,
-                captureScreenshot: captureScreenshot, openAISettings: openAISettings, isCapture: true)
+                captureScreenshot: captureScreenshot, openAISettings: openAISettings, isCapture: true, captureSelection: captureSelection)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             LookupFooter(model: model, openSettings: openSettings, openAISettings: openAISettings,

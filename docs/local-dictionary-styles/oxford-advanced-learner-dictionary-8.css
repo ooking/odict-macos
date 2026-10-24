@@ -16,7 +16,15 @@ html, body {
   background: transparent !important;
   color: var(--odict-text) !important;
 }
-body { margin: 14px; font-size: 15px; overflow-wrap: anywhere; }
+body {
+  margin: 0;
+  padding: 16px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", sans-serif !important;
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
 img, video, table { max-width: 100%; }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -70,4 +78,86 @@ img, video, table { max-width: 100%; }
   color: var(--odict-accent) !important;
   background: var(--odict-section) !important;
   border-color: var(--odict-rule) !important;
+}
+
+/* Reading hierarchy. Keep dictionary disclosure, audio and symbol fonts intact. */
+.entry { font-size: 18px; line-height: 1.6; }
+.entry + .entry { margin-top: 28px; }
+.h {
+  color: var(--odict-text) !important;
+  font-size: 30px !important;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.h-g > .top-g { margin-bottom: 12px; }
+.ei-g .ei, .ei-g .il {
+  font-family: inherit !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+.oalecd8e_chn, .schn {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif !important;
+  font-size: 1em;
+}
+.d, .ud {
+  font-family: inherit !important;
+  font-size: 18px;
+  font-weight: 400;
+}
+.d .oalecd8e_chn, .ud .oalecd8e_chn {
+  color: var(--odict-text) !important;
+  line-height: 1.6;
+}
+.n-g { margin-bottom: 18px; }
+.n-g .z_n { margin-right: 6px; }
+.x-g, .idh ~ .n-g .x-g, .pvh ~ .n-g .x-g, .dr-g .x-g {
+  margin: 10px 0 10px 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--odict-rule);
+  font-size: 17px;
+  line-height: 1.6;
+}
+.cc + .x-g, .cf + .x-g { margin-top: 10px; }
+.x-g:before { content: none; }
+.x-g .oalecd8e_chn {
+  margin-top: 3px;
+  font-size: 16px;
+  text-indent: 0;
+  line-height: 1.6;
+}
+.block-g {
+  margin: 20px 0 12px;
+  padding-bottom: 6px;
+  border-bottom-width: 1px;
+  line-height: 1.6;
+}
+.pos {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.id-g, .pv-g, .dr-g { margin-top: 16px; }
+.idh, .pvh { font-size: 21px; line-height: 1.5; }
+.ids-g, .pvs-g, .help, .wordbox {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-width: 1px;
+  border-radius: 6px;
+}
+/* Preserve the original table heading offset and nested table-cell layout. */
+.table { line-height: 1.6; }
+.sd-g .sd { margin: 14px 0 8px; padding-bottom: 4px; }
+.xr-g { margin-top: 6px; margin-bottom: 6px; }
+.entry a:hover { text-decoration: underline; }
+.entry a:focus-visible {
+  outline: 2px solid var(--odict-accent);
+  outline-offset: 3px;
+}
+#odict-source-footer { font-size: 13px !important; }
+@media (max-width: 420px) {
+  body { padding: 16px; }
+  .h { font-size: 28px !important; }
+  .wordbox { float: none; }
 }

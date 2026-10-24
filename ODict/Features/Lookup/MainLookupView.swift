@@ -24,7 +24,7 @@ struct MainLookupView: View {
                         Divider()
                     }
                     LookupResultView(model: model, openSettings: openSettings,
-                        captureScreenshot: captureScreenshot, openAISettings: openAISettings)
+                        captureScreenshot: captureScreenshot, openAISettings: openAISettings, captureSelection: captureSelection)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }

@@ -9,7 +9,12 @@ protocol ScreenImageCapturing {
 }
 
 protocol ScreenTextRecognizing {
+    func prepare() throws
     func recognize(_ image: CGImage) async throws -> String
+}
+
+extension ScreenTextRecognizing {
+    func prepare() throws {}
 }
 
 /// Maps platform-service errors to ODict's existing capture UI.
@@ -23,6 +28,7 @@ struct ScreenImageService: ScreenImageCapturing {
 
 final class ScreenTextService: ScreenTextRecognizing {
     private let recognizer = HoverLookupKit.ScreenTextService()
+    func prepare() throws { try recognizer.prepare() }
     func recognize(_ image: CGImage) async throws -> String {
         do {
             let result = try await recognizer.recognize(image, maximumCount: AIConfiguration.maximumInput)

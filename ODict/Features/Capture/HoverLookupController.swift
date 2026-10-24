@@ -24,6 +24,7 @@ final class HoverLookupController {
         set { monitor.onResult = newValue }
     }
     var onFailure: ((String, CGRect) -> Void)?
+    private(set) var failureOffersScreenshot = true
     var onInteraction: (() -> Void)? {
         get { monitor.onInteraction }
         set { monitor.onInteraction = newValue }
@@ -36,7 +37,12 @@ final class HoverLookupController {
     init() {
         monitor.onFailure = { [weak self] error, anchor in
             let message: String
+            self?.failureOffersScreenshot = true
             switch error {
+            case .ocrFailure(let failure):
+                let presentation = OCRFailurePresentation(failure)
+                message = presentation.message
+                self?.failureOffersScreenshot = presentation.offersScreenshot
             case .accessibilityPermission:
                 message = "悬停取词需要辅助功能权限。请在设置中授权，或使用截图取词。"
             case .screenPermission:

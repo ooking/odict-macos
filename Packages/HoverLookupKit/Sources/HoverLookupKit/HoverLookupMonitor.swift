@@ -227,7 +227,8 @@ public final class HoverLookupMonitor {
                 guard !(error is CancellationError), let self,
                       self.isCurrent(token, point: point, allowsSecureFailure: true) else { return }
                 let failure: HoverLookupError
-                if error is FallbackTargetRejection { failure = .fallbackTargetUnavailable }
+                if let ocr = error as? OCRFailure { failure = .ocrFailure(ocr) }
+                else if error is FallbackTargetRejection { failure = .fallbackTargetUnavailable }
                 else { failure = (error as? HoverLookupError) ?? .recognitionFailed }
                 self.dismissal?.cancel()
                 self.dismissal = nil
@@ -235,6 +236,8 @@ public final class HoverLookupMonitor {
                 self.currentAnchor = anchor
                 let reason: HoverDiagnostic.Reason?
                 switch failure {
+                case .ocrFailure(let ocr):
+                    reason = ocr.kind == .modelResourcesUnavailable ? .ocrModelResources : .ocrEngine
                 case .secureInput: reason = .secureInput
                 case .accessibilityPermission, .screenPermission: reason = .permission
                 case .fallbackTargetUnavailable: reason = .fallbackTarget

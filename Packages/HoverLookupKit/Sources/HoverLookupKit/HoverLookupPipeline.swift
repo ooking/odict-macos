@@ -47,6 +47,11 @@ public final class HoverLookupPipeline {
             }
             if let hit { return hit }
             guard allowsOCR else { throw HoverLookupError.screenPermission }
+            let reader = recognizer ?? makeRecognizer()
+            recognizer = reader
+            stage = .recognition
+            started = ProcessInfo.processInfo.systemUptime
+            try reader.prepare()
             stage = .capture
             started = ProcessInfo.processInfo.systemUptime
             onDiagnostic?(HoverDiagnostic(stage, .started, since: started))
@@ -76,8 +81,6 @@ public final class HoverLookupPipeline {
             stage = .recognition
             started = ProcessInfo.processInfo.systemUptime
             onDiagnostic?(HoverDiagnostic(stage, .started, since: started))
-            let reader = recognizer ?? makeRecognizer()
-            recognizer = reader
             let result = try await recognitionGate.run(timeout: 3_000_000_000) {
                 try await reader.recognizeWord(screenshot, region: region.rect, point: point)
             }
@@ -99,6 +102,8 @@ public final class HoverLookupPipeline {
             else { outcome = blocked ? .blocked : .failed }
             let reason: HoverDiagnostic.Reason?
             switch error {
+            case let failure as OCRFailure:
+                reason = failure.kind == .modelResourcesUnavailable ? .ocrModelResources : .ocrEngine
             case HoverLookupError.requestBusy: reason = .providerBusy
             case HoverLookupError.fallbackTargetUnavailable, is FallbackTargetRejection: reason = .fallbackTarget
             case HoverLookupError.secureInput: reason = .secureInput
