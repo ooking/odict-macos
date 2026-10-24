@@ -3,23 +3,24 @@ import SwiftUI
 struct AIHistoryView: View {
     @ObservedObject var history: AIHistoryModel
     let select: (UUID) -> Void
+    var emptySettings: (() -> Void)? = nil
     @State private var confirmClear = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            RecentLookupHeader(isSaving: history.isSaving,
-                clearDisabled: history.records.isEmpty || history.isSaving) {
-                confirmClear = true
+            if !history.records.isEmpty {
+                RecentLookupHeader(isSaving: history.isSaving,
+                    clearDisabled: history.isSaving) {
+                    confirmClear = true
+                }
             }
             if history.isLoading { ProgressView().controlSize(.small) }
             if let message = history.message {
                 Text(message).font(AppTypography.caption).foregroundColor(.secondary)
                 Button("重试") { history.retry(); history.load() }.controlSize(.small)
             }
-            if history.records.isEmpty && !history.isLoading {
-                Text("完成 AI 查询后，原文与回答会保存在本机，退出应用后仍可查看。")
-                    .font(AppTypography.secondary).foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            if history.records.isEmpty && !history.isLoading, let emptySettings {
+                LookupEmptyState(subtitle: "输入单词查释义，输入句子看翻译", openSettings: emptySettings)
             }
             LazyVStack(spacing: 4) {
                 ForEach(history.records) { item in
@@ -28,8 +29,8 @@ struct AIHistoryView: View {
             }
         }
         .onAppear { history.load() }
-        .confirmationDialog("清空所有 AI 历史记录？", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("清空历史记录", role: .destructive) { history.clear() }
+        .confirmationDialog("清除所有 AI 查询历史？", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("清除历史记录", role: .destructive) { history.clear() }
             Button("取消", role: .cancel) { }
         } message: {
             Text("已保存的原文与回答将从本机删除。")
@@ -74,5 +75,33 @@ private struct AIHistoryRow: View {
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .accessibilityLabel(item.sourcePreview + (item.isPartial ? "，未完成的 AI 回答" : "，AI 回答"))
+    }
+}
+
+/// Observe only history metadata so loading or clearing updates the entry immediately.
+struct AIHistoryMenu: View {
+    @ObservedObject var history: AIHistoryModel
+    let select: (UUID) -> Void
+    @State private var isPresented = false
+
+    var body: some View {
+        if !history.records.isEmpty {
+            HStack {
+                Spacer()
+                Button("最近查过") { isPresented = true }
+                    .buttonStyle(.borderless).controlSize(.small)
+                    .popover(isPresented: $isPresented) {
+                        ScrollView {
+                            AIHistoryView(history: history) { id in
+                                isPresented = false
+                                select(id)
+                            }.padding(16)
+                        }.frame(width: 380, height: 440)
+                    }
+            }
+            .onChange(of: history.records.isEmpty) { empty in
+                if empty { isPresented = false }
+            }
+        }
     }
 }

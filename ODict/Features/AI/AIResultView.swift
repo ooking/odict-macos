@@ -9,7 +9,6 @@ struct AIResultView: View {
     var captureScreenshot: (() -> Void)? = nil
     var restoredInput: (String) -> Void = { _ in }
     @State private var copied = false
-    @State private var showHistory = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -17,19 +16,12 @@ struct AIResultView: View {
                     AIHistorySaveStatus(history: model.history)
                 }
                 if !isPresentation, model.answer != nil || model.hasSubmitted {
-                    HStack {
-                        Spacer()
-                        if model.isRestoringHistory { ProgressView().controlSize(.small) }
-                        Button { showHistory = true } label: {
-                            Label("历史记录", systemImage: "clock.arrow.circlepath")
-                        }
-                        .buttonStyle(.borderless).controlSize(.small)
-                        .disabled(model.isLoading || model.isRestoringHistory)
-                        .popover(isPresented: $showHistory) {
-                            ScrollView { history.padding(16) }.frame(width: 380, height: 440)
-                        }
+                    AIHistoryMenu(history: model.history) { id in
+                        model.restoreHistory(id, restoredInput: restoredInput)
                     }
+                    .disabled(model.isLoading || model.isRestoringHistory)
                 }
+
                 if model.isLoading {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
@@ -80,20 +72,24 @@ struct AIResultView: View {
                             .font(AppTypography.caption).foregroundColor(.secondary)
                     }
                 } else if !model.hasSubmitted && model.message == nil && !model.isLoading {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(model.isConfigured ? "输入原文，查看译文与释义" : "配置 AI 后开始查询")
-                            .font(AppTypography.secondary).foregroundColor(.secondary)
-                        Text(model.isConfigured
-                             ? (isPresentation ? "选中或截图取词后，原文与结果会显示在这里。" : "支持单词、短语和句子，自动识别语言。")
-                             : "在设置中填写服务地址、模型和密钥。")
-                            .font(AppTypography.caption).foregroundColor(.secondary)
-                        if !model.isConfigured { Button("配置 AI 服务", action: openSettings).controlSize(.small).padding(.top, 4) }
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
                     if !isPresentation {
-                        Divider()
-                        history
+                        AIHistoryView(history: model.history, select: { id in
+                            model.restoreHistory(id, restoredInput: restoredInput)
+                        }, emptySettings: openSettings)
+                    } else if !model.isConfigured {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("配置 AI 后开始查询").font(.system(size: 18, weight: .medium))
+                            Text("在设置中填写服务地址、模型和密钥。")
+                                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+                            Button("配置 AI 服务", action: openSettings)
+                                .buttonStyle(.link).font(AppTypography.caption).padding(.top, 4)
+                        }.padding(.vertical, 18)
+                    } else {
+                        Text("选中或截图取词后，原文与结果会显示在这里。")
+                            .font(AppTypography.secondary).foregroundColor(.secondary)
                     }
                 }
+
                 if let message = model.message {
                     Label(message, systemImage: "info.circle").font(AppTypography.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -110,10 +106,4 @@ struct AIResultView: View {
         .onChange(of: model.isRestoringHistory) { restoring in if restoring { copied = false } }
     }
 
-    private var history: some View {
-        AIHistoryView(history: model.history) { id in
-            showHistory = false
-            model.restoreHistory(id, restoredInput: restoredInput)
-        }
-    }
 }

@@ -369,12 +369,18 @@ final class LookupModel: ObservableObject {
         return result
     }
 
-    func cacheSettingsChanged() { resultCache.trim() }
+    func cacheSettingsChanged() {
+        resultCache.trim()
+        recent = history.trim()
+        recentTranslations = history.loadTranslations(for: recent)
+    }
 
     private func rememberEntry(_ entry: LookupResult) {
         recent = history.remember(entry.word, in: recent)
         recentTranslations = recentTranslations.filter { recent.contains($0.key) }
-        recentTranslations[entry.word] = RecentWordsStore.summary(entry.translation ?? "")
+        if recent.contains(entry.word) {
+            recentTranslations[entry.word] = RecentWordsStore.summary(entry.translation ?? "")
+        }
         history.saveTranslations(recentTranslations, for: recent)
     }
 

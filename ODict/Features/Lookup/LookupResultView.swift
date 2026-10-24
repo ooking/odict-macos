@@ -11,6 +11,7 @@ struct LookupResultView: View {
     let openAISettings: () -> Void
     var isCapture = false
     @StateObject private var localRenderer = LocalArticleRenderer()
+    @State private var confirmClearHistory = false
 
     var body: some View {
         Group {
@@ -39,6 +40,12 @@ struct LookupResultView: View {
             if online { localRenderer.release() }
         }
         .onDisappear { localRenderer.release() }
+        .confirmationDialog("清除所有词典查询历史？", isPresented: $confirmClearHistory, titleVisibility: .visible) {
+            Button("清除历史记录", role: .destructive) { model.clearHistory() }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("清除后无法恢复。")
+        }
     }
 
     private var detailPane: some View {
@@ -91,13 +98,7 @@ struct LookupResultView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("随手一查，继续阅读").font(.system(size: 18, weight: .medium))
-            Text("输入英文查释义，输入中文找单词")
-                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-            Button("快捷键与设置", action: openSettings)
-                .buttonStyle(.link).font(AppTypography.caption).padding(.top, 4)
-        }.padding(.vertical, 18)
+        LookupEmptyState(subtitle: "输入英文查释义，输入中文找单词", openSettings: openSettings)
     }
 
     private var showingHistory: Bool {
@@ -107,7 +108,7 @@ struct LookupResultView: View {
 
     private var recentList: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RecentLookupHeader(clearDisabled: model.recent.isEmpty, clear: model.clearHistory)
+            RecentLookupHeader(clearDisabled: model.recent.isEmpty) { confirmClearHistory = true }
                 .padding(.horizontal, 10)
             VStack(spacing: 4) {
                 ForEach(model.recent, id: \.self) { word in
@@ -267,5 +268,20 @@ private struct HistoryBroomIcon: Shape {
         path.move(to: point(9, 12))
         path.addLine(to: point(6, 15))
         return path
+    }
+}
+
+struct LookupEmptyState: View {
+    let subtitle: String
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("随手一查，继续阅读").font(.system(size: 18, weight: .medium))
+            Text(subtitle)
+                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+            Button("快捷键与设置", action: openSettings)
+                .buttonStyle(.link).font(AppTypography.caption).padding(.top, 4)
+        }.padding(.vertical, 18)
     }
 }

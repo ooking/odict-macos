@@ -1,11 +1,26 @@
 import Foundation
 
+// One count controls compact dictionary history and its session result cache.
+enum LookupCacheSettings {
+    static let capacityKey = "lookupResultCacheCapacity.v1"
+    static let defaultCapacity = 20
+    static let capacityRange = 0...100
+    static let changed = Notification.Name("ODictLookupCacheSettingsChanged")
+
+    static func capacity(in defaults: UserDefaults) -> Int {
+        guard defaults.object(forKey: capacityKey) != nil else { return defaultCapacity }
+        return min(max(defaults.integer(forKey: capacityKey), capacityRange.lowerBound), capacityRange.upperBound)
+    }
+}
+
+
 final class RecentWordsStore {
     private let defaults: UserDefaults
-    private let limit = 20
+    private var limit: Int { LookupCacheSettings.capacity(in: defaults) }
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     func load() -> [String] {
+        guard limit > 0 else { return [] }
         var seen = Set<String>()
         var result: [String] = []
         for word in defaults.stringArray(forKey: "recentWords") ?? [] {
@@ -37,6 +52,13 @@ final class RecentWordsStore {
         let result = Array(values.prefix(limit))
         defaults.set(result, forKey: "recentWords")
         return result
+    }
+
+    func trim() -> [String] {
+        let recent = load()
+        defaults.set(recent, forKey: "recentWords")
+        saveTranslations(loadTranslations(for: recent), for: recent)
+        return recent
     }
 
     func clear() {

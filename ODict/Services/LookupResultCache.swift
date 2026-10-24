@@ -1,17 +1,5 @@
 import Foundation
 
-enum LookupCacheSettings {
-    static let capacityKey = "lookupResultCacheCapacity.v1"
-    static let defaultCapacity = 20
-    static let capacityRange = 0...100
-    static let changed = Notification.Name("ODictLookupCacheSettingsChanged")
-
-    static func capacity(in defaults: UserDefaults) -> Int {
-        guard defaults.object(forKey: capacityKey) != nil else { return defaultCapacity }
-        return min(max(defaults.integer(forKey: capacityKey), capacityRange.lowerBound), capacityRange.upperBound)
-    }
-}
-
 /// Session-only LRU of value data. Never retains renderers, file readers or tasks.
 /// Count and estimated payload size are independent bounds, not an app-memory target.
 @MainActor

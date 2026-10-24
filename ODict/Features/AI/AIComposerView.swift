@@ -14,8 +14,10 @@ struct AIComposerView: View {
         VStack(spacing: 6) {
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
-                    Text("输入或粘贴要查询的内容…")
+                    Text("输入原文，查看译文与释义\n支持单词、短语和句子，自动识别语言。")
                         .font(.system(size: 16)).foregroundColor(.secondary)
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 8).padding(.top, 7).allowsHitTesting(false)
                 }
                 AITextInput(text: text, focusRequest: focusRequest, allowsFocus: allowsFocus,
@@ -23,7 +25,7 @@ struct AIComposerView: View {
                     changed: { value in if !model.isLoading && !model.isRestoringHistory { changed(value) } }, rejected: model.rejectOversizedPaste,
                     measuredHeight: { value in if abs(value - inputHeight) > 0.5 { inputHeight = value } },
                     submit: { if !model.isLoading && !model.isRestoringHistory { model.submit(text) } }, cancel: close)
-                    .frame(height: inputHeight)
+                    .frame(height: max(inputHeight, text.isEmpty ? 64 : 35))
             }.frame(maxWidth: .infinity)
             HStack(spacing: 8) {
                 Text(model.isLoading ? "正在翻译，结束后可编辑" : "Enter 查询 · Shift + Enter 换行")
