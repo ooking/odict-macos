@@ -5,6 +5,7 @@ mkdir -p build/Checks
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-library \
+    ODict/Models/AIHistoryModels.swift ODict/Services/AIHistoryStore.swift ODict/Features/AI/AIHistoryModel.swift \
     ODict/Models/DictionaryModels.swift ODict/Models/AIModels.swift \
     ODict/Services/BlockingWorkQueue.swift ODict/Services/KeychainStore.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift \

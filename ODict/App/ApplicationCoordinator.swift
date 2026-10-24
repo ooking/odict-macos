@@ -25,7 +25,7 @@ final class ApplicationCoordinator: NSObject {
         let controller = HoverLookupController()
         controller.canBegin = { [weak self] in
             guard let self else { return false }
-            return !self.capture.isRunning
+            return !self.isStopping && !self.capture.isRunning
         }
         controller.containsPanel = { point in
             NSApp.windows.contains { $0.isVisible && !$0.ignoresMouseEvents && $0.frame.contains(point) }
@@ -104,6 +104,8 @@ final class ApplicationCoordinator: NSObject {
             name: HoverLookupController.preferenceChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(aiSettingsChanged),
             name: AISettingsStore.changed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(aiHistorySettingsChanged),
+            name: AIHistorySettings.changed, object: nil)
         hover.updateEnabled()
         KeyboardShortcuts.onKeyUp(for: .toggleDictionary) { [weak self] in self?.toggleLookup() }
         KeyboardShortcuts.onKeyUp(for: .selectedTextLookup) { [weak self] in self?.startSelection() }
@@ -126,6 +128,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     @objc private func aiSettingsChanged() { model.aiSettingsChanged() }
+    @objc private func aiHistorySettingsChanged() { model.ai.history.settingsChanged() }
 
     @objc private func dictionarySourcesChanged() {
         model.sourcesChanged()
@@ -216,7 +219,7 @@ final class ApplicationCoordinator: NSObject {
         capture.takeScreenshot(anchor: anchor)
     }
 
-    func becameActive() { hover.updateEnabled() }
+    func becameActive() { if !isStopping { hover.updateEnabled() } }
 
     func resignedActive() {
         // Lookup windows stay visible when focus moves to another app.
@@ -242,5 +245,19 @@ final class ApplicationCoordinator: NSObject {
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         NotificationCenter.default.removeObserver(self)
         status.stop()
+    }
+
+    func prepareForTermination() async -> Bool {
+        isStopping = true
+        hover.stop()
+        capture.cancel()
+        model.ai.prepareForTermination()
+        return await model.ai.history.flush()
+    }
+
+    func cancelTerminationPreparation() {
+        isStopping = false
+        model.ai.cancelTerminationPreparation()
+        hover.updateEnabled()
     }
 }

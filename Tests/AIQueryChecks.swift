@@ -111,7 +111,15 @@ private final class FixtureDictionary: DictionaryLookupServing {
         precondition(ollamaBody["max_tokens"] as? Int == 2048)
         let fixedConfiguration = configuration
         let deferred = DeferredAI()
-        let model = AIQueryModel(client: deferred, configuration: { fixedConfiguration })
+        let suite = "odict.ai.fixture.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let historyFolder = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: historyFolder)
+        }
+        let history = AIHistoryModel(store: AIHistoryStore(folder: historyFolder, preferences: defaults), preferences: defaults)
+        let model = AIQueryModel(client: deferred, configuration: { fixedConfiguration }, history: history)
         model.submit("old")
         try await waitFor(deferred, "old")
         model.submit("new")
@@ -130,9 +138,6 @@ private final class FixtureDictionary: DictionaryLookupServing {
         model.submit(String(repeating: "a", count: 4001))
         precondition(model.message != nil && !model.isLoading)
 
-        let suite = "odict.ai.fixture.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
         let dictionary = FixtureDictionary()
         let lookup = LookupModel(router: dictionary, history: RecentWordsStore(defaults: defaults), preferences: defaults, ai: model)
         lookup.setMode(.ai)
@@ -146,6 +151,8 @@ private final class FixtureDictionary: DictionaryLookupServing {
         precondition(lookup.mode == .ai, "capture preference must not overwrite manual mode")
         lookup.suspend()
         precondition(!model.isLoading && model.answer == nil)
+        let historySaved = await history.flush()
+        precondition(historySaved)
         print("PASS: bounded Markdown; reasoning separation; endpoint safety; fixed Markdown instruction; thinking adapters; auth errors; stale responses; cancellation; independent modes. No live network, Keychain, or UI used.")
     }
 }

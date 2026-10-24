@@ -98,6 +98,12 @@ final class LookupModel: ObservableObject {
 
     func aiSettingsChanged() { ai.settingsChanged() }
 
+    func restoreAIInput(_ text: String) {
+        aiManualQuery = text
+        query = text
+        focusRequest = UUID()
+    }
+
     @Published private(set) var result: LookupResult?
     var entry: Entry? { result?.remote }
     var localArticle: LocalArticle? { result?.local }
@@ -416,13 +422,14 @@ final class LookupModel: ObservableObject {
         #if DEBUG
         MemoryPhaseDiagnostics.snapshot("lookup.suspend.begin")
         #endif
-        // Release active work when hidden, while keeping one bounded answer and its source.
-        // Draft editing and focus transitions must not erase the last successful query.
-        ai.cancel()
+        // Archive AI output, then release result data and render trees. Manual
+        // input drafts, compact history metadata and the configured cache survive.
+        ai.suspend()
         contentVisible = false
         cancelRequests()
         // Dropping HTML and its WebView releases the renderer and resource tasks.
-        if result?.local != nil { result = nil }
+        result = nil
+        suggestions = []; selectedSuggestionIndex = nil; message = nil
         let router = dictionary
         Task {
             await router.releaseLocalResources()

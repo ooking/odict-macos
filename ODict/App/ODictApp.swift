@@ -18,6 +18,7 @@ struct ODictApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: ApplicationCoordinator?
+    private var awaitingHistorySave = false
     func applicationDidFinishLaunching(_ notification: Notification) {
         LifecycleDiagnostics.record("launch.begin")
         let coordinator = ApplicationCoordinator()
@@ -28,6 +29,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidResignActive(_ notification: Notification) { coordinator?.resignedActive() }
     func applicationDidChangeScreenParameters(_ notification: Notification) { coordinator?.screenChanged() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let coordinator else { return .terminateNow }
+        guard !awaitingHistorySave else { return .terminateLater }
+        awaitingHistorySave = true
+        Task { @MainActor in
+            let saved = await coordinator.prepareForTermination()
+            var shouldQuit = saved
+            if !saved {
+                let alert = NSAlert()
+                alert.messageText = "部分 AI 历史记录尚未保存"
+                alert.informativeText = "退出后，尚未写入磁盘的结果可能丢失。可以返回应用，检查磁盘空间或文件权限后重试。"
+                alert.addButton(withTitle: "返回应用")
+                alert.addButton(withTitle: "仍然退出")
+                shouldQuit = alert.runModal() == .alertSecondButtonReturn
+            }
+            if !shouldQuit { coordinator.cancelTerminationPreparation() }
+            self.awaitingHistorySave = false
+            sender.reply(toApplicationShouldTerminate: shouldQuit)
+        }
+        return .terminateLater
+    }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         coordinator?.reopen()
         return true

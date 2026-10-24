@@ -7,10 +7,29 @@ struct AIResultView: View {
     let openSettings: () -> Void
     var isPresentation = false
     var captureScreenshot: (() -> Void)? = nil
+    var restoredInput: (String) -> Void = { _ in }
     @State private var copied = false
+    @State private var showHistory = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                if model.answer != nil || model.hasSubmitted {
+                    AIHistorySaveStatus(history: model.history)
+                }
+                if !isPresentation, model.answer != nil || model.hasSubmitted {
+                    HStack {
+                        Spacer()
+                        if model.isRestoringHistory { ProgressView().controlSize(.small) }
+                        Button { showHistory = true } label: {
+                            Label("历史记录", systemImage: "clock.arrow.circlepath")
+                        }
+                        .buttonStyle(.borderless).controlSize(.small)
+                        .disabled(model.isLoading || model.isRestoringHistory)
+                        .popover(isPresented: $showHistory) {
+                            ScrollView { history.padding(16) }.frame(width: 380, height: 440)
+                        }
+                    }
+                }
                 if model.isLoading {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
@@ -23,11 +42,15 @@ struct AIResultView: View {
                         }
                     }
                 } else if model.isCancelled {
-                    Label(model.answer == nil ? "已停止生成" : "已停止，保留已有内容", systemImage: "stop.circle")
+                    Label(model.isViewingHistory ? "未完成的历史回答" : model.answer == nil ? "已停止生成" : "已停止，保留已有内容", systemImage: "stop.circle")
                         .font(AppTypography.secondary).foregroundColor(.secondary)
                     if model.answer == nil { Button("重新生成") { model.submit(model.submittedText) }.controlSize(.small) }
                 }
                 if let answer = model.answer {
+                    if let date = model.historyDate {
+                        Text("历史记录 · \(date.formatted(date: .abbreviated, time: .shortened))")
+                            .font(AppTypography.caption).foregroundColor(.secondary)
+                    }
                     if model.isShowingPreviousAnswer {
                         Text(model.isLoading ? "上次结果 · 正在生成新的回答" : "上次结果").font(AppTypography.caption).foregroundColor(.secondary)
                     }
@@ -53,7 +76,7 @@ struct AIResultView: View {
                         }.buttonStyle(.borderless).controlSize(.small)
                     }
                     if !model.isLoading {
-                        Text("AI 生成 · \(model.savedConfiguration.model)")
+                        Text("AI 生成 · \(model.answerModel)")
                             .font(AppTypography.caption).foregroundColor(.secondary)
                     }
                 } else if !model.hasSubmitted && model.message == nil && !model.isLoading {
@@ -66,6 +89,10 @@ struct AIResultView: View {
                             .font(AppTypography.caption).foregroundColor(.secondary)
                         if !model.isConfigured { Button("配置 AI 服务", action: openSettings).controlSize(.small).padding(.top, 4) }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                    if !isPresentation {
+                        Divider()
+                        history
+                    }
                 }
                 if let message = model.message {
                     Label(message, systemImage: "info.circle").font(AppTypography.secondary)
@@ -78,6 +105,15 @@ struct AIResultView: View {
                 }
             }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear { if !isPresentation { model.history.load() } }
         .onChange(of: model.isLoading) { loading in if loading { copied = false } }
+        .onChange(of: model.isRestoringHistory) { restoring in if restoring { copied = false } }
+    }
+
+    private var history: some View {
+        AIHistoryView(history: model.history) { id in
+            showHistory = false
+            model.restoreHistory(id, restoredInput: restoredInput)
+        }
     }
 }

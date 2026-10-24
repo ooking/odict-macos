@@ -35,6 +35,8 @@ private final class PreviewDelegate: NSObject, NSApplicationDelegate {
     private var model: LookupModel!
     private var status: MenuBarController!
     private var controller: LookupWindowController!
+    private let historyFolder = FileManager.default.temporaryDirectory
+        .appendingPathComponent("ODictDesignPreview-\(UUID().uuidString)", isDirectory: true)
     func applicationDidFinishLaunching(_ notification: Notification) {
         defaults = UserDefaults(suiteName: suite)!
         let store = LocalDictionaryStore(defaults: defaults)
@@ -45,7 +47,9 @@ private final class PreviewDelegate: NSObject, NSApplicationDelegate {
         let fixtureConfiguration = configuration
         model = LookupModel(router: DictionaryRouter(remote: DesignDictionary(), local: LocalDictionaryLibrary(), store: store),
                             history: RecentWordsStore(defaults: defaults), preferences: defaults,
-                            ai: AIQueryModel(client: PreviewAI(), configuration: { fixtureConfiguration }))
+                            ai: AIQueryModel(client: PreviewAI(), configuration: { fixtureConfiguration },
+                                history: AIHistoryModel(store: AIHistoryStore(folder: historyFolder, preferences: defaults),
+                                                        preferences: defaults)))
         status = MenuBarController()
         controller = LookupWindowController(model: model, status: status, actions: LookupWindowActions(
             openSettings: {}, captureSelection: {}, captureScreenshot: {}, editQuery: {}, interacted: {},

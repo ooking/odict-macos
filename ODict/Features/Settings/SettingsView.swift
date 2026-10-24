@@ -8,6 +8,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
     case cache = "查询缓存"
     case service = "在线词典"
     case ai = "AI"
+    case aiHistory = "AI 历史"
     case privacy = "权限与隐私"
 
     var id: Self { self }
@@ -18,6 +19,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         case .cache: return "clock.arrow.circlepath"
         case .service: return "network"
         case .ai: return "sparkles"
+        case .aiHistory: return "clock"
         case .privacy: return "hand.raised"
         }
     }
@@ -28,6 +30,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         case .cache: return "保留最近的词典结果，加快重复查询。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
+        case .aiHistory: return "保存 AI 原文与回答，随时重新查看。"
         case .privacy: return "管理取词所需的系统权限，了解数据如何使用。"
         }
     }
@@ -51,6 +54,8 @@ struct SettingsView: View {
     @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
     @AppStorage(QueryMode.captureKey) private var captureMode = QueryMode.dictionary.rawValue
     @AppStorage(LookupCacheSettings.capacityKey) private var cacheCapacity = LookupCacheSettings.defaultCapacity
+    @State private var historyCapacityDraft = String(AIHistorySettings.capacity())
+    @State private var historyCapacityMessage: String?
     @State private var category = SettingsCategory.capture
     @State private var selectedCaptureMethod = CaptureMethod.selection
     @State private var accessibilityAllowed = false
@@ -140,6 +145,7 @@ struct SettingsView: View {
         case .dictionaries:
             settingsGroup { LocalDictionarySettingsView(model: dictionaryModel) }
         case .cache: cacheSettings
+        case .aiHistory: aiHistorySettings
         case .service: serviceSettings.onAppear { model.load() }
         case .ai: AISettingsView(model: model.ai)
         case .privacy: privacySettings
@@ -192,6 +198,44 @@ struct SettingsView: View {
             helpText("缓存仅保留在内存中，退出应用、清空最近查询或更换词典与在线服务时清除。AI 回答不在此缓存范围内。")
             helpText("缓存内容总大小上限约 8 MB；较大的词条可能使实际保留数量少于设置值。")
         }
+    }
+
+    private var aiHistorySettings: some View {
+        settingsGroup {
+            Text("本机历史记录").font(AppTypography.section)
+            HStack {
+                Text("保存数量")
+                Spacer()
+                TextField("保存数量", text: Binding(get: { historyCapacityDraft }, set: {
+                    historyCapacityDraft = $0; historyCapacityMessage = nil
+                }))
+                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing).frame(width: 64)
+                    .onSubmit(saveHistoryCapacity)
+                Text("条").foregroundColor(.secondary)
+                Stepper("保存数量", value: Binding(get: {
+                    Int(historyCapacityDraft) ?? AIHistorySettings.capacity()
+                }, set: { historyCapacityDraft = String($0); historyCapacityMessage = nil }),
+                    in: AIHistorySettings.capacityRange).labelsHidden().fixedSize()
+                Button("保存", action: saveHistoryCapacity).controlSize(.small)
+            }
+            helpText("默认 20 条，可设置为 1–100 条。点击保存后生效，超出数量时自动移除最早的记录。")
+            if let message = historyCapacityMessage { helpText(message) }
+            Divider()
+            helpText("完整保存原文、AI 回答和模型名称；退出应用后仍可查看。主动停止或中断时，已有回答标记为「未完成」。")
+            helpText("关闭查词窗口会释放当前结果和排版，历史内容保存在本机磁盘，点开时才读取；查看历史不会请求 AI 服务。")
+            helpText("AI 历史与词典查询缓存分别管理。可在 AI 查询窗口的「历史记录」中清空。")
+        }
+    }
+
+    private func saveHistoryCapacity() {
+        guard let value = Int(historyCapacityDraft.trimmingCharacters(in: .whitespacesAndNewlines)),
+              AIHistorySettings.capacityRange.contains(value) else {
+            historyCapacityMessage = "请输入 1–100 之间的整数。"; return
+        }
+        UserDefaults.standard.set(value, forKey: AIHistorySettings.capacityKey)
+        historyCapacityDraft = String(value)
+        historyCapacityMessage = "已保存，最多保留最近 \(value) 条 AI 历史记录。"
+        NotificationCenter.default.post(name: AIHistorySettings.changed, object: nil)
     }
 
     private var boundedCacheCapacity: Binding<Int> {
@@ -348,6 +392,7 @@ struct SettingsView: View {
                 Text("数据与隐私").font(AppTypography.section)
                 helpText("选中取词读取当前应用选中的文字；悬停取词读取鼠标处文字，必要时仅截取附近区域。")
                 helpText("所有图片均在本机识别，不上传图片。词典模式只将查询文字交给词典服务；AI 模式将文字发送至你配置的 AI 服务。")
+                helpText("AI 原文与回答会按设置的数量保存在本机历史中，可在 AI 查询窗口查看或清空。密钥仍只保存在 Keychain。")
             }
         }
     }

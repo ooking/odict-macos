@@ -14,8 +14,12 @@ struct LookupResultView: View {
 
     var body: some View {
         Group {
-            if model.mode == .ai && model.captureStatus == nil {
-                AIResultView(model: model.ai, query: model.query, openSettings: openAISettings, isPresentation: isCapture, captureScreenshot: isCapture ? captureScreenshot : nil)
+            if !model.contentVisible {
+                EmptyView()
+            } else if model.mode == .ai && model.captureStatus == nil {
+                AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
+                    isPresentation: isCapture, captureScreenshot: isCapture ? captureScreenshot : nil,
+                    restoredInput: model.restoreAIInput)
             } else if let article = model.localArticle, model.contentVisible {
                 VStack(alignment: .leading, spacing: 0) {
                     LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })

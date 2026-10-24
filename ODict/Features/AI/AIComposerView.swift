@@ -18,10 +18,11 @@ struct AIComposerView: View {
                         .font(.system(size: 16)).foregroundColor(.secondary)
                         .padding(.horizontal, 8).padding(.top, 7).allowsHitTesting(false)
                 }
-                AITextInput(text: text, focusRequest: focusRequest, allowsFocus: allowsFocus, isEditable: !model.isLoading,
-                    changed: { value in if !model.isLoading { changed(value) } }, rejected: model.rejectOversizedPaste,
+                AITextInput(text: text, focusRequest: focusRequest, allowsFocus: allowsFocus,
+                    isEditable: !model.isLoading && !model.isRestoringHistory,
+                    changed: { value in if !model.isLoading && !model.isRestoringHistory { changed(value) } }, rejected: model.rejectOversizedPaste,
                     measuredHeight: { value in if abs(value - inputHeight) > 0.5 { inputHeight = value } },
-                    submit: { if !model.isLoading { model.submit(text) } }, cancel: close)
+                    submit: { if !model.isLoading && !model.isRestoringHistory { model.submit(text) } }, cancel: close)
                     .frame(height: inputHeight)
             }.frame(maxWidth: .infinity)
             HStack(spacing: 8) {
@@ -38,7 +39,7 @@ struct AIComposerView: View {
                     Label(model.isLoading ? "停止" : "查询", systemImage: model.isLoading ? "stop.fill" : "arrow.up")
                         .font(.system(size: 11, weight: .medium))
                 }.buttonStyle(.borderedProminent).controlSize(.small)
-                    .disabled(!model.isLoading && (text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 4000))
+                    .disabled(model.isRestoringHistory || (!model.isLoading && (text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 4000)))
                     .help(model.isLoading ? "停止生成，保留已有内容" : "查询（Enter）")
                     .accessibilityLabel(model.isLoading ? "停止生成" : "提交 AI 查询")
             }.padding(.horizontal, 4)
