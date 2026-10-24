@@ -54,6 +54,8 @@ struct MainLookupView: View {
                 AIComposerView(model: model.ai, text: model.query, focusRequest: model.focusRequest,
                     allowsFocus: model.acceptsSearchFocus, changed: { text in
                         editQuery(); model.editQuery(text, composing: false)
+                    }, clear: {
+                        editQuery(); model.editQuery("", composing: false); model.focusRequest = UUID()
                     }, close: close)
             } else { searchBar }
         }.padding(.horizontal, 16).padding(.vertical, 12)

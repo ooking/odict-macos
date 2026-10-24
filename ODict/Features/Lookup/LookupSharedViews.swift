@@ -18,8 +18,9 @@ struct LookupFooter<Trailing: View>: View {
             Text("ODict").font(.system(size: 12, weight: .semibold)).allowsHitTesting(false)
             Spacer().allowsHitTesting(false)
             if showsCaptureTools {
-                LookupIconButton("选中取词", icon: "text.cursor", action: captureSelection)
-                LookupIconButton("截图取词", icon: "viewfinder", action: captureScreenshot)
+                CaptureToolTipIcon(method: .selection, icon: "text.cursor", action: captureSelection)
+                CaptureToolTipIcon(method: .screenshot, icon: "viewfinder", action: captureScreenshot)
+                CaptureToolTipIcon(method: .hover, icon: "cursorarrow.rays")
                 Button(action: model.mode == .ai ? openAISettings : openSettings) {
                     Image(systemName: "gearshape").font(.system(size: 14))
                         .frame(width: 28, height: 28).contentShape(Rectangle())
@@ -33,6 +34,89 @@ struct LookupFooter<Trailing: View>: View {
         .background { LookupDragArea(drag: dragWindow) }
     }
 
+}
+
+/// A passive guide for hover lookup; only explicit capture tools receive actions.
+/// Pending tooltip work is bounded to one cancellable delay per visible icon.
+private struct CaptureToolTipIcon: View {
+    let method: CaptureMethod
+    let icon: String
+    let action: (() -> Void)?
+    @AppStorage private var enabled: Bool
+    @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
+    @State private var showsGuide = false
+    @State private var pendingGuide: Task<Void, Never>?
+
+    init(method: CaptureMethod, icon: String, action: (() -> Void)? = nil) {
+        self.method = method
+        self.icon = icon
+        self.action = action
+        _enabled = AppStorage(wrappedValue: false, method.preferenceKey)
+    }
+
+    var body: some View {
+        control
+            .foregroundColor(enabled ? Color.accentColor : lookupSecondaryInk)
+            .accessibilityLabel(method.title)
+            .accessibilityValue(enabled ? "已开启" : "未开启")
+            .accessibilityHint(method == .hover ? instruction : "停留鼠标查看取词示意")
+            .onHover { hovering in
+                dismissGuide()
+                guard hovering else { return }
+                pendingGuide = Task { @MainActor in
+                    do { try await Task.sleep(nanoseconds: 400_000_000) }
+                    catch { return }
+                    guard !Task.isCancelled else { return }
+                    showsGuide = true
+                    pendingGuide = nil
+                }
+            }
+            .popover(isPresented: $showsGuide, arrowEdge: .top) {
+                VStack(spacing: 12) {
+                    HStack {
+                        Text(method.title).font(AppTypography.section)
+                        Spacer()
+                        Text(enabled ? "已开启" : "未开启")
+                            .font(AppTypography.caption).foregroundColor(.secondary)
+                    }
+                    CaptureMethodGuide(method: method, instruction: instruction)
+                    if method == .hover {
+                        Text("此图标仅展示用法，请在设置中开启或调整。")
+                            .font(AppTypography.caption).foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(18).frame(width: 320)
+            }
+            .onDisappear(perform: dismissGuide)
+    }
+
+    @ViewBuilder private var control: some View {
+        if let action = action {
+            Button {
+                dismissGuide()
+                action()
+            } label: { symbol }
+                .buttonStyle(.plain)
+        } else {
+            symbol
+        }
+    }
+
+    private var symbol: some View {
+        Image(systemName: icon).font(.system(size: 14))
+            .frame(width: 28, height: 28).contentShape(Rectangle())
+    }
+
+    private var instruction: String {
+        method.guideInstruction(hoverTrigger: HoverTrigger(rawValue: hoverTrigger) ?? .control)
+    }
+
+    private func dismissGuide() {
+        pendingGuide?.cancel()
+        pendingGuide = nil
+        showsGuide = false
+    }
 }
 
 struct LookupIconButton: View {

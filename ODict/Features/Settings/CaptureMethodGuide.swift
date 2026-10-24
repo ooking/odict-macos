@@ -11,9 +11,6 @@ struct CaptureMethodGuide: View {
             illustration
                 .frame(maxWidth: .infinity)
                 .frame(height: 132)
-                .background(Color(nsColor: .textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.08)))
                 .accessibilityHidden(true)
             Text(instruction)
                 .font(AppTypography.secondary)
@@ -71,5 +68,16 @@ struct CaptureMethodGuide: View {
             .font(AppTypography.secondary)
         }
         .padding(12)
+    }
+}
+
+/// Shared wording keeps settings and footer guides aligned with the configured trigger.
+extension CaptureMethod {
+    func guideInstruction(hoverTrigger: HoverTrigger) -> String {
+        switch self {
+        case .selection: return "选中文字 → 按取词快捷键 → 查看释义"
+        case .screenshot: return "按取词快捷键 → 框选文字区域 → 本机识别并查询"
+        case .hover: return hoverTrigger.instruction
+        }
     }
 }

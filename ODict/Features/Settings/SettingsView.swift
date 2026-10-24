@@ -238,61 +238,58 @@ struct SettingsView: View {
     }
 
     private func captureInstruction(_ method: CaptureMethod) -> String {
-        switch method {
-        case .selection: return "选中文字 → 按取词快捷键 → 查看释义"
-        case .screenshot: return "按取词快捷键 → 框选文字区域 → 本机识别并查询"
-        case .hover:
-            return (HoverTrigger(rawValue: hoverTrigger) ?? .control).instruction
-        }
+        method.guideInstruction(hoverTrigger: HoverTrigger(rawValue: hoverTrigger) ?? .control)
     }
 
     private func captureMethodSettings(_ method: CaptureMethod) -> some View {
-        settingsGroup {
-            HStack {
-                Text("启用\(method.title)").font(AppTypography.section)
-                Spacer()
-                Toggle("启用\(method.title)", isOn: captureEnabledBinding(method))
-                    .labelsHidden().toggleStyle(.switch)
-            }
-            helpText("默认关闭。开启需要\(method.permissionTitle)权限。")
-            if pendingAuthorization.contains(method) {
-                HStack {
-                    helpText("等待授权，授权后返回此处将自动开启。")
-                    Button("取消开启") { pendingAuthorization.remove(method) }
-                }
-            }
-            if isCaptureEnabled(method) || pendingAuthorization.contains(method) {
-                permissionRow(method.permissionTitle, allowed: permissionAllowed(method), screenRecording: method.usesScreenPermission) {
-                    authorizePermission(screenRecording: method.usesScreenPermission)
-                }
-            }
-            if isCaptureEnabled(method) {
-                Divider()
-                if method == .selection {
-                    shortcutRow("取词快捷键", name: .selectedTextLookup)
-                        .accessibilityLabel("选中取词快捷键")
-                } else if method == .screenshot {
-                    shortcutRow("取词快捷键", name: .screenshotLookup)
-                        .accessibilityLabel("截图取词快捷键")
-                    helpText("按快捷键框选文字，图片仅在本机识别。")
-                } else {
-                    HStack {
-                        Text("触发方式")
-                        Spacer()
-                        Picker("触发方式", selection: $hoverTrigger) {
-                            ForEach(HoverTrigger.allCases) { trigger in Text(trigger.title).tag(trigger.rawValue) }
-                        }.labelsHidden().pickerStyle(.menu).frame(width: 200)
-                    }
-                    shortcutRow("开启 / 关闭悬停取词", name: .toggleHoverLookup)
-                    Divider()
-                    permissionRow("屏幕录制（可选）", allowed: screenAllowed, screenRecording: true) {
-                        authorizePermission(screenRecording: true)
-                    }
-                    helpText("直接读取不到文字时，授权屏幕录制可截取鼠标附近区域，在本机识别。")
-                }
-            }
-            Divider()
+        VStack(alignment: .leading, spacing: 18) {
             CaptureMethodGuide(method: method, instruction: captureInstruction(method))
+
+            settingsGroup {
+                HStack {
+                    Text("启用\(method.title)").font(AppTypography.section)
+                    Spacer()
+                    Toggle("启用\(method.title)", isOn: captureEnabledBinding(method))
+                        .labelsHidden().toggleStyle(.switch)
+                }
+                helpText("默认关闭。开启需要\(method.permissionTitle)权限。")
+                if pendingAuthorization.contains(method) {
+                    HStack {
+                        helpText("等待授权，授权后返回此处将自动开启。")
+                        Button("取消开启") { pendingAuthorization.remove(method) }
+                    }
+                }
+                if isCaptureEnabled(method) || pendingAuthorization.contains(method) {
+                    permissionRow(method.permissionTitle, allowed: permissionAllowed(method), screenRecording: method.usesScreenPermission) {
+                        authorizePermission(screenRecording: method.usesScreenPermission)
+                    }
+                }
+                if isCaptureEnabled(method) {
+                    Divider()
+                    if method == .selection {
+                        shortcutRow("取词快捷键", name: .selectedTextLookup)
+                            .accessibilityLabel("选中取词快捷键")
+                    } else if method == .screenshot {
+                        shortcutRow("取词快捷键", name: .screenshotLookup)
+                            .accessibilityLabel("截图取词快捷键")
+                        helpText("按快捷键框选文字，图片仅在本机识别。")
+                    } else {
+                        HStack {
+                            Text("触发方式")
+                            Spacer()
+                            Picker("触发方式", selection: $hoverTrigger) {
+                                ForEach(HoverTrigger.allCases) { trigger in Text(trigger.title).tag(trigger.rawValue) }
+                            }.labelsHidden().pickerStyle(.menu).frame(width: 200)
+                        }
+                        shortcutRow("开启 / 关闭悬停取词", name: .toggleHoverLookup)
+                        Divider()
+                        permissionRow("屏幕录制（可选）", allowed: screenAllowed, screenRecording: true) {
+                            authorizePermission(screenRecording: true)
+                        }
+                        helpText("直接读取不到文字时，授权屏幕录制可截取鼠标附近区域，在本机识别。")
+                    }
+                }
+            }
         }
     }
 
