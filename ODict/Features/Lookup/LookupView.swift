@@ -15,6 +15,7 @@ enum LookupPresentationMode {
 @MainActor
 final class LookupPresentation: ObservableObject {
     @Published var mode: LookupPresentationMode = .manual
+    @Published var isPinned = false
 }
 
 struct LookupView: View {
@@ -27,6 +28,7 @@ struct LookupView: View {
     let openAISettings: () -> Void
     @ObservedObject var presentation: LookupPresentation
     let dragWindow: (NSEvent) -> Void
+    var togglePin: () -> Void = {}
 
     var body: some View {
         Group {
@@ -38,12 +40,13 @@ struct LookupView: View {
             case .capture:
                 CaptureLookupView(model: model, openSettings: openSettings, close: close,
                     captureSelection: captureSelection, captureScreenshot: captureScreenshot,
-                    openAISettings: openAISettings, dragWindow: dragWindow)
+                    openAISettings: openAISettings, dragWindow: dragWindow,
+                    presentation: presentation, togglePin: togglePin)
             }
         }
         .font(AppTypography.body)
         .frame(minWidth: LookupWindowLayout.minimumSize.width, maxWidth: .infinity,
                minHeight: LookupWindowLayout.minimumSize.height, maxHeight: .infinity)
-        .onExitCommand(perform: close)
+        .onExitCommand { if presentation.mode == .manual { close() } }
     }
 }

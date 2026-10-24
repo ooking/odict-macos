@@ -24,6 +24,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     private static let sizeKey = "lookup.windowSize.v1"
     private var userPositioned = false
     private var anchor: CGRect?
+    private var pinnedCaptureOrigin: CGPoint?
 
     init(model: LookupModel, status: MenuBarController, actions: LookupWindowActions, preferences: UserDefaults = .standard) {
         self.model = model
@@ -69,7 +70,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             close: { [weak self] in self?.hide() },
             captureSelection: actions.captureSelection, captureScreenshot: actions.captureScreenshot,
             editQuery: actions.editQuery, openAISettings: actions.openAISettings, presentation: presentation,
-            dragWindow: { [weak self] event in self?.dragWindow(event) }))
+            dragWindow: { [weak self] event in self?.dragWindow(event) },
+            togglePin: { [weak self] in self?.togglePin() }))
         hostingView.autoresizingMask = [.width, .height]
         if #available(macOS 13.0, *) { hostingView.sizingOptions = [] }
         if #available(macOS 26.0, *) {
@@ -134,14 +136,29 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
         model.resume()
         LifecycleDiagnostics.record("lookup.show.begin", panel: panel)
-        self.anchor = anchor
+        self.anchor = mode == .capture
+            ? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 1))
+            : anchor
         isHover = hover && !panel.isKeyWindow
         panel.acceptsKeyboard = !isHover
         let acceptsSearchFocus = mode == .manual
         if model.acceptsSearchFocus != acceptsSearchFocus { model.acceptsSearchFocus = acceptsSearchFocus }
-        // A subsequent hover replaces the current card's result in place.
-        // Keep its location, including a location chosen by dragging the card.
-        if !updatingHover && !userPositioned { position() }
+        if mode == .capture {
+            if presentation.isPinned, let origin = pinnedCaptureOrigin {
+                panel.setFrameOrigin(origin)
+                if let screen = NSScreen.screens.first(where: { $0.frame.contains(origin) }) {
+                    fitToScreen(screen)
+                }
+                constrainToScreen()
+                pinnedCaptureOrigin = panel.frame.origin
+            } else {
+                // Dragging alone does not pin: every new capture follows the pointer.
+                userPositioned = false
+                position()
+            }
+        } else if !userPositioned {
+            position()
+        }
         if hover {
             if isHover { panel.makeFirstResponder(nil) }
             panel.orderFrontRegardless()
@@ -174,10 +191,16 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         actions.dismissed()
     }
 
+    private func togglePin() {
+        presentation.isPinned.toggle()
+        pinnedCaptureOrigin = presentation.isPinned ? panel.frame.origin : nil
+    }
+
     private func dragWindow(_ event: NSEvent) {
         promote()
         userPositioned = true
         panel.performDrag(with: event)
+        if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
     }
 
     private func constrainToScreen() {
@@ -192,7 +215,10 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     func screenChanged() {
         guard panel.isVisible else { return }
         if let screen = panel.screen { fitToScreen(screen) }
-        if userPositioned { constrainToScreen() } else { position() }
+        if userPositioned || (isCapture && presentation.isPinned) {
+            constrainToScreen()
+            if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
+        } else { position() }
     }
     // Native live resizing drives the flexible hosting view directly; no per-frame published state.
     func windowWillStartLiveResize(_ notification: Notification) {
@@ -202,6 +228,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
 
     func windowDidEndLiveResize(_ notification: Notification) {
         constrainToScreen()
+        if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
         preferences.set([panel.frame.width, panel.frame.height], forKey: Self.sizeKey)
     }
 

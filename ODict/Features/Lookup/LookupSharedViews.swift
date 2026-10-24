@@ -8,6 +8,7 @@ struct LookupFooter<Trailing: View>: View {
     let captureSelection: () -> Void
     let captureScreenshot: () -> Void
     let dragWindow: (NSEvent) -> Void
+    var showsCaptureTools = true
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
@@ -16,14 +17,16 @@ struct LookupFooter<Trailing: View>: View {
                 .allowsHitTesting(false)
             Text("ODict").font(.system(size: 12, weight: .semibold)).allowsHitTesting(false)
             Spacer().allowsHitTesting(false)
-            LookupIconButton("选中取词", icon: "text.cursor", action: captureSelection)
-            LookupIconButton("截图取词", icon: "viewfinder", action: captureScreenshot)
-            Button(action: model.mode == .ai ? openAISettings : openSettings) {
-                Image(systemName: "gearshape").font(.system(size: 14))
-                    .frame(width: 28, height: 28).contentShape(Rectangle())
+            if showsCaptureTools {
+                LookupIconButton("选中取词", icon: "text.cursor", action: captureSelection)
+                LookupIconButton("截图取词", icon: "viewfinder", action: captureScreenshot)
+                Button(action: model.mode == .ai ? openAISettings : openSettings) {
+                    Image(systemName: "gearshape").font(.system(size: 14))
+                        .frame(width: 28, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).foregroundColor(lookupSecondaryInk)
+                .help("设置（⌘,）").accessibilityLabel("设置").keyboardShortcut(",", modifiers: .command)
             }
-            .buttonStyle(.plain).foregroundColor(lookupSecondaryInk)
-            .help("设置（⌘,）").accessibilityLabel("设置").keyboardShortcut(",", modifiers: .command)
             trailing()
         }
         .padding(.horizontal, 18).padding(.vertical, 5)
