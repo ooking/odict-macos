@@ -3,6 +3,15 @@ import SwiftUI
 import WebKit
 import os
 
+#if DEBUG
+/// Logs actual object destruction without keeping a global registry or owning
+/// the view from a diagnostic task. The production renderer stays WKWebView.
+private final class ProfiledArticleWebView: WKWebView {
+    private let memory = MemoryPhaseDiagnostics.Span("webview.lifetime")
+    deinit { memory.mark("deinit") }
+}
+#endif
+
 #if ODICT_CHECKS
 /// Weak probes are compiled only into the isolated validation app, never Release.
 enum LocalRendererDiagnostics {
@@ -41,11 +50,20 @@ final class LocalArticleRenderer: ObservableObject {
             coordinator.update(view, article: article, lookup: lookup)
             return view
         }
+        #if DEBUG
+        let memory = MemoryPhaseDiagnostics.Span("webview.create")
+        defer { memory.mark("finished") }
+        #endif
         let coordinator = LocalWebCoordinator()
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(coordinator, forURLScheme: LocalWebCoordinator.scheme)
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let view: WKWebView
+        #if DEBUG
+        view = ProfiledArticleWebView(frame: .zero, configuration: configuration)
+        #else
+        view = WKWebView(frame: .zero, configuration: configuration)
+        #endif
         #if DEBUG
         LocalDictionaryDebug.trace("renderer.created", articleID: article.id)
         #endif
@@ -63,6 +81,8 @@ final class LocalArticleRenderer: ObservableObject {
     func release() {
         guard let view else { return }
         #if DEBUG
+        let memory = MemoryPhaseDiagnostics.Span("webview.release")
+        defer { memory.mark("finished") }
         LocalDictionaryDebug.trace("renderer.release")
         #endif
         coordinator?.clear(view, unloadDocument: false)
@@ -101,10 +121,17 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     private var requests: [ObjectIdentifier: Task<Void, Never>] = [:]
     private var audio: NSSound?
     private var audioTask: Task<Void, Never>?
+    #if DEBUG
+    private var renderingMemory: MemoryPhaseDiagnostics.Span?
+    #endif
 
     func update(_ view: WKWebView, article: LocalArticle, lookup: @escaping (String) -> Void) {
         self.lookup = lookup
         guard self.article?.id != article.id else { return }
+        #if DEBUG
+        renderingMemory?.mark("superseded")
+        renderingMemory = MemoryPhaseDiagnostics.Span("article.render")
+        #endif
         // Hide the previous surface synchronously before starting another navigation.
         view.isHidden = true
         #if DEBUG
@@ -127,6 +154,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
 
     func clear(_ view: WKWebView, unloadDocument: Bool = true) {
         #if DEBUG
+        renderingMemory?.mark("cleared")
+        renderingMemory = nil
         LocalDictionaryDebug.trace("page.hidden.clear", articleID: article?.id, "unloadDocument=\(unloadDocument)")
         #endif
         // Hide the previous surface synchronously before starting another navigation.
@@ -153,7 +182,12 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         #endif
         requests[id] = Task { @MainActor [weak self] in
             guard let self else { return }
-            defer { self.requests[id] = nil }
+            defer {
+                self.requests[id] = nil
+                #if DEBUG
+                MemoryPhaseDiagnostics.snapshot("webview.resource.finished", pendingRequests: self.requests.count)
+                #endif
+            }
             do {
                 let data: Data, mime: String
                 if url.path == pageURL.path {
@@ -164,6 +198,10 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
                     mime = Self.mime(url.pathExtension)
                 }
                 try Task.checkCancellation()
+                #if DEBUG
+                MemoryPhaseDiagnostics.snapshot("webview.resource.delivering", pendingRequests: self.requests.count,
+                                                payloadBytes: data.count)
+                #endif
                 urlSchemeTask.didReceive(URLResponse(url: url, mimeType: mime, expectedContentLength: data.count,
                     textEncodingName: mime.hasPrefix("text/") || mime == "application/javascript" ? "utf-8" : nil))
                 urlSchemeTask.didReceive(data)
@@ -185,6 +223,9 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
                 }
             }
         }
+        #if DEBUG
+        MemoryPhaseDiagnostics.snapshot("webview.resource.started", pendingRequests: requests.count)
+        #endif
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // about:blank and superseded documents must never reveal an old surface.
@@ -227,6 +268,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             self.activeNavigation = nil
             webView.isHidden = false
             #if DEBUG
+            self.renderingMemory?.mark("visible")
+            self.renderingMemory = nil
             LocalDictionaryDebug.trace("page.visible", articleID: self.article?.id, "finalStylesReady=true")
             #endif
         }

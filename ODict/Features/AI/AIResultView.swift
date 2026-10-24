@@ -6,6 +6,7 @@ struct AIResultView: View {
     let query: String
     let openSettings: () -> Void
     var isPresentation = false
+    var captureScreenshot: (() -> Void)? = nil
     @State private var copied = false
     var body: some View {
         ScrollView {
@@ -71,6 +72,7 @@ struct AIResultView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     HStack {
                         if model.isConfigured { Button("重试") { model.submit(model.hasSubmitted ? model.submittedText : query) } }
+                        if let captureScreenshot { Button("截图取词", action: captureScreenshot) }
                         Button("AI 设置", action: openSettings)
                     }.controlSize(.small)
                 }

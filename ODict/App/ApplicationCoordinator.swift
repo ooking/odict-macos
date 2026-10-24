@@ -210,7 +210,10 @@ final class ApplicationCoordinator: NSObject {
 
     private func startScreenshot() {
         guard CaptureMethod.screenshot.isEnabled else { showSettings(); return }
-        capture.takeScreenshot(anchor: prepareCapture())
+        let anchor = prepareCapture()
+        // Dismiss before starting capture: dismissal also cancels active capture work.
+        if lookup.isVisible { lookup.hide() }
+        capture.takeScreenshot(anchor: anchor)
     }
 
     func becameActive() { hover.updateEnabled() }

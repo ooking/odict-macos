@@ -37,19 +37,49 @@ final class HoverLookupController {
         monitor.onFailure = { [weak self] error, anchor in
             let message: String
             switch error {
+            case .accessibilityPermission:
+                message = "悬停取词需要辅助功能权限。请在设置中授权，或使用截图取词。"
             case .screenPermission:
-                message = "此处无法直接读取文字，需要屏幕录制权限进行识别。请在设置中授权，或尝试选中取词。"
+                message = "自动识别需要屏幕录制权限。请先在设置中授权，再使用截图取词。"
             case .timedOut:
-                message = "取词超时，请移动鼠标后重试。"
+                message = "悬停取词超时，请重试，或使用截图取词框选文字。"
             case .captureFailed:
-                message = "无法截取鼠标附近的文字，请检查屏幕录制权限，或尝试选中取词。"
-            default:
-                message = CaptureError.recognitionFailed.localizedDescription
+                message = "无法自动截取鼠标附近的文字，请使用截图取词框选需要查询的内容。"
+            case .noText:
+                message = "未识别到鼠标位置的文字，请使用截图取词框选需要查询的内容。"
+            case .secureInput:
+                message = "当前处于安全输入状态，已暂停自动取词。退出安全输入后，可使用截图取词。"
+            case .requestBusy:
+                message = "上一次取词仍在结束中，请稍后重试，或使用截图取词。"
+            case .excludedTarget:
+                message = "无法在当前窗口自动取词，请使用截图取词框选文字。"
+            case .fallbackTargetUnavailable:
+                message = "鼠标下的窗口已变化或被遮挡，请重试，或使用截图取词。"
+            case .accessibilityUnavailable, .accessibilityHitTestFailed, .accessibilityCallFailed,
+                 .securityInspectionFailed, .securityDepthExceeded:
+                message = "无法直接读取此处文字，请使用截图取词框选需要查询的内容。"
+            case .tooLong:
+                message = "取词内容过长，请使用截图取词框选较小的文字区域。"
+            case .recognitionFailed:
+                message = "自动文字识别失败，请使用截图取词框选需要查询的内容。"
             }
             self?.onFailure?(message, anchor)
         }
         monitor.onDiagnostic = { event in
-            Self.log.debug("stage=\(event.stage.rawValue, privacy: .public) outcome=\(event.outcome.rawValue, privacy: .public) reason=\(event.reason?.rawValue ?? "none", privacy: .public) elapsedMs=\(event.milliseconds)")
+            let operation = event.accessibilityOperation?.rawValue ?? "none"
+            let code = event.systemCode.map { String($0) } ?? "none"
+            let targetCheck = event.targetRejection?.rawValue ?? "none"
+            let foregroundPID = event.foregroundPID.map { String($0) } ?? "none"
+            let windowPID = event.windowPID.map { String($0) } ?? "none"
+            let windowLayer = event.windowLayer.map { String($0) } ?? "none"
+            #if DEBUG
+            let level: OSLogType = .default
+            MemoryPhaseDiagnostics.snapshot("hover.\(event.stage.rawValue).\(event.outcome.rawValue)",
+                width: event.imageWidth, height: event.imageHeight, bytesPerRow: event.imageBytesPerRow)
+            #else
+            let level: OSLogType = .debug
+            #endif
+            Self.log.log(level: level, "stage=\(event.stage.rawValue, privacy: .public) outcome=\(event.outcome.rawValue, privacy: .public) reason=\(event.reason?.rawValue ?? "none", privacy: .public) elapsedMs=\(event.milliseconds) axOperation=\(operation, privacy: .public) axCode=\(code, privacy: .public) targetCheck=\(targetCheck, privacy: .public) foregroundPID=\(foregroundPID, privacy: .public) windowPID=\(windowPID, privacy: .public) windowLayer=\(windowLayer, privacy: .public) imageWidth=\(event.imageWidth) imageHeight=\(event.imageHeight) imageBytesPerRow=\(event.imageBytesPerRow)")
         }
     }
 

@@ -51,6 +51,10 @@ actor LocalDictionaryLibrary {
     }
     /// Build on this serial background owner, never scan large HTML on the UI actor.
     func document(_ article: LocalArticle) throws -> Data {
+        #if DEBUG
+        let memory = MemoryPhaseDiagnostics.Span("article.document")
+        defer { memory.mark("finished") }
+        #endif
         try Task.checkCancellation()
         let css = try resource("/odict-overrides.css", in: article.dictionary)
         try Task.checkCancellation()

@@ -15,7 +15,7 @@ struct LookupResultView: View {
     var body: some View {
         Group {
             if model.mode == .ai && model.captureStatus == nil {
-                AIResultView(model: model.ai, query: model.query, openSettings: openAISettings, isPresentation: isCapture)
+                AIResultView(model: model.ai, query: model.query, openSettings: openAISettings, isPresentation: isCapture, captureScreenshot: isCapture ? captureScreenshot : nil)
             } else if let article = model.localArticle, model.contentVisible {
                 VStack(alignment: .leading, spacing: 0) {
                     LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
@@ -70,6 +70,7 @@ struct LookupResultView: View {
                     .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
                     HStack(spacing: 12) {
                         Button("重试") { model.submit() }
+                        if isCapture { Button("截图取词", action: captureScreenshot) }
                         if !isCapture, model.mode == .dictionary, model.query.count > 255 {
                             Button("用 AI 翻译") { model.useAIForCurrentQuery() }
                         }

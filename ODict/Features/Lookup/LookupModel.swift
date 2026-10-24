@@ -85,8 +85,14 @@ final class LookupModel: ObservableObject {
         if captureContext, mode == .dictionary, captureMode == .dictionary,
            contentVisible, captureStatus == nil, query == word,
            (result != nil && message == result?.notice) || (isLoading && message == nil) {
+            #if DEBUG
+            MemoryPhaseDiagnostics.snapshot("hover.lookup.reused")
+            #endif
             return
         }
+        #if DEBUG
+        MemoryPhaseDiagnostics.snapshot("hover.lookup.dispatched")
+        #endif
         lookupCaptured(word)
     }
 
@@ -340,8 +346,17 @@ final class LookupModel: ObservableObject {
     }
 
     private func cachedEntry(_ word: String) async throws -> LookupResult {
+        #if DEBUG
+        let memory = MemoryPhaseDiagnostics.Span("dictionary.entry")
+        defer { memory.mark("finished") }
+        #endif
         try Task.checkCancellation()
-        if let cached = resultCache.value(for: word) { return cached }
+        if let cached = resultCache.value(for: word) {
+            #if DEBUG
+            memory.mark("cache.hit")
+            #endif
+            return cached
+        }
         let result = try await dictionary.entry(word)
         try Task.checkCancellation()
         resultCache.insert(result, for: word)
@@ -398,6 +413,9 @@ final class LookupModel: ObservableObject {
     }
 
     func suspend() {
+        #if DEBUG
+        MemoryPhaseDiagnostics.snapshot("lookup.suspend.begin")
+        #endif
         // Release active work when hidden, while keeping one bounded answer and its source.
         // Draft editing and focus transitions must not erase the last successful query.
         ai.cancel()
@@ -406,7 +424,12 @@ final class LookupModel: ObservableObject {
         // Dropping HTML and its WebView releases the renderer and resource tasks.
         if result?.local != nil { result = nil }
         let router = dictionary
-        Task { await router.releaseLocalResources() }
+        Task {
+            await router.releaseLocalResources()
+            #if DEBUG
+            MemoryPhaseDiagnostics.snapshot("lookup.localResources.released")
+            #endif
+        }
         pronunciation.stop()
     }
 }

@@ -9,6 +9,15 @@ public final class AccessibilityWordReader: HoverTextReading {
 
     public func word(at point: CGPoint, primaryTop: CGFloat) async throws -> HoverWordHit? {
         let cancellation = CaptureCancellation()
+        let target = await MainActor.run {
+            (pid: NSWorkspace.shared.frontmostApplication?.processIdentifier,
+             dockPID: NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first(where: {
+                 $0.bundleURL?.path == "/System/Library/CoreServices/Dock.app"
+             })?.processIdentifier,
+             screen: NSScreen.screens.first(where: { $0.frame.contains(point) }).map {
+                 quartzRect($0.frame, primaryTop: primaryTop)
+             })
+        }
         return try await withTaskCancellationHandler(operation: {
             try await worker.perform {
                 let root = AXUIElementCreateSystemWide()
@@ -16,10 +25,32 @@ public final class AccessibilityWordReader: HoverTextReading {
                 let position = CGPoint(x: point.x, y: primaryTop - point.y)
                 try cancellation.check()
                 var hit: AXUIElement?
-                guard AXUIElementCopyElementAtPosition(root, Float(position.x), Float(position.y), &hit) == .success,
-                      let hit else { throw HoverLookupError.accessibilityHitTestFailed }
+                let hitError = AXUIElementCopyElementAtPosition(root, Float(position.x), Float(position.y), &hit)
+                try cancellation.check()
+                if hitError == .notImplemented {
+                    let security = AXReadContext(cancellation: cancellation, milliseconds: 140,
+                                                 failure: .securityInspectionFailed)
+                    let targetPID = try UnsupportedAccessibilityTarget.validate(at: position, frontmostPID: target.pid,
+                        context: security, dockPID: target.dockPID, screenBounds: target.screen)
+                    try cancellation.check()
+                    throw AccessibilityOCRFallback(operation: .elementAtPosition, code: hitError.rawValue,
+                        targetPID: targetPID, point: position, dockPID: target.dockPID, screenBounds: target.screen)
+                }
+                guard hitError == .success else {
+                    throw HoverLookupError.accessibilityCallFailed(operation: .elementAtPosition, code: hitError.rawValue)
+                }
+                guard let hit else {
+                    throw HoverLookupError.accessibilityCallFailed(operation: .missingElement, code: hitError.rawValue)
+                }
                 var pid: pid_t = 0
-                guard AXUIElementGetPid(hit, &pid) == .success else { throw HoverLookupError.accessibilityHitTestFailed }
+                let pidError = AXUIElementGetPid(hit, &pid)
+                try cancellation.check()
+                guard pidError == .success else {
+                    throw HoverLookupError.accessibilityCallFailed(operation: .elementProcessID, code: pidError.rawValue)
+                }
+                guard pid > 0 else {
+                    throw HoverLookupError.accessibilityCallFailed(operation: .invalidProcessID, code: pidError.rawValue)
+                }
                 guard pid != ProcessInfo.processInfo.processIdentifier else { throw HoverLookupError.excludedTarget }
 
                 // Security inspection has its own budget. A slow parent cannot
@@ -73,7 +104,7 @@ public final class AccessibilityWordReader: HoverTextReading {
     }
 }
 
-private struct AXReadContext {
+struct AXReadContext {
     let cancellation: CaptureCancellation
     let deadline: UInt64
     let failure: HoverLookupError

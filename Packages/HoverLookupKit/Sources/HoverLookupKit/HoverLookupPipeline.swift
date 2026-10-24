@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 /// Extracts one word; presentation, shortcuts, preferences and translation belong
 /// to the host. Providers can be replaced without global event monitoring.
@@ -27,28 +28,51 @@ public final class HoverLookupPipeline {
         do {
             try Task.checkCancellation()
             onDiagnostic?(HoverDiagnostic(stage, .started, since: started))
-            let hit = try await textGate.run(timeout: 800_000_000) { [text] in
-                try await text.word(at: point, primaryTop: region.primaryTop)
+            let hit: HoverWordHit?
+            var fallback: AccessibilityOCRFallback?
+            do {
+                hit = try await textGate.run(timeout: 800_000_000) { [text] in
+                    try await text.word(at: point, primaryTop: region.primaryTop)
+                }
+            } catch let approval as AccessibilityOCRFallback {
+                fallback = approval
+                hit = nil
             }
             try Task.checkCancellation()
-            onDiagnostic?(HoverDiagnostic(stage, hit == nil ? .miss : .hit, since: started))
+            if let fallback {
+                onDiagnostic?(HoverDiagnostic(stage, .fallback, since: started, reason: .unsupportedInterface,
+                    accessibilityOperation: fallback.operation, systemCode: fallback.code, windowPID: fallback.targetPID))
+            } else {
+                onDiagnostic?(HoverDiagnostic(stage, hit == nil ? .miss : .hit, since: started))
+            }
             if let hit { return hit }
             guard allowsOCR else { throw HoverLookupError.screenPermission }
             stage = .capture
             started = ProcessInfo.processInfo.systemUptime
             onDiagnostic?(HoverDiagnostic(stage, .started, since: started))
             let screenshot: CGImage
+            let fallbackTarget = fallback
             do {
                 screenshot = try await imageGate.run(timeout: 2_000_000_000) { [image] in
-                    try await image.capture(region)
+                    guard !IsSecureEventInputEnabled() else { throw HoverLookupError.secureInput }
+                    if let fallbackTarget {
+                        try await UnsupportedAccessibilityTarget.revalidate(fallbackTarget)
+                    }
+                    try Task.checkCancellation()
+                    guard !IsSecureEventInputEnabled() else { throw HoverLookupError.secureInput }
+                    return try await image.capture(region)
                 }
             }
             catch is CancellationError { throw CancellationError() }
+            catch HoverLookupError.secureInput { throw HoverLookupError.secureInput }
+            catch let rejection as FallbackTargetRejection { throw rejection }
+            catch HoverLookupError.fallbackTargetUnavailable { throw HoverLookupError.fallbackTargetUnavailable }
             catch HoverLookupError.timedOut { throw HoverLookupError.timedOut }
             catch HoverLookupError.requestBusy { throw HoverLookupError.requestBusy }
             catch { throw HoverLookupError.captureFailed }
             try Task.checkCancellation()
-            onDiagnostic?(HoverDiagnostic(stage, .hit, since: started))
+            onDiagnostic?(HoverDiagnostic(stage, .hit, since: started,
+                imageWidth: screenshot.width, imageHeight: screenshot.height, imageBytesPerRow: screenshot.bytesPerRow))
             stage = .recognition
             started = ProcessInfo.processInfo.systemUptime
             onDiagnostic?(HoverDiagnostic(stage, .started, since: started))
@@ -63,8 +87,10 @@ public final class HoverLookupPipeline {
         } catch {
             let blocked: Bool
             switch error {
+            case is FallbackTargetRejection: blocked = true
             case HoverLookupError.secureInput, HoverLookupError.excludedTarget, HoverLookupError.accessibilityUnavailable, HoverLookupError.accessibilityHitTestFailed,
-                 HoverLookupError.securityInspectionFailed, HoverLookupError.securityDepthExceeded, HoverLookupError.requestBusy: blocked = true
+                 HoverLookupError.securityInspectionFailed, HoverLookupError.securityDepthExceeded,
+                 HoverLookupError.accessibilityCallFailed, HoverLookupError.fallbackTargetUnavailable, HoverLookupError.requestBusy: blocked = true
             default: blocked = false
             }
             let outcome: HoverDiagnostic.Outcome
@@ -74,16 +100,30 @@ public final class HoverLookupPipeline {
             let reason: HoverDiagnostic.Reason?
             switch error {
             case HoverLookupError.requestBusy: reason = .providerBusy
+            case HoverLookupError.fallbackTargetUnavailable, is FallbackTargetRejection: reason = .fallbackTarget
             case HoverLookupError.secureInput: reason = .secureInput
             case HoverLookupError.excludedTarget: reason = .ownWindow
             case HoverLookupError.accessibilityUnavailable: reason = .safetyCheck
-            case HoverLookupError.accessibilityHitTestFailed: reason = .hitTestFailed
+            case HoverLookupError.accessibilityHitTestFailed, HoverLookupError.accessibilityCallFailed: reason = .hitTestFailed
             case HoverLookupError.securityInspectionFailed: reason = .securityInspection
             case HoverLookupError.securityDepthExceeded: reason = .securityDepth
             case HoverLookupError.screenPermission: reason = .permission
             default: reason = nil
             }
-            onDiagnostic?(HoverDiagnostic(stage, outcome, since: started, reason: reason))
+            let operation: HoverDiagnostic.AccessibilityOperation?
+            let systemCode: Int32?
+            if case let HoverLookupError.accessibilityCallFailed(call, code) = error {
+                operation = call
+                systemCode = code
+            } else {
+                operation = nil
+                systemCode = nil
+            }
+            let rejection = error as? FallbackTargetRejection
+            onDiagnostic?(HoverDiagnostic(stage, outcome, since: started, reason: reason,
+                accessibilityOperation: operation, systemCode: systemCode,
+                targetRejection: rejection?.reason, foregroundPID: rejection?.foregroundPID,
+                windowPID: rejection?.windowPID, windowLayer: rejection?.windowLayer))
             throw error
         }
     }

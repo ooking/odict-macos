@@ -176,8 +176,6 @@ public final class HoverLookupMonitor {
         if !trigger.matches(modifiers) { reason = .modifier }
         else if blockedGesture || !pressedKeys.isEmpty || NSEvent.pressedMouseButtons != 0 { reason = .interaction }
         else if !canBegin() { reason = .hostBusy }
-        else if !AXIsProcessTrusted() { reason = .permission }
-        else if IsSecureEventInputEnabled() { reason = .secureInput }
         else { reason = nil }
         if let reason {
             reportBlock(reason)
@@ -192,46 +190,60 @@ public final class HoverLookupMonitor {
         dismissSoon()
         pendingPoint = point
         let token = revision
+        let started = ProcessInfo.processInfo.systemUptime
         task = Task { [weak self] in
+            defer {
+                if let self, self.revision == token {
+                    self.task = nil; self.pendingPoint = nil; self.extracting = false
+                }
+            }
             do {
                 try await Task.sleep(nanoseconds: 300_000_000)
                 guard let self else { return }
-                defer {
-                    if self.revision == token { self.task = nil; self.pendingPoint = nil; self.extracting = false }
-                }
-                guard self.isCurrent(token, point: point),
-                      let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }),
-                      let display = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return }
+                guard self.isCurrent(token, point: point, allowsSecureFailure: true) else { return }
+                guard AXIsProcessTrusted() else { throw HoverLookupError.accessibilityPermission }
+                guard !IsSecureEventInputEnabled() else { throw HoverLookupError.secureInput }
+                guard let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }),
+                      let display = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { throw HoverLookupError.captureFailed }
                 self.extracting = true
                 let top = NSScreen.screens.first?.frame.maxY ?? 0
                 let rect = HoverWords.region(around: point, screen: screen.frame)
-                guard HoverWords.valid(rect) else { return }
+                guard HoverWords.valid(rect) else { throw HoverLookupError.captureFailed }
                 let region = ScreenRegion(rect: rect, displayID: display.uint32Value,
                     screenFrame: screen.frame, scale: screen.backingScaleFactor, primaryTop: top)
                 let result = try await self.pipeline.word(in: region, at: point, allowsOCR: CGPreflightScreenCaptureAccess())
-                guard self.isCurrent(token, point: point), let result else { return }
+                guard self.isCurrent(token, point: point) else { return }
+                guard let result else { throw HoverLookupError.noText }
                 guard self.stability.accepts(result, at: NSEvent.mouseLocation) else {
                     self.onDiagnostic?(HoverDiagnostic(.request, .miss, since: ProcessInfo.processInfo.systemUptime))
-                    return
+                    throw HoverLookupError.noText
                 }
                 self.dismissal?.cancel()
                 self.dismissal = nil
                 self.currentAnchor = result.anchor
                 self.onResult?(result)
+                self.onDiagnostic?(HoverDiagnostic(.request, .hit, since: started))
             } catch {
-                guard let self, self.isCurrent(token, point: point) else { return }
-                // Cancellation, own windows, secure/unknown targets and whitespace
-                // stay quiet. Real capture/recognition/permission failures are actionable.
-                guard let failure = error as? HoverLookupError else { return }
+                guard !(error is CancellationError), let self,
+                      self.isCurrent(token, point: point, allowsSecureFailure: true) else { return }
+                let failure: HoverLookupError
+                if error is FallbackTargetRejection { failure = .fallbackTargetUnavailable }
+                else { failure = (error as? HoverLookupError) ?? .recognitionFailed }
+                self.dismissal?.cancel()
+                self.dismissal = nil
+                let anchor = CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)
+                self.currentAnchor = anchor
+                let reason: HoverDiagnostic.Reason?
                 switch failure {
-                case .captureFailed, .recognitionFailed, .screenPermission, .timedOut:
-                    self.dismissal?.cancel()
-                    self.dismissal = nil
-                    let anchor = CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)
-                    self.currentAnchor = anchor
-                    self.onFailure?(failure, anchor)
-                default: break
+                case .secureInput: reason = .secureInput
+                case .accessibilityPermission, .screenPermission: reason = .permission
+                case .fallbackTargetUnavailable: reason = .fallbackTarget
+                case .requestBusy: reason = .providerBusy
+                case .securityInspectionFailed, .securityDepthExceeded: reason = .safetyCheck
+                default: reason = nil
                 }
+                self.onDiagnostic?(HoverDiagnostic(.request, .failed, since: started, reason: reason))
+                self.onFailure?(failure, anchor)
             }
         }
     }
@@ -243,10 +255,11 @@ public final class HoverLookupMonitor {
             since: ProcessInfo.processInfo.systemUptime, reason: reason))
     }
 
-    private func isCurrent(_ token: UUID, point: CGPoint) -> Bool {
+    private func isCurrent(_ token: UUID, point: CGPoint, allowsSecureFailure: Bool = false) -> Bool {
         let flags = NSEvent.modifierFlags.intersection([.control, .option, .command, .shift])
         return !Task.isCancelled && token == revision && trigger.matches(flags) && !blockedGesture
-            && pressedKeys.isEmpty && canBegin() && !containsPanel(NSEvent.mouseLocation) && !IsSecureEventInputEnabled()
+            && pressedKeys.isEmpty && canBegin() && !containsPanel(NSEvent.mouseLocation)
+            && (allowsSecureFailure || !IsSecureEventInputEnabled())
             && NSEvent.pressedMouseButtons == 0
             && stability.accepts(origin: point, current: NSEvent.mouseLocation, extracting: extracting)
     }

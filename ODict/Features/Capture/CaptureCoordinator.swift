@@ -94,6 +94,10 @@ final class CaptureCoordinator {
             return nil
         }
         task = Task { [weak self, selection, screenText, screenImage] in
+            #if DEBUG
+            let memory = MemoryPhaseDiagnostics.Span("screenshot")
+            defer { memory.mark("finished") }
+            #endif
             defer {
                 if self?.revision == token {
                     self?.task = nil
@@ -111,17 +115,35 @@ final class CaptureCoordinator {
                 }
                 try Task.checkCancellation()
                 resultAnchor = region.rect
+                #if DEBUG
+                memory.mark("selection.closed")
+                #endif
                 self?.phase = .capturingImage
                 let text: String
                 do {
                     // Limit image lifetime to recognition; only text survives into lookup.
+                    #if DEBUG
+                    memory.mark("capture.begin")
+                    #endif
                     let image = try await screenImage.capture(region)
+                    #if DEBUG
+                    memory.mark("capture.end", width: image.width, height: image.height, bytesPerRow: image.bytesPerRow)
+                    #endif
                     guard !Task.isCancelled, self?.revision == token else { return }
                     self?.phase = .recognizingText
                     self?.onRecognizing?(region.rect)
+                    #if DEBUG
+                    memory.mark("ocr.begin")
+                    #endif
                     text = try await screenText.recognize(image)
+                    #if DEBUG
+                    memory.mark("ocr.end")
+                    #endif
                 }
                 guard !Task.isCancelled, self?.revision == token else { return }
+                #if DEBUG
+                memory.mark("lookup.dispatch")
+                #endif
                 self?.onResult?(CapturedText(text: text, source: .screenshot, anchor: region.rect))
             } catch {
                 guard !Task.isCancelled, self?.revision == token else { return }
