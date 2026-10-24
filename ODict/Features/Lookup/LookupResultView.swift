@@ -82,7 +82,7 @@ struct LookupResultView: View {
                     HStack(spacing: 12) {
                         Button("重试") { model.submit() }
                         if isCapture { Button("截图取词", action: captureScreenshot) }
-                        if !isCapture, model.mode == .dictionary, model.query.count > 255 {
+                        if !isCapture, model.mode == .dictionary, model.dictionaryMiss || model.query.count > 255 {
                             Button("用 AI 翻译") { model.useAIForCurrentQuery() }
                         }
                         Button("打开设置", action: openSettings)

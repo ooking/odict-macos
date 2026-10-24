@@ -113,6 +113,7 @@ final class LookupModel: ObservableObject {
     @Published private(set) var selectedSuggestionIndex: Int?
     @Published private(set) var isLoading = false
     @Published private(set) var isSuggesting = false
+    @Published private(set) var dictionaryMiss = false
     @Published private(set) var message: String?
     @Published private(set) var captureStatus: String?
     @Published private(set) var captureIsBusy = false
@@ -231,7 +232,10 @@ final class LookupModel: ObservableObject {
                 else { results = try await dictionary.suggestions(text) }
                 guard !Task.isCancelled, token == revision else { return }
                 acceptSuggestions(results)
-                if results.isEmpty { message = "没有找到候选词，可按回车查询完整词条。" }
+                if results.isEmpty {
+                    dictionaryMiss = true
+                    message = "没有找到候选词，可按回车查询，或用 AI 翻译。"
+                }
             } catch {
                 guard !Task.isCancelled, token == revision else { return }
                 message = error.localizedDescription
@@ -268,6 +272,7 @@ final class LookupModel: ObservableObject {
         let token = detailRevision
         previewWord = word
         rememberPreview = remember
+        dictionaryMiss = false
         message = nil
         if let current = result, current.word.caseInsensitiveCompare(word) == .orderedSame {
             message = current.notice
@@ -292,7 +297,8 @@ final class LookupModel: ObservableObject {
                 if rememberPreview { rememberEntry(result) }
             } catch {
                 guard !Task.isCancelled, token == detailRevision else { return }
-                message = error.localizedDescription
+                if case DictionaryError.notFound = error { dictionaryMiss = true }
+                message = dictionaryMiss ? "词典未收录，可以试试 AI 翻译。" : error.localizedDescription
             }
         }
     }
@@ -325,7 +331,10 @@ final class LookupModel: ObservableObject {
                     let results = try await dictionary.search(text, translation: true)
                     guard !Task.isCancelled, token == revision else { return }
                     acceptSuggestions(results)
-                    if results.isEmpty { message = "没有找到相关词条，请换一个中文关键词。" }
+                    if results.isEmpty {
+                        dictionaryMiss = true
+                        message = "没有找到相关词条，可以试试 AI 翻译。"
+                    }
                 } else {
                     do {
                         let result = try await cachedEntry(text)
@@ -337,7 +346,10 @@ final class LookupModel: ObservableObject {
                         let results = try await dictionary.search(text, translation: false)
                         guard !Task.isCancelled, token == revision else { return }
                         acceptSuggestions(results)
-                        if results.isEmpty { message = "没有找到这个词。" }
+                        if results.isEmpty {
+                            dictionaryMiss = true
+                            message = "词典未收录，可以试试 AI 翻译。"
+                        }
                     }
                 }
             } catch {
@@ -394,6 +406,7 @@ final class LookupModel: ObservableObject {
     }
 
     private func cancelRequests() {
+        dictionaryMiss = false
         captureStatus = nil
         captureIsBusy = false
         task?.cancel()
