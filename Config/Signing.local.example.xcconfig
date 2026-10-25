@@ -1,0 +1,3 @@
+// Copy to Signing.local.xcconfig and replace with your Apple Developer Team ID.
+// Do not put certificates, private keys or service credentials in this file.
+DEVELOPMENT_TEAM = YOURTEAMID

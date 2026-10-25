@@ -13,3 +13,6 @@ xcuserdata/
 *.mobileprovision
 
 Packages/*/.build/
+
+# Per-developer signing configuration
+/Config/Signing.local.xcconfig

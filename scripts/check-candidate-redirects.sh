@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/.."
+
+# This integration check needs an explicitly selected, legally held dictionary.
+if [ "$#" -ne 1 ]; then
+    echo "Usage: sh scripts/check-candidate-redirects.sh /path/to/dictionaries" >&2
+    exit 64
+fi
+if [ ! -d "$1" ]; then
+    echo "The dictionary root must be an existing directory." >&2
+    exit 1
+fi
+
 mkdir -p build/Checks
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR

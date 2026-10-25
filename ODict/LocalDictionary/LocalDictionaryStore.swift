@@ -138,7 +138,7 @@ enum LocalDictionaryOverrides {
       background: transparent !important;
       color: var(--odict-text) !important;
     }
-    body { margin: 14px; font-size: 15px; overflow-wrap: anywhere; }
+    body { margin: 14px; font-size: 16px; overflow-wrap: anywhere; }
     img, video, table { max-width: 100%; }
     @media (prefers-color-scheme: dark) {
       :root {

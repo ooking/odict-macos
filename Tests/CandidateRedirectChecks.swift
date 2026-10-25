@@ -15,8 +15,17 @@ private final class UnusedOnline: DictionaryServing {
         throw NSError(domain:"CandidateChecks",code:1,userInfo:[NSLocalizedDescriptionKey:"query did not settle"])
     }
     @MainActor static func main() async throws {
-        let root = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "/Volumes/Data/dict"
-        let dictionary = try LocalDictionaryDiscovery.discover(URL(fileURLWithPath:root).appendingPathComponent("LDOCE6++.En-Cn.V3-0"))[0]
+        guard CommandLine.arguments.count == 2 else {
+            FileHandle.standardError.write(Data("Usage: CandidateRedirectChecks /path/to/dictionaries\n".utf8))
+            exit(64)
+        }
+        let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+        let folder = root.appendingPathComponent("LDOCE6++.En-Cn.V3-0", isDirectory: true)
+        guard let dictionary = try LocalDictionaryDiscovery.discover(folder).first else {
+            throw NSError(domain: "CandidateChecks", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "The specified root must contain an MDX dictionary in LDOCE6++.En-Cn.V3-0."
+            ])
+        }
         let reader = try MDXReader(url:URL(fileURLWithPath:dictionary.mdxPath))
         for word in ["recoated","recoating","recoats"] {
             let raw = try reader.rawRecordsForChecks(word)

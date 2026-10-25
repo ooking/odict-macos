@@ -44,6 +44,13 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel.isVisible }
 
+    /// Settings uses a normal window. While it is open, use the same level so
+    /// ordinary click/activation ordering works without hiding either window.
+    func setSettingsPresented(_ presented: Bool) {
+        panel.isFloatingPanel = !presented
+        panel.level = presented ? .normal : .floating
+    }
+
     private func configure() {
         panel.delegate = self
         panel.onInteraction = { [weak self] in self?.promote() }

@@ -72,3 +72,7 @@ Text Marker 通过参数化 AX 属性按能力探测，未链接私有构造函�
 - WebKit 的 [参数化 Accessibility 接口](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/accessibility/mac/WebAccessibilityObjectWrapperMac.mm)。
 - yomiko 的 [OCR 单词命中区域及坐标转换](https://github.com/jrgmadrid/yomiko/blob/main/src/main/ocr/hover-zones.ts)。
 
+
+## 许可证
+
+本模块采用 [MIT License](LICENSE)。复制整个模块或分发实质部分时，保留版权和许可声明；MIT 不强制界面署名或回链，欢迎在项目说明中注明 ODict / HoverLookupKit 来源。设计参考不等同于第三方代码依赖，参考项目各自的授权不因本模块的 MIT 许可而改变。

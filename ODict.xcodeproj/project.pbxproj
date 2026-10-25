@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000001701 /* AboutSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001700; };
+		000000000000000000001603 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001601; };
+		000000000000000000001604 /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001602; };
 		F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AB45503A3D4716B94A5916; };
 		DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046ED4425C8D48198BF359B5; };
 		1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1F3B2C19A541A492909AF3; };
@@ -73,6 +76,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000001700 /* AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/AboutSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001600 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
+		000000000000000000001601 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
+		000000000000000000001602 /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = THIRD_PARTY_NOTICES.md; sourceTree = SOURCE_ROOT; };
 		47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSharedViews.swift; sourceTree = SOURCE_ROOT; };
 		046ED4425C8D48198BF359B5 /* LookupResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupResultView.swift; sourceTree = SOURCE_ROOT; };
 		8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/CaptureLookupView.swift; sourceTree = SOURCE_ROOT; };
@@ -156,6 +163,10 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000001700 /* AboutSettingsView.swift */,
+				000000000000000000001600 /* Signing.xcconfig */,
+				000000000000000000001601 /* LICENSE */,
+				000000000000000000001602 /* THIRD_PARTY_NOTICES.md */,
 				000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */,
 				000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */,
 				000000000000000000000F00 /* ODict/Features/AI/AIMarkdownView.swift */,
@@ -294,6 +305,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000001603 /* LICENSE in Resources */,
+				000000000000000000001604 /* THIRD_PARTY_NOTICES.md in Resources */,
 				000000000000000000000406 /* ODict/Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -320,6 +333,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000001701 /* AboutSettingsView.swift in Sources */,
 				000000000000000000000F05 /* ODict/Services/AIStreamDecoder.swift in Sources */,
 				000000000000000000000F03 /* ODict/Services/AIStreamTransport.swift in Sources */,
 				000000000000000000000F01 /* ODict/Features/AI/AIMarkdownView.swift in Sources */,
@@ -410,6 +424,7 @@
 		};
 		00000000000000000000000D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 000000000000000000001600 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements;
@@ -417,7 +432,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = KZNXN7G7D3;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_TESTABILITY = YES;
@@ -444,6 +458,7 @@
 		};
 		00000000000000000000000E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 000000000000000000001600 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements;
@@ -451,7 +466,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = KZNXN7G7D3;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;

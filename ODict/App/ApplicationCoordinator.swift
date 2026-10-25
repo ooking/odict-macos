@@ -90,6 +90,9 @@ final class ApplicationCoordinator: NSObject {
         rememberSource()
         status.onToggle = { [weak self] in self?.toggleLookup() }
         settings.didSave = { [weak self] in self?.dictionarySourcesChanged() }
+        settings.visibilityChanged = { [weak self] visible in
+            self?.lookup.setSettingsPresented(visible)
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(dictionarySourcesChanged),
             name: LocalDictionaryStore.changed, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(cacheSettingsChanged),

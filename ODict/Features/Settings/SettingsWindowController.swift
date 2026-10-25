@@ -6,6 +6,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private var model: SettingsModel?
     var didSave: (() -> Void)?
+    var visibilityChanged: ((Bool) -> Void)?
 
     func show(ai: Bool = false) {
         if window == nil {
@@ -24,6 +25,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             self.window = window
         }
         if ai { model?.showAI = true }
+        visibilityChanged?(true)
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -31,17 +33,21 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     var isVisible: Bool { window?.isVisible ?? false }
 
     func close() {
-        model?.close()
-        window?.delegate = nil
-        window?.close()
-        window = nil
-        model = nil
+        let closingWindow = window
+        releaseWindow()
+        closingWindow?.close()
     }
 
     func windowWillClose(_ notification: Notification) {
+        releaseWindow()
+    }
+
+    private func releaseWindow() {
+        guard window != nil else { return }
         model?.close()
         window?.delegate = nil
         window = nil
         model = nil
+        visibilityChanged?(false)
     }
 }

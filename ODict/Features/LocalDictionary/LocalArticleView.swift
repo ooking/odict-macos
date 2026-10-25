@@ -12,22 +12,6 @@ private final class ProfiledArticleWebView: WKWebView {
 }
 #endif
 
-#if ODICT_CHECKS
-/// Weak probes are compiled only into the isolated validation app, never Release.
-enum LocalRendererDiagnostics {
-    final class Reference {
-        weak var view: WKWebView?
-        init(_ view: WKWebView) { self.view = view }
-    }
-    private static var views: [Reference] = []
-    static func track(_ view: WKWebView) {
-        views.removeAll { $0.view == nil }
-        views.append(Reference(view))
-    }
-    static var liveCount: Int { views.filter { $0.view != nil }.count }
-}
-#endif
-
 /// Local presentation has its own lifecycle. It never consumes or mutates Entry,
 /// and preserves dictionary-specific tags, classes, and definition content.
 struct LocalArticleView: View {
@@ -66,9 +50,6 @@ final class LocalArticleRenderer: ObservableObject {
         #endif
         #if DEBUG
         LocalDictionaryDebug.trace("renderer.created", articleID: article.id)
-        #endif
-        #if ODICT_CHECKS
-        LocalRendererDiagnostics.track(view)
         #endif
         view.navigationDelegate = coordinator
         view.setValue(false, forKey: "drawsBackground")

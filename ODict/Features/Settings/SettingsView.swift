@@ -9,6 +9,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
     case service = "在线词典"
     case ai = "AI"
     case privacy = "权限与隐私"
+    case about = "关于"
 
     var id: Self { self }
     var icon: String {
@@ -19,6 +20,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         case .service: return "network"
         case .ai: return "sparkles"
         case .privacy: return "hand.raised"
+        case .about: return "info.circle"
         }
     }
     var subtitle: String {
@@ -29,18 +31,12 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
         case .privacy: return "管理取词所需的系统权限，了解数据如何使用。"
+        case .about: return "了解 ODict、开发者与开源许可。"
         }
     }
 }
 
 struct SettingsView: View {
-    private static let versionLabel: String = {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
-        let build = info?["CFBundleVersion"] as? String ?? "—"
-        return "\(version) (Build \(build))"
-    }()
-
     @ObservedObject var model: SettingsModel
     // Retain the lightweight configuration across category switches, including
     // import status. The child cancels pending discovery when it disappears.
@@ -109,32 +105,33 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("设置").font(AppTypography.section).foregroundColor(.secondary)
                 .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 14)
-            ForEach(SettingsCategory.allCases) { item in
-                Button { category = item } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: item.icon).font(.system(size: 17, weight: .medium)).frame(width: 22)
-                        Text(item.rawValue).font(AppTypography.navigation)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 12).padding(.vertical, 12)
-                    .foregroundColor(category == item ? .white : .primary)
-                    .background(category == item ? Color.accentColor : Color.clear)
-                    .cornerRadius(9)
-                    .contentShape(RoundedRectangle(cornerRadius: 9))
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(category == item ? .isSelected : [])
+            ForEach(SettingsCategory.allCases.filter { $0 != .about }) { item in
+                categoryButton(item)
             }
             Spacer()
-            VStack(alignment: .leading, spacing: 5) {
-                Text("ODict").font(AppTypography.section)
-                Text(Self.versionLabel).font(AppTypography.caption).foregroundColor(.secondary)
-            }.padding(12)
+            categoryButton(.about)
         }
         .padding(12)
         .frame(width: 196)
         .frame(maxHeight: .infinity)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.65))
+    }
+
+    private func categoryButton(_ item: SettingsCategory) -> some View {
+        Button { category = item } label: {
+            HStack(spacing: 12) {
+                Image(systemName: item.icon).font(.system(size: 17, weight: .medium)).frame(width: 22)
+                Text(item.rawValue).font(AppTypography.navigation)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 12)
+            .foregroundColor(category == item ? .white : .primary)
+            .background(category == item ? Color.accentColor : Color.clear)
+            .cornerRadius(9)
+            .contentShape(RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(category == item ? .isSelected : [])
     }
 
     @ViewBuilder private var categoryContent: some View {
@@ -146,6 +143,7 @@ struct SettingsView: View {
         case .service: serviceSettings.onAppear { model.load() }
         case .ai: AISettingsView(model: model.ai)
         case .privacy: privacySettings
+        case .about: AboutSettingsView()
         }
     }
 
