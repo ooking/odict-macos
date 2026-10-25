@@ -6,6 +6,17 @@ struct LocalDictionaryConfiguration: Codable, Identifiable, Equatable, Sendable 
     let mdxPath: String
     var resources: [String]
     var enabled: Bool
+    // Optional storage preserves decoding of existing v1 configurations.
+    private var overrideStyleEnabled: Bool? = nil
+    var usesOverrideStyle: Bool {
+        get { overrideStyleEnabled ?? true }
+        set { overrideStyleEnabled = newValue }
+    }
+    init(id: UUID, name: String, mdxPath: String, resources: [String], enabled: Bool, usesOverrideStyle: Bool = true) {
+        self.id = id; self.name = name; self.mdxPath = mdxPath
+        self.resources = resources; self.enabled = enabled
+        self.overrideStyleEnabled = usesOverrideStyle
+    }
     var folder: URL { URL(fileURLWithPath: mdxPath).deletingLastPathComponent() }
 }
 

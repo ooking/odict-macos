@@ -112,6 +112,19 @@ private enum Fixture {
         try require(LocalArticleSummary.extract(from: "<span class='def'><tran>English only</tran></span>") == nil, "No invented Chinese summary")
         try require(LocalArticleSummary.extract(from: String(repeating: "x", count: 512 * 1024 + 1)) == nil, "Summary input bound")
         try require(LocalArticleSummary.extract(from: "<!DOCTYPE x [<!ENTITY x SYSTEM 'file:///etc/hosts'>]><x>&x;</x>") == nil, "Reject entity declarations")
+        // Prepared regression coverage; run only with user approval.
+        let oxford9 = """
+        <top-g><h>apple</h></top-g><sn-gs><sn-blk>
+        <def>a fruit <chn>苹果</chn><x-g-blk><x>an apple <chn>中文例句</chn></x></x-g-blk></def>
+        </sn-blk></sn-gs><idm-g><def><chn>不应收录的习语</chn></def></idm-g>
+        """
+        try require(LocalArticleSummary.extract(from: oxford9) == "苹果", "custom definition tags survive tidy; nested examples excluded")
+        try require(LocalArticleSummary.extract(from: "<div class='definition'>  通用\u{200B}释义&nbsp; <b>内容</b><span class='example'>例句</span><span hidden>隐藏</span><script>脚本</script></div>") == "通用释义 内容", "semantic fallback cleans nested noise")
+        try require(LocalArticleSummary.extract(from: "<meta name='odict-summary' content='结构化释义'><div class='def'>普通释义</div>") == "结构化释义", "explicit structured field priority")
+        let rules = LocalArticleSummary.Rules(definitionPaths: ["//*[contains(@class, 'custom-meaning')]"], excludedPaths: ["//*[@id='noise']"])
+        try require(LocalArticleSummary.extract(from: "<div class='custom-meaning'>外部规则释义<span id='noise'>噪声</span></div><span class='def'>回退释义</span>", rules: rules) == "外部规则释义", "external adapter priority and exclusion")
+        try require(LocalArticleSummary.extract(from: "<def><chn>回退释义</chn></def>", rules: .init(definitionPaths: ["invalid["])) == "回退释义", "invalid XPath falls back")
+        try require(LocalArticleSummary.extract(from: "<definition>释义</definition><definition>释义</definition><definition>另一释义</definition><definition>第三释义</definition>") == "释义；另一释义", "deduplication and two-meaning cap")
         let vectors = [("","cdf26213a150dc3ecb610f18f6b38b46"),("a","86be7afa339d0fc7cfc785e72f578d33"),("abc","c14a12199c66e4ba84636b0f69144c77")]
         for (input, expected) in vectors {
             let value = RIPEMD128.digest(Data(input.utf8)).map { String(format:"%02x",$0) }.joined()
@@ -140,6 +153,14 @@ private enum Fixture {
         let store = LocalDictionaryStore(defaults:defaults)
         let first = LocalDictionaryConfiguration(id:UUID(),name:"first",mdxPath:firstPath.path,resources:[],enabled:true)
         let second = LocalDictionaryConfiguration(id:UUID(),name:"second",mdxPath:secondPath.path,resources:[],enabled:true)
+        var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(first)) as! [String: Any]
+        legacy.removeValue(forKey: "overrideStyleEnabled")
+        let migrated = try JSONDecoder().decode(LocalDictionaryConfiguration.self, from: JSONSerialization.data(withJSONObject: legacy))
+        try require(migrated.usesOverrideStyle, "legacy configuration defaults to enabled override")
+        var unstyled = first
+        unstyled.usesOverrideStyle = false
+        try store.save([unstyled, second], mode: .localFirst)
+        try require(store.load().map(\.usesOverrideStyle) == [false, true], "independent persistent override switches")
         let fake = FakeOnline(), library = LocalDictionaryLibrary()
         let router = DictionaryRouter(remote:fake,local:library,store:store)
         try store.save([first,second],mode:.localFirst)
@@ -176,6 +197,20 @@ private enum Fixture {
         try LocalDictionaryOverrides.create(in:folder)
         let cssText = try String(contentsOf:css,encoding:.utf8)
         try require(cssText == "/* custom */","do not overwrite custom CSS")
+        let styledCSS = try await library.resource("/odict-overrides.css", in: first)
+        let disabledCSS = try await library.resource("/odict-overrides.css", in: unstyled)
+        try require(String(decoding: styledCSS, as: UTF8.self) == "/* custom */" && disabledCSS.isEmpty, "CSS gate affects only selected dictionary")
+        try "/* original */".write(to: folder.appendingPathComponent("original.css"), atomically: true, encoding: .utf8)
+        try "/* script */".write(to: folder.appendingPathComponent(LocalDictionaryOverrides.jsName), atomically: true, encoding: .utf8)
+        let originalCSS = try await library.resource("original.css", in: unstyled)
+        let overrideJS = try await library.resource(LocalDictionaryOverrides.jsName, in: unstyled)
+        try require(!originalCSS.isEmpty && !overrideJS.isEmpty, "disabling override CSS preserves original CSS and override JS")
+        let rulesFile = folder.appendingPathComponent(LocalArticleSummary.rulesName)
+        try #"{"version":1,"definitionPaths":["//*[@class='meaning']"]}"#.write(to: rulesFile, atomically: true, encoding: .utf8)
+        try require(LocalArticleSummary.loadRules(in: folder)?.definitionPaths.count == 1, "load optional external rules")
+        try "invalid".write(to: rulesFile, atomically: true, encoding: .utf8)
+        try require(LocalArticleSummary.loadRules(in: folder) == nil, "malformed rules safely ignored")
+
         try await expectMissing(library,"../private",in:first)
         let link = folder.appendingPathComponent("outside")
         try FileManager.default.createSymbolicLink(at:link,withDestinationURL:FileManager.default.temporaryDirectory)
@@ -208,6 +243,14 @@ private enum Fixture {
         for (word, expected) in bingMeanings {
             let article = try await library.article(word, in: bing)
             try require(article != nil && article?.summary == expected, "real Concise Bing summary \(word)")
+        }
+        await library.release()
+        let oxford9 = try LocalDictionaryDiscovery.discover(root.appendingPathComponent("牛津高阶英汉双解词典（第9版）- 带高清版图片"))[0]
+        for word in ["apple", "evolution", "computer"] {
+            let article = try await library.article(word, in: oxford9)
+            try require(article?.summary?.isEmpty == false, "real Oxford 9 summary \(word)")
+            if word == "apple" { try require(article?.summary?.contains("苹果") == true, "Oxford 9 apple meaning") }
+            print("SUMMARY Oxford 9/\(word): \(article?.summary ?? "nil")")
         }
         await library.release()
         let names = ["oxford-advanced-learner-dictionary-8","LDOCE6++.En-Cn.V3-0"]

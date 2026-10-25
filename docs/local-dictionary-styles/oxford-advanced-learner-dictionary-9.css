@@ -1,0 +1,106 @@
+/* ODict local dictionary overrides. Edit freely; user changes are preserved.
+   Optional odict-overrides.js runs after the article loads.
+   Dictionary-specific selectors belong in this file, not in the app. */
+:root {
+  color-scheme: light dark;
+  --odict-text: CanvasText;
+  --odict-secondary: rgba(35, 35, 40, .72);
+  --odict-accent: #155a98;
+  --odict-example: #176861;
+  --odict-grammar: #2b6a39;
+  --odict-emphasis: #a13737;
+  --odict-rule: rgba(30, 30, 35, .2);
+  --odict-section: rgba(30, 30, 35, .045);
+}
+html, body {
+  background: transparent !important;
+  color: var(--odict-text) !important;
+}
+body { margin: 14px; font-size: 16px; overflow-wrap: anywhere; }
+img, video, table { max-width: 100%; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --odict-secondary: rgba(235, 235, 245, .76);
+    --odict-accent: #a6ceff;
+    --odict-example: #99d9d0;
+    --odict-grammar: #a7d4a2;
+    --odict-emphasis: #ffb5ad;
+    --odict-rule: rgba(235, 235, 245, .24);
+    --odict-section: rgba(235, 235, 245, .055);
+  }
+}
+
+/* Oxford 9: presentation only. Keep custom elements, audio, disclosure and
+   dictionary symbol font intact. No source HTML/CSS/JS needs modification. */
+body {
+  margin: 0;
+  padding: 16px 20px;
+  font-size: 18px;
+  line-height: 1.65;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
+top-g { display: block; margin-bottom: 14px; }
+h { color: var(--odict-text) !important; font-size: 30px; line-height: 1.3; }
+chn {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  color: var(--odict-secondary);
+  font-style: normal;
+}
+def { font-size: 18px; font-weight: 400; color: var(--odict-text); }
+def chn { color: var(--odict-text) !important; }
+sn-blk { margin: 0 0 16px; }
+sn-blk::before { color: var(--odict-accent); font-weight: 600; }
+x-g-blk {
+  margin: 9px 0 10px 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--odict-rule);
+  font-size: 17px;
+}
+x-g-blk x { color: var(--odict-example); font-style: normal; }
+x-g-blk x::before { content: none; }
+x-g-blk x chn {
+  display: block;
+  padding-left: 0;
+  margin-top: 3px;
+  color: var(--odict-secondary);
+  font-size: 16px;
+}
+pron-g-blk { font-size: 16px; }
+label-g-blk, vpform, idm-gs un { color: var(--odict-secondary); }
+gram-g, use-blk { color: var(--odict-grammar); }
+a, xr-g-blk a:link, cf-blk, pv-blk pv, idm-blk idm,
+.cixing_tiaozhuan_part, .cixing_tiaozhuan_part a { color: var(--odict-accent); }
+pos xhtml\:a, boxtag {
+  color: var(--odict-accent);
+  background: var(--odict-section);
+  border-color: var(--odict-rule);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 14px;
+}
+shcut-blk { margin: 18px 0 10px; border-color: var(--odict-rule); color: var(--odict-accent); }
+unbox {
+  margin: 24px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--odict-rule);
+  border-radius: 6px;
+  background: var(--odict-section);
+}
+unbox::before {
+  color: var(--odict-accent) !important;
+  background: Canvas !important;
+  border-color: var(--odict-rule) !important;
+}
+unbox unsyn, unbox inlinelist und, unbox h3,
+unbox[type=wordfamily] wfw-g wfw-blk { color: var(--odict-accent); }
+unbox[type=wordfamily] wfw-g wfp-blk wfp { color: var(--odict-emphasis); }
+img, video { max-width: 100%; height: auto; }
+table { max-width: 100%; }
+a:hover { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--odict-accent); outline-offset: 3px; }
+@media (max-width: 420px) {
+  body { padding: 16px; }
+  h { font-size: 28px; }
+  unbox[type=wordfamily] { float: none; }
+}

@@ -13,14 +13,24 @@ final class LocalDictionarySettingsModel: ObservableObject {
     private var task: Task<Void, Never>?
 
     init() { dictionaries = store.load(); mode = store.mode }
-    private func save() {
-        do { try store.save(dictionaries, mode: mode) }
-        catch { message = error.localizedDescription }
+    @discardableResult
+    private func save() -> Bool {
+        do { try store.save(dictionaries, mode: mode); return true }
+        catch { message = error.localizedDescription; return false }
     }
     func changeMode() { save() }
+    func reload() {
+        guard save() else { return }
+        message = "已重新加载词典配置；下次查询使用最新样式与摘要规则。"
+    }
     func enabled(_ id: UUID, _ value: Bool) {
         guard let i = dictionaries.firstIndex(where: { $0.id == id }) else { return }
         dictionaries[i].enabled = value; save()
+    }
+    func overrideStyle(_ id: UUID, _ value: Bool) {
+        guard let i = dictionaries.firstIndex(where: { $0.id == id }) else { return }
+        dictionaries[i].usesOverrideStyle = value
+        save()
     }
     func move(_ id: UUID, by delta: Int) {
         guard let i = dictionaries.firstIndex(where: { $0.id == id }), dictionaries.indices.contains(i + delta) else { return }
@@ -88,7 +98,7 @@ struct LocalDictionarySettingsView: View {
     @ObservedObject var model: LocalDictionarySettingsModel
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("词典来源").font(AppTypography.section)
+            Text("词典管理").font(AppTypography.section)
             Picker("查询方式", selection: $model.mode) {
                 ForEach(DictionaryMode.allCases) { mode in Text(mode.title).tag(mode) }
             }.onChange(of: model.mode) { _ in model.changeMode() }
@@ -114,15 +124,21 @@ struct LocalDictionarySettingsView: View {
                         } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
                             .accessibilityLabel("词典选项")
                     }
+                    Toggle("使用覆盖样式", isOn: Binding(
+                        get: { dictionary.usesOverrideStyle },
+                        set: { model.overrideStyle(dictionary.id, $0) }))
+                        .font(AppTypography.secondary)
+                        .help("仅控制这本词典的 odict-overrides.css，不影响原始样式和脚本。")
                     Text("\(dictionary.folder.path) · \(dictionary.resources.count) 个资源包")
                         .font(AppTypography.caption).foregroundColor(.secondary).lineLimit(2).textSelection(.enabled)
                 }.padding(10).background(Color.primary.opacity(0.035)).cornerRadius(8)
             }
             HStack {
                 Button("添加词典…", action: model.add).disabled(model.busy)
+                Button("重新加载样式与摘要规则", action: model.reload).disabled(model.busy)
                 if model.busy { ProgressView().controlSize(.small) }
             }
-            Text("每本词典建议使用独立文件夹。展示样式可编辑目录中的 odict-overrides.css，也可自行添加 odict-overrides.js；重新查询后生效。移除配置不会删除词典文件。")
+            Text("每本词典建议使用独立文件夹。可独立开关每本词典的覆盖样式。展示样式可编辑目录中的 odict-overrides.css，也可自行添加 odict-overrides.js；重新查询后生效。移除配置不会删除词典文件。")
                 .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             if let message = model.message {
                 Text(message).font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)

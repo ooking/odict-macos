@@ -36,8 +36,11 @@ actor LocalDictionaryLibrary {
         var seen = Set<String>()
         let headwords = entries.map(\.0).filter { seen.insert($0).inserted }
         let html = entries.map(\.1).joined(separator: "\n")
+        let rules = LocalArticleSummary.loadRules(in: dictionary.folder)
+        let summary = LocalArticleSummary.extract(from: html, rules: rules)
+        try Task.checkCancellation()
         let article = LocalArticle(dictionary: dictionary, word: word, headwords: headwords,
-                            html: html, summary: LocalArticleSummary.extract(from: html))
+                                   html: html, summary: summary)
         #if DEBUG
         LocalDictionaryDebug.trace("lookup.hit", articleID: article.id, "records=\(entries.count) headwords=\(headwords)")
         LocalDictionaryDebug.html(html, stage: "raw", article: article)
@@ -70,6 +73,9 @@ actor LocalDictionaryLibrary {
         try Task.checkCancellation()
         let folder = dictionary.folder.resolvingSymlinksInPath().standardizedFileURL
         let normalized = path.replacingOccurrences(of: "\\", with: "/").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        // Gate only this dictionary's override CSS. Original styles and scripts
+        // remain available, including when the override is switched off.
+        if normalized == LocalDictionaryOverrides.cssName, !dictionary.usesOverrideStyle { return Data() }
         let file = folder.appendingPathComponent(normalized).resolvingSymlinksInPath().standardizedFileURL
         // Both external resources and symlinks are constrained to the selected folder.
         guard file.path.hasPrefix(folder.path + "/"), !normalized.split(separator: "/").contains("..") else {
