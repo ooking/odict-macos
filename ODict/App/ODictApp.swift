@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import KeyboardShortcuts
+import HoverLookupKit
 
 extension KeyboardShortcuts.Name {
     static let toggleDictionary = Self("toggleDictionary")
@@ -10,6 +11,17 @@ extension KeyboardShortcuts.Name {
 }
 
 @main
+enum ODictEntry {
+    @MainActor static func main() async {
+        if HoverLookupKit.ScreenTextService.isRecoveryWorker {
+            let success = await HoverLookupKit.ScreenTextService.runRecoveryWorker()
+            exit(success ? 0 : 1)
+        }
+        HoverLookupKit.ScreenTextService.enableAutomaticRecovery()
+        ODictApp.main()
+    }
+}
+
 struct ODictApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     var body: some Scene { Settings { EmptyView() } }
@@ -55,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
     func applicationWillTerminate(_ notification: Notification) {
+        HoverLookupKit.ScreenTextService.stopAutomaticRecovery()
         coordinator?.stop()
         coordinator = nil
     }

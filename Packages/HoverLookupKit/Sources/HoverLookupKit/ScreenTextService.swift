@@ -76,9 +76,35 @@ public final class ScreenTextService: HoverWordRecognizing {
     // so releasing/recreating recognizers cannot overlap abandoned OCR calls.
     private static let worker = BlockingWorkQueue(label: "HoverLookupKit.ocr")
     private static let availability = OCRAvailability()
+    static let recovery = OCRRecovery(availability: availability)
+    @MainActor private static let recoveryVerification = HoverRequestGate<Bool>()
     private static let log = Logger(subsystem: "com.touchany.odict.mac", category: "OCRRuntime")
 
     public func prepare() throws { try Self.availability.check() }
+
+    static func verifyAfterRepair() async -> Bool {
+        do {
+            return try await recoveryVerification.run(timeout: 3_000_000_000) {
+                await verifyRecoveredModels()
+            }
+        } catch { return false }
+    }
+
+    /// Repair verification bypasses only the temporary health gate. It shares
+    /// the normal serial Vision worker and never schedules recursive repair.
+    static func verifyRecoveredModels() async -> Bool {
+        do {
+            return try await worker.perform {
+                for value in OCRModelProbe.fixtures {
+                    guard let image = OCRModelProbe.image(value) else { return false }
+                    let observations = try perform(image, policy: .automatic, cancellation: RecognitionCancellation())
+                    let text = observations.compactMap { $0.topCandidates(1).first?.string }.joined()
+                    guard text.replacingOccurrences(of: " ", with: "") == value.replacingOccurrences(of: " ", with: "") else { return false }
+                }
+                return true
+            }
+        } catch { return false }
+    }
 
     public func recognize(_ image: CGImage, maximumCount: Int = 4000) async throws -> String {
         try await recognize(image) { observations in
@@ -150,9 +176,10 @@ public final class ScreenTextService: HoverWordRecognizing {
                     do { observations = try Self.perform(image, policy: .compatibleCPU, cancellation: cancellation) }
                     catch {
                         try cancellation.check()
-                        let failure = OCRFailure.classify(automatic: automaticError, compatibility: error,
+                        var failure = OCRFailure.classify(automatic: automaticError, compatibility: error,
                             cacheState: OCRCacheInspection.state())
                         Self.availability.record(failure)
+                        failure = Self.recovery.start(for: failure)
                         let first = failure.automaticErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
                         let second = failure.compatibilityErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
                         Self.log.error("kind=\(failure.kind.rawValue, privacy: .public) cacheState=\(failure.cacheState.rawValue, privacy: .public) automatic=\(first, privacy: .public) compatibility=\(second, privacy: .public)")

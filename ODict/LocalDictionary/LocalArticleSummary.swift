@@ -19,7 +19,7 @@ enum LocalArticleSummary {
         guard let document = try? XMLDocument(xmlString: normalized,
                 options: [.documentTidyHTML, .nodeLoadExternalEntitiesNever]) else { return nil }
 
-        let excluded = ["example", "x-g", "gloss", "collgloss", "ids-g", "id-g", "pvs-g", "pv-g"]
+        let excluded = ["example", "x-g", "gloss", "collgloss", "ids-g", "id-g", "pvs-g", "pv-g", "deq"]
             .map(hasClass).joined(separator: " or ")
         let phraseSense = "(\(hasClass("sense")) and .//*[\(hasClass("lexunit"))])"
         let chinese = hasClass("oalecd8e_chn")
@@ -27,10 +27,16 @@ enum LocalArticleSummary {
         let oxfordDefinition = hasClass("def-g")
         let translation = hasClass("translation")
         let chineseDefinition = hasClass("chn")
+        // Concise Bing's #ecdict contains definition rows (.gdc > .dcb).
+        // Prefer ordinary definitions; use network meanings only as a fallback.
+        // Scope both markers to this structure so unrelated text is not a summary.
+        let bingDefinition = "[ancestor::*[\(hasClass("dcb"))]][ancestor::*[\(hasClass("gdc"))]][ancestor::*[@id='ecdict']]"
         let selectors = [
             "//*[\(chinese)][ancestor::*[\(oxfordDefinition)]]",
             "//*[@data-odict-translation='1'][ancestor::*[\(definition)]]",
-            "//*[\(chineseDefinition) or \(translation)][ancestor::*[\(definition) or \(oxfordDefinition)]]"
+            "//*[\(chineseDefinition) or \(translation)][ancestor::*[\(definition) or \(oxfordDefinition)]]",
+            "//*[\(hasClass("dcn"))]" + bingDefinition,
+            "//*[\(hasClass("dne"))]" + bingDefinition
         ]
         for selector in selectors {
             let path = selector + "[not(ancestor-or-self::*[\(excluded) or \(phraseSense) or self::script or self::style or self::nav or @hidden or @aria-hidden='true'])]"

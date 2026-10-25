@@ -6,6 +6,7 @@ public struct OCRFailure: Error, Sendable {
         case modelResourcesUnavailable, engineUnavailable, invalidImage, unsupportedConfiguration, insufficientMemory
     }
     public enum CacheState: String, Sendable { case notInspected, emptyModelDirectory, unknown }
+    public enum RecoveryState: Sendable { case notAttempted, inProgress, failed }
     public struct SystemError: Sendable {
         public let domain: String
         public let code: Int
@@ -14,6 +15,8 @@ public struct OCRFailure: Error, Sendable {
     public let cacheState: CacheState
     public let automaticErrors: [SystemError]
     public let compatibilityErrors: [SystemError]
+    public internal(set) var recoveryState: RecoveryState = .notAttempted
+    public var isRecovering: Bool { recoveryState == .inProgress }
 
     public var allowsScreenshotRetry: Bool { kind == .invalidImage }
 
@@ -103,7 +106,7 @@ final class OCRAvailability: @unchecked Sendable {
         guard !failure.allowsScreenshotRetry else { return }
         lock.lock(); defer { lock.unlock() }
         self.failure = failure
-        retryAfter = now() + 30
+        retryAfter = failure.isRecovering ? .infinity : now() + 30
     }
     func recovered() { lock.lock(); failure = nil; retryAfter = 0; lock.unlock() }
 }

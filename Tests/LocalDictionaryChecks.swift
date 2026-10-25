@@ -83,6 +83,31 @@ private enum Fixture {
         """
         let longmanSummary = LocalArticleSummary.extract(from: longman)
         try require(longmanSummary == "变化 & 发展", "Longman nested text and entities: \(longmanSummary ?? "nil")")
+        let bing = """
+        <div class="bdy" id="ecdict"><div class="ctn">
+          <div class="hwd">hello</div><div class="frq">考试词频</div>
+          <div class="gdc">
+            <div class="dcb"><span class="dnt">[网络]</span><span class="dne">网络译文</span></div>
+            <div class="dcb"><span class="pos">n.</span><span class="dcn">表示问候， 惊奇或唤起注意时的用语</span></div>
+            <div class="dcb"><span class="deq">不应收录的中文例句</span></div>
+            <div class="dcb"><span class="pos">int.</span><span class="dcn">喂；<b>哈罗</b></span></div>
+            <div class="dcb"><span class="dcn">人名</span></div>
+          </div>
+        </div></div>
+        """
+        try require(LocalArticleSummary.extract(from: bing) == "表示问候， 惊奇或唤起注意时的用语；喂；哈罗",
+                    "Concise Bing prefers two ordinary meanings over network meanings and examples")
+        let bingNetwork = """
+        <div id="ecdict"><div class="gdc">
+          <div class="dcb"><span class="dcn">English only</span><span class="deq"><span class="dcn">中文例句</span></span></div>
+          <div class="dcb"><span class="dnt">[网络]</span><span class="dne">第44号</span></div>
+        </div></div>
+        """
+        try require(LocalArticleSummary.extract(from: bingNetwork) == "第44号", "Concise Bing Chinese network fallback")
+        try require(LocalArticleSummary.extract(from: "<div id='ecdict'><div class='gdc'><div class='dcb'><span class='dcn'>English only</span><span class='deq'>中文例句</span></div></div></div>") == nil,
+                    "Concise Bing does not use examples as Chinese meanings")
+        try require(LocalArticleSummary.extract(from: "<div class='gdc'><div class='dcb'><span class='dcn'>无关内容</span></div></div><div id='ecdict'><span class='dcn'>非释义区域</span></div>") == nil,
+                    "Concise Bing markers require dictionary and definition ancestors")
         try require(LocalArticleSummary.extract(from: "<nav>词典导航</nav><p>中文例句</p>") == nil, "No arbitrary Chinese fallback")
         try require(LocalArticleSummary.extract(from: "<span class='def'><tran>English only</tran></span>") == nil, "No invented Chinese summary")
         try require(LocalArticleSummary.extract(from: String(repeating: "x", count: 512 * 1024 + 1)) == nil, "Summary input bound")
@@ -173,6 +198,18 @@ private enum Fixture {
     }
     static func realDictionaries(root:URL) async throws {
         let library = LocalDictionaryLibrary()
+        let bing = try LocalDictionaryDiscovery.discover(root.appendingPathComponent("concise-bing"))[0]
+        let bingMeanings: [(String, String?)] = [
+            ("apple", "苹果，苹果树，苹果似的东西；[美俚]炸弹，手榴弹，（棒球的）球；[美俚]人，家伙。"),
+            ("hello", "表示问候， 惊奇或唤起注意时的用语；喂；哈罗"),
+            ("44th", "第44号"),
+            ("Yoga Pants", nil)
+        ]
+        for (word, expected) in bingMeanings {
+            let article = try await library.article(word, in: bing)
+            try require(article != nil && article?.summary == expected, "real Concise Bing summary \(word)")
+        }
+        await library.release()
         let names = ["oxford-advanced-learner-dictionary-8","LDOCE6++.En-Cn.V3-0"]
         let words = ["hello","apple","computer","recording","run","running","test","what","book","world","learn","word","dictionary","language","good","time","people","work","life","day"]
         for name in names {

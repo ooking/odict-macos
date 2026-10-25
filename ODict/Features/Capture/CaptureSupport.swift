@@ -63,9 +63,17 @@ struct OCRFailurePresentation {
 
     init(_ failure: OCRFailure) {
         offersScreenshot = failure.allowsScreenshotRetry
+        if failure.isRecovering {
+            message = "识别模型缓存缺失，正在自动修复，可能需要约一分钟。请稍后重新取词；也可暂时使用选中取词或手动输入。"
+            return
+        }
+        if failure.recoveryState == .failed {
+            message = "识别模型自动修复未成功，请重启 ODict 后重试。可暂时使用选中取词或手动输入。"
+            return
+        }
         switch failure.kind {
         case .modelResourcesUnavailable:
-            message = "文字识别引擎不可用，检测到模型缓存缺失。请重启 ODict 后重试；若仍失败，请先释放磁盘空间。可暂时使用选中取词或手动输入。"
+            message = "文字识别引擎不可用，检测到模型缓存目录为空。请重启 ODict 后重试；若仍失败，需要修复识别缓存，释放磁盘空间不会自动完成修复。可暂时使用选中取词或手动输入。"
         case .engineUnavailable:
             message = "系统文字识别引擎发生错误，兼容重试也未成功。请重启 ODict 后重试，或暂时使用选中取词、手动输入。"
         case .invalidImage:
