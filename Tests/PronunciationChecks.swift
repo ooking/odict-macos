@@ -6,10 +6,55 @@ import Foundation
         let preferences = UserDefaults(suiteName: suite)!
         defer { preferences.removePersistentDomain(forName: suite) }
         let store = PronunciationSettingsStore(preferences: preferences)
-        precondition(store.sources.count == 2)
-        precondition(Set(store.sources.map(\.id)).count == 2)
+        precondition(store.sources.count == 3)
+        precondition(Set(store.sources.map(\.id)).count == 3)
+        precondition(Set(store.sources.map(\.colorHex)).count == 3)
+        precondition(store.sources.first(where: { $0.kind == .system })?.enabled == true)
+        precondition(PronunciationSettingsStore(preferences: preferences).sources == store.sources)
+        let occupied = Set(store.sources.map(\.colorHex))
+        precondition(!occupied.contains(store.newSource().colorHex))
+        var generated = Set<String>()
+        for _ in 0..<64 {
+            let color = PronunciationSource.randomColor(excluding: generated)
+            precondition(!generated.contains(color))
+            generated.insert(color)
+        }
+        precondition(PronunciationService.previewText == "hello")
+        // Legacy JSON has no kind key. Migration adds TTS exactly once while
+        // retaining existing IDs, colors and disabled states.
+        let migrationPreferences = UserDefaults(suiteName: suite + ".migration")!
+        defer { migrationPreferences.removePersistentDomain(forName: suite + ".migration") }
+        let legacyID = UUID()
+        let legacy = [["id": legacyID.uuidString, "name": "Legacy", "template": "https://example.com/?q={text}",
+                       "enabled": false, "colorHex": "123456"]] as [[String: Any]]
+        migrationPreferences.set(try JSONSerialization.data(withJSONObject: legacy), forKey: PronunciationSettingsStore.key)
+        let migrated = PronunciationSettingsStore(preferences: migrationPreferences)
+        precondition(migrated.sources.count == 2)
+        precondition(migrated.sources.first?.id == legacyID && migrated.sources.first?.colorHex == "123456")
+        precondition(migrated.sources.first?.kind == .remote && migrated.sources.first?.enabled == false)
+        let system = migrated.sources.first(where: { $0.kind == .system })!
+        precondition(system.validationMessage == nil && system.resolvedURL(text: "hello") == nil)
+        try migrated.remove(system)
+        precondition(PronunciationSettingsStore(preferences: migrationPreferences).sources.count == 1)
+        var configuredSystem = PronunciationSource(name: "macOS 系统语音", kind: .system,
+            systemVoiceIdentifier: "fixture.voice", systemVoiceGender: .female,
+            systemLanguage: "en-US", systemRate: 1.2)
+        try migrated.save(configuredSystem)
+        let renamedSystem = PronunciationSettingsStore(preferences: migrationPreferences).sources.last!
+        precondition(renamedSystem.id == configuredSystem.id && renamedSystem.name == "系统语音")
+        precondition(renamedSystem.systemVoiceIdentifier == "fixture.voice" && renamedSystem.systemVoiceGender == .female)
+        precondition(renamedSystem.systemLanguage == "en-US" && renamedSystem.systemRate == 1.2)
+        let fixtureVoice = SystemSpeechVoice(id: "fixture.voice", name: "Fixture", language: "en-US", gender: .female)
+        precondition(fixtureVoice.matches(renamedSystem))
+        configuredSystem.systemVoiceGender = .male
+        precondition(!fixtureVoice.matches(configuredSystem))
+        configuredSystem.systemVoiceGender = .female
+        configuredSystem.systemLanguage = "en-GB"
+        precondition(!fixtureVoice.matches(configuredSystem))
+        configuredSystem.systemRate = .nan
+        precondition(configuredSystem.validationMessage != nil)
         let raw = "  Hello & 你好? #+/%=\nHow are you?  "
-        for source in store.sources {
+        for source in store.sources.filter({ $0.kind == .remote }) {
             precondition(source.validationMessage == nil)
             let url = source.resolvedURL(text: raw)!
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
@@ -64,6 +109,6 @@ import Foundation
         precondition(playback.state == .error)
         playback.stop()
         precondition(playback.state == .idle)
-        print("Pronunciation checks passed (encoding, validation, persistence, limits and request cleanup).")
+        print("Pronunciation checks passed (encoding, unique colors, migration, validation, persistence, limits and request cleanup).")
     }
 }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000004; };
 		AA0020000000000000000003 /* PronunciationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000003; };
 		AA0020000000000000000002 /* PronunciationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000002; };
 		AA0020000000000000000001 /* PronunciationSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000001; };
@@ -80,6 +81,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AA0010000000000000000004 /* SystemSpeechVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/SystemSpeechVoice.swift; sourceTree = SOURCE_ROOT; };
 		AA0010000000000000000003 /* PronunciationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/PronunciationButton.swift; sourceTree = SOURCE_ROOT; };
 		AA0010000000000000000002 /* PronunciationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/PronunciationSettingsView.swift; sourceTree = SOURCE_ROOT; };
 		AA0010000000000000000001 /* PronunciationSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/PronunciationSettingsStore.swift; sourceTree = SOURCE_ROOT; };
@@ -171,6 +173,7 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				AA0010000000000000000004 /* SystemSpeechVoice.swift */,
 				AA0010000000000000000003 /* PronunciationButton.swift */,
 				AA0010000000000000000002 /* PronunciationSettingsView.swift */,
 				AA0010000000000000000001 /* PronunciationSettingsStore.swift */,
@@ -345,6 +348,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */,
 				AA0020000000000000000003 /* PronunciationButton.swift in Sources */,
 				AA0020000000000000000002 /* PronunciationSettingsView.swift in Sources */,
 				AA0020000000000000000001 /* PronunciationSettingsStore.swift in Sources */,

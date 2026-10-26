@@ -6,6 +6,6 @@ export DEVELOPER_DIR
 mkdir -p build/Checks
 xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-library \
     ODict/Models/PronunciationSource.swift ODict/Services/PronunciationSettingsStore.swift \
-    ODict/Services/PronunciationService.swift Tests/PronunciationChecks.swift \
+    ODict/Services/SystemSpeechVoice.swift ODict/Services/PronunciationService.swift Tests/PronunciationChecks.swift \
     -o build/Checks/PronunciationChecks
 build/Checks/PronunciationChecks
