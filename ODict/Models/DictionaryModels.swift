@@ -34,9 +34,9 @@ enum DictionaryError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .configuration: return "请在设置中填写有效的 HTTPS API 地址。"
-        case .missingKey: return "请先在设置中保存只读 API 密钥。"
+        case .missingKey: return "请先在设置的在线词典中登录 ODict 账号。"
         case .notFound: return "没有找到这个词，试试其他拼写。"
-        case .unauthorized: return "API 密钥无效或已过期，请在设置中更新。"
+        case .unauthorized: return "登录已失效，请在设置的在线词典中重新登录。"
         case .limited(let seconds): return seconds.map { "查询过于频繁，请在 \($0) 秒后重试。" } ?? "查询过于频繁，请稍后重试。"
         case .server(let status): return "词典服务暂不可用（\(status)），请稍后重试。"
         case .invalidResponse: return "无法读取词典返回的数据。"

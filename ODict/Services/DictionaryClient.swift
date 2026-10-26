@@ -2,12 +2,11 @@ import Foundation
 
 // Immutable dependencies; URLSession lifecycle and buffering belong to the transport.
 final class DictionaryClient: DictionaryServing {
-    private let settings: ServiceSettingsServing
+    private let address = ODictService.apiAddress
     private let transport: HTTPTransporting
     private let rateLimit = RequestRateLimit()
 
-    init(settings: ServiceSettingsServing = ServiceSettingsStore(), transport: HTTPTransporting = HTTPTransport()) {
-        self.settings = settings
+    init(transport: HTTPTransporting = HTTPTransport()) {
         self.transport = transport
     }
 
@@ -26,18 +25,25 @@ final class DictionaryClient: DictionaryServing {
 
     private func request<T: Decodable>(path: [String], query: [URLQueryItem] = []) async throws -> T {
         try Task.checkCancellation()
-        let snapshot = try await settings.load()
-        try Task.checkCancellation()
-        let endpoint = try ServiceEndpoint(snapshot.address)
+        let endpoint = try ServiceEndpoint(address)
         let url = try endpoint.url(path: path, query: query + [
             .init(name: "source_language", value: "zh-CN"), .init(name: "target_language", value: "zh-CN")
         ])
         try rateLimit.check(url)
-        guard !snapshot.key.isEmpty else { throw DictionaryError.missingKey }
+        let accountGeneration = await AccountStore.shared.generation(endpoint: address)
+        let token = try await AccountStore.shared.access(endpoint: address)
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(snapshot.key)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, http) = try await transport.data(for: request)
+        var (data, http) = try await transport.data(for: request)
+        if http.statusCode == 401 {
+            let refreshed = try await AccountStore.shared.access(endpoint: address, rejectedToken: token)
+            try Task.checkCancellation()
+            request.setValue("Bearer \(refreshed)", forHTTPHeaderField: "Authorization")
+            (data, http) = try await transport.data(for: request)
+        }
+        let currentGeneration = await AccountStore.shared.generation(endpoint: address)
+        guard currentGeneration == accountGeneration else { throw CancellationError() }
         try Task.checkCancellation()
         switch http.statusCode {
         case 200...299: break

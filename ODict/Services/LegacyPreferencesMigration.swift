@@ -23,7 +23,6 @@ enum LegacyPreferencesMigration {
     }
 
     static func copyMissing(from legacy: [String: Any], to defaults: UserDefaults) {
-        if defaults.object(forKey: "apiURL") == nil, let value = legacy["apiURL"] as? String { defaults.set(value, forKey: "apiURL") }
         if defaults.object(forKey: "didWelcome") == nil, let value = legacy["didWelcome"] as? Bool { defaults.set(value, forKey: "didWelcome") }
         if defaults.object(forKey: "recentWords") == nil, let value = legacy["recentWords"] as? [String] {
             defaults.set(Array(value.lazy.filter { !$0.isEmpty && $0.count <= 255 }.prefix(20)), forKey: "recentWords")

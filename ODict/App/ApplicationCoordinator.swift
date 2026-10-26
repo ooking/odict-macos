@@ -86,6 +86,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     func start() {
+        TelemetryRuntime.start()
         NSApp.setActivationPolicy(.accessory)
         rememberSource()
         status.onToggle = { [weak self] in self?.toggleLookup() }
@@ -240,6 +241,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     func stop() {
+        TelemetryRuntime.stop()
         isStopping = true
         hover.stop()
         capture.cancel()

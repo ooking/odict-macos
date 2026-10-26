@@ -4,20 +4,11 @@ import Security
 enum KeychainStore {
     private static let worker = BlockingWorkQueue(label: "com.touchany.odict.keychain")
 
-    static func loadSettings() async throws -> SavedServiceSettings {
-        try await worker.perform {
-            let key = try readSynchronously()
-            let address = UserDefaults.standard.string(forKey: "apiURL") ?? ServiceSettingsStore.defaultAddress
-            return SavedServiceSettings(address: address, key: key)
-        }
+    static func loadSecret(account: String) async throws -> String {
+        try await worker.perform { try readSynchronously(account: account) }
     }
-
-    static func saveSettings(address: String, key: String) async throws {
-        try await worker.perform {
-            try saveSynchronously(key)
-            // Commit the matching endpoint on the same queue, even if the UI closes.
-            UserDefaults.standard.set(address, forKey: "apiURL")
-        }
+    static func saveSecret(_ value: String, account: String) async throws {
+        try await worker.perform { try saveSynchronously(value, account: account) }
     }
 
     static func loadAISettings() async throws -> AISavedSettings {
@@ -43,7 +34,7 @@ enum KeychainStore {
          kSecAttrAccount as String: account]
     }
 
-    private static func readSynchronously(account: String = "dictionary-read-key") throws -> String {
+    private static func readSynchronously(account: String) throws -> String {
         var request = query(account: account)
         request[kSecReturnData as String] = true
         request[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -55,7 +46,7 @@ enum KeychainStore {
         return value
     }
 
-    private static func saveSynchronously(_ key: String, account: String = "dictionary-read-key") throws {
+    private static func saveSynchronously(_ key: String, account: String) throws {
         let query = query(account: account)
         if key.isEmpty {
             let status = SecItemDelete(query as CFDictionary)

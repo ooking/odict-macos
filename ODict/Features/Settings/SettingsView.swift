@@ -66,17 +66,14 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             sidebar
             Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(category.rawValue).font(AppTypography.pageTitle)
-                        Text(category.subtitle).font(AppTypography.secondary).foregroundColor(.secondary)
-                    }
-                    categoryContent
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(category.rawValue).font(AppTypography.pageTitle)
+                    Text(category.subtitle).font(AppTypography.secondary).foregroundColor(.secondary)
                 }
-                .padding(28)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .id(category)
+                .padding(.horizontal, 28).padding(.top, 28)
+                categoryContent
+                    .id(category)
             }
             .background(Color(nsColor: .windowBackgroundColor))
         }
@@ -139,15 +136,26 @@ struct SettingsView: View {
 
     @ViewBuilder private var categoryContent: some View {
         switch category {
-        case .capture: captureSettings
+        case .capture: SettingsPage { captureSettings }
         case .dictionaries:
-            settingsGroup { LocalDictionarySettingsView(model: dictionaryModel) }
-        case .pronunciation: settingsGroup { PronunciationSettingsView() }
-        case .history: historySettings
-        case .service: serviceSettings.onAppear { model.load() }
+            LocalDictionarySettingsView(model: dictionaryModel)
+        case .pronunciation: PronunciationSettingsView()
+        case .history:
+            SettingsPage { historySettings } actions: {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let message = historyCapacityMessage { helpText(message) }
+                    HStack {
+                        helpText("修改后需保存。")
+                        Spacer()
+                        Button("保存", action: saveHistoryCapacity).keyboardShortcut(.defaultAction)
+                    }
+                }
+            }
+        case .service:
+            SettingsPage { serviceSettings }
         case .ai: AISettingsView(model: model.ai)
-        case .privacy: privacySettings
-        case .about: AboutSettingsView()
+        case .privacy: SettingsPage { privacySettings }
+        case .about: SettingsPage { AboutSettingsView() }
         }
     }
 
@@ -215,10 +223,6 @@ struct SettingsView: View {
             helpText("默认 20 条，可设为 1–100 条。")
             Divider()
             helpText("超出数量时移除较早记录。AI 回答保存在本机，无需重新生成。")
-            HStack {
-                Button("保存", action: saveHistoryCapacity)
-                if let message = historyCapacityMessage { helpText(message) }
-            }
         }
     }
 
@@ -326,39 +330,7 @@ struct SettingsView: View {
     }
 
     private var serviceSettings: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            settingsGroup {
-                Text("词典服务").font(AppTypography.section)
-                Text("HTTPS API 地址").font(AppTypography.secondary)
-                TextField("https://…", text: $model.address)
-                    .disabled(!model.keyLoaded || model.isSaving)
-                Text("只读 API 密钥").font(AppTypography.secondary).padding(.top, 6)
-                SecureField("输入只读产品密钥", text: $model.key)
-                    .disabled(!model.keyLoaded || model.isSaving)
-                if model.isLoading {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        helpText("正在读取钥匙串，请留意系统授权提示…")
-                    }
-                } else if !model.keyLoaded {
-                    Button("重试读取钥匙串") { model.load() }
-                }
-                helpText("密钥只保存在本机钥匙串中。请使用只读产品密钥，不要填写管理密钥。更换服务器时请同时更换对应密钥。")
-                Link("获取 API 密钥", destination: URL(string: "https://odict.touchany.com/admin/api-clients")!)
-            }.textFieldStyle(.roundedBorder)
-            if let message = model.message {
-                Text(message).font(AppTypography.secondary)
-                    .foregroundColor(model.saved ? .secondary : .red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack {
-                helpText("修改后保存，下一次查词生效。")
-                Spacer()
-                if model.isSaving { ProgressView().controlSize(.small) }
-                Button(model.isSaving ? "正在保存…" : "保存服务设置", action: model.save)
-                    .keyboardShortcut(.defaultAction).disabled(!model.keyLoaded || model.isSaving)
-            }
-        }
+        settingsGroup { AccountSettingsView(settings: model) }
     }
 
     private var privacySettings: some View {
@@ -374,6 +346,7 @@ struct SettingsView: View {
                 }
                 helpText("授权后请重新触发取词；屏幕录制权限可能需要按系统提示重新打开应用。")
             }
+            settingsGroup { TelemetryPrivacyView() }
             settingsGroup {
                 Text("数据与隐私").font(AppTypography.section)
                 helpText("选中取词读取当前应用选中的文字；悬停取词读取鼠标处文字，必要时仅截取附近区域。")
@@ -437,5 +410,42 @@ struct SettingsView: View {
             pendingAuthorization.remove(method)
             setCaptureEnabled(method, true)
         }
+    }
+}
+
+/// Keeps page actions outside the scrolling region without overlays or size observers.
+/// Both regions use the available window size, including on macOS 12.
+struct SettingsPage<Content: View, Actions: View>: View {
+    private let content: Content
+    private let actions: Actions
+
+    init(@ViewBuilder content: () -> Content, @ViewBuilder actions: () -> Actions) {
+        self.content = content()
+        self.actions = actions()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(28)
+            }
+            if Actions.self != EmptyView.self {
+                Divider()
+                actions
+                    .font(AppTypography.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 28).padding(.vertical, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .controlBackgroundColor))
+            }
+        }
+    }
+}
+
+extension SettingsPage where Actions == EmptyView {
+    init(@ViewBuilder content: () -> Content) {
+        self.init(content: content, actions: { EmptyView() })
     }
 }

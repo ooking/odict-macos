@@ -100,14 +100,13 @@ private struct ScreenCaptureChecks {
         let suite = "com.touchany.odict.capture-checks.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        defaults.set("https://existing.example", forKey: "apiURL")
         defaults.set(false, forKey: "KeyboardShortcuts_toggleDictionary")
         LegacyPreferencesMigration.copyMissing(from: [
             "apiURL": "https://legacy.example", "didWelcome": true,
             "recentWords": (0..<30).map { "word\($0)" },
             "KeyboardShortcuts_toggleDictionary": "legacy-shortcut", "apiKey": "dummy-must-not-copy"
         ], to: defaults)
-        precondition(defaults.string(forKey: "apiURL") == "https://existing.example")
+        precondition(defaults.object(forKey: "apiURL") == nil)
         precondition(defaults.object(forKey: "KeyboardShortcuts_toggleDictionary") as? Bool == false)
         precondition(defaults.bool(forKey: "didWelcome"))
         precondition(defaults.stringArray(forKey: "recentWords")?.count == 20)

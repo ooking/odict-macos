@@ -8,7 +8,7 @@ xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-l
     ODict/Models/AIModels.swift ODict/Models/DictionaryModels.swift \
     ODict/Services/AIClient.swift ODict/Services/AIStreamTransport.swift ODict/Services/AIStreamDecoder.swift ODict/Services/AISettingsStore.swift \
     ODict/Services/KeychainStore.swift ODict/Services/BlockingWorkQueue.swift \
-    ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift \
+    ODict/Services/ODictService.swift ODict/Services/HTTPTransport.swift \
     ODict/Features/AI/AISettingsModel.swift Tests/AISettingsChecks.swift \
     -o build/Checks/AISettingsChecks
 build/Checks/AISettingsChecks

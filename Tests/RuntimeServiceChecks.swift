@@ -7,22 +7,6 @@ private final class Flag: @unchecked Sendable {
     func set() { lock.lock(); storage = true; lock.unlock() }
 }
 
-private struct FixtureSettings: ServiceSettingsServing {
-    func load() async throws -> SavedServiceSettings {
-        SavedServiceSettings(address: "https://fixture.invalid/prefix%20one/", key: "fixture-only")
-    }
-    func save(address: String, key: String) async throws {}
-}
-
-private final class FixtureTransport: HTTPTransporting {
-    var request: URLRequest?
-    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        self.request = request
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        return (Data("{\"data\":[]}".utf8), response)
-    }
-}
-
 private final class LocalProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -39,19 +23,6 @@ private final class LocalProtocol: URLProtocol, @unchecked Sendable {
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
-}
-
-private actor DeferredSettings: ServiceSettingsServing {
-    private var pending: CheckedContinuation<SavedServiceSettings, Error>?
-    var started: Bool { pending != nil }
-    func load() async throws -> SavedServiceSettings {
-        try await withCheckedThrowingContinuation { pending = $0 }
-    }
-    func finish() {
-        pending?.resume(returning: SavedServiceSettings(address: "https://late.invalid", key: "late-fixture-only"))
-        pending = nil
-    }
-    func save(address: String, key: String) async throws {}
 }
 
 @main
@@ -86,13 +57,6 @@ private struct RuntimeServiceChecks {
         precondition(cancelledBeforeSystemReturn, "cancellation must release UI without waiting for the system call")
         precondition(!queuedRan.value, "cancelled queued work must not access the system")
 
-        let transport = FixtureTransport()
-        let client = DictionaryClient(settings: FixtureSettings(), transport: transport)
-        _ = try await client.suggestions("a /?#%中文")
-        precondition(transport.request?.url?.absoluteString.contains("/prefix%20one/suggestions?") == true)
-        precondition(transport.request?.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-only")
-        let query = URLComponents(url: transport.request!.url!, resolvingAgainstBaseURL: false)!.queryItems!
-        precondition(query.first(where: { $0.name == "q" })?.value == "a /?#%中文")
         do { _ = try ServiceEndpoint("https://name:secret@fixture.invalid"); preconditionFailure("credentials must not be in the endpoint") }
         catch DictionaryError.configuration {}
         let encodedPath = try ServiceEndpoint("https://fixture.invalid/prefix%20one/").url(path: ["entries", "a/b"], query: [])
@@ -140,18 +104,6 @@ private struct RuntimeServiceChecks {
         let recent = history.load()
         precondition(recent.count == 20 && recent.first == "same")
 
-        let deferred = DeferredSettings()
-        let settings = SettingsModel(store: deferred)
-        settings.load()
-        for _ in 0..<200 {
-            if await deferred.started { break }
-            try await Task.sleep(nanoseconds: 5_000_000)
-        }
-        settings.close()
-        await deferred.finish()
-        try await Task.sleep(nanoseconds: 20_000_000)
-        precondition(settings.key.isEmpty && !settings.keyLoaded && !settings.isLoading,
-                     "a closed settings window must not accept a late secret")
-        print("PASS: prompt cancellation; queued work; endpoint/credential snapshot; encoded URLs; bounded HTTP; HTTP cancellation; transport lifetime; Retry-After; bounded history; settings close cleanup. No real network or Keychain used.")
+        print("PASS: prompt cancellation; queued work; encoded URLs; bounded HTTP; HTTP cancellation; transport lifetime; Retry-After; bounded history. No real network or Keychain used.")
     }
 }

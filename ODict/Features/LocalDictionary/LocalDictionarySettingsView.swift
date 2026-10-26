@@ -97,12 +97,31 @@ final class LocalDictionarySettingsModel: ObservableObject {
 struct LocalDictionarySettingsView: View {
     @ObservedObject var model: LocalDictionarySettingsModel
     var body: some View {
+        SettingsPage {
+            settingsContent
+        } actions: {
+            VStack(alignment: .leading, spacing: 8) {
+                if let message = model.message {
+                    Text(message).font(AppTypography.secondary).foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                HStack {
+                    Button("添加词典…", action: model.add).disabled(model.busy)
+                    Button("重新加载样式与摘要规则", action: model.reload).disabled(model.busy)
+                    if model.busy { ProgressView().controlSize(.small) }
+                }
+            }
+        }
+        .font(AppTypography.body).onDisappear { model.close() }
+    }
+
+    private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("词典管理").font(AppTypography.section)
             Picker("查询方式", selection: $model.mode) {
                 ForEach(DictionaryMode.allCases) { mode in Text(mode.title).tag(mode) }
             }.onChange(of: model.mode) { _ in model.changeMode() }
-            Text("本地词典按从上到下的顺序查询，命中后停止；全部未命中时使用在线词典。中文释义反查使用在线服务。")
+            Text("设置自动保存。本地词典按从上到下的顺序查询，命中后停止；全部未命中时使用在线词典。中文释义反查使用在线服务。")
                 .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             ForEach(Array(model.dictionaries.enumerated()), id: \.element.id) { index, dictionary in
                 VStack(alignment: .leading, spacing: 6) {
@@ -133,16 +152,10 @@ struct LocalDictionarySettingsView: View {
                         .font(AppTypography.caption).foregroundColor(.secondary).lineLimit(2).textSelection(.enabled)
                 }.padding(10).background(Color.primary.opacity(0.035)).cornerRadius(8)
             }
-            HStack {
-                Button("添加词典…", action: model.add).disabled(model.busy)
-                Button("重新加载样式与摘要规则", action: model.reload).disabled(model.busy)
-                if model.busy { ProgressView().controlSize(.small) }
-            }
             Text("每本词典建议使用独立文件夹。可独立开关每本词典的覆盖样式。展示样式可编辑目录中的 odict-overrides.css，也可自行添加 odict-overrides.js；重新查询后生效。移除配置不会删除词典文件。")
                 .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
-            if let message = model.message {
-                Text(message).font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-        }.font(AppTypography.body).onDisappear { model.close() }
+        }
+        .padding(20).background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
     }
 }

@@ -15,6 +15,26 @@ struct PronunciationSettingsView: View {
     @State private var message: String?
 
     var body: some View {
+        SettingsPage {
+            settingsContent
+        } actions: {
+            VStack(alignment: .leading, spacing: 8) {
+                if let message = message { Text(message).foregroundColor(.red) }
+                HStack {
+                    Text("列表中的更改自动保存。")
+                        .font(AppTypography.secondary).foregroundColor(.secondary)
+                    Spacer()
+                    Button("添加来源") { draft = store.newSource() }
+                        .disabled(store.sources.count >= PronunciationSettingsStore.maximumSources)
+                }
+            }
+        }
+        .sheet(item: $draft) { source in
+            PronunciationSourceEditor(source: source) { updated in save(updated) }
+        }
+    }
+
+    private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             ForEach(store.sources) { source in
                 HStack(spacing: 12) {
@@ -38,17 +58,12 @@ struct PronunciationSettingsView: View {
                 Divider()
             }
             if store.sources.isEmpty { Text("尚未添加发音来源。添加并启用后，可从窗口底部播放。").foregroundColor(.secondary) }
-            Button("添加来源") {
-                draft = store.newSource()
-            }.disabled(store.sources.count >= PronunciationSettingsStore.maximumSources)
             Text("{text} 会替换为输入框的原始完整内容，并自动进行 URL 编码。点击发音时，这些文字将发送到所选来源。远程来源支持 HTTPS 音频地址，系统语音使用本机语音。")
                 .font(AppTypography.secondary).foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if let message = message { Text(message).foregroundColor(.red) }
         }
-        .sheet(item: $draft) { source in
-            PronunciationSourceEditor(source: source) { updated in save(updated) }
-        }
+        .padding(20).background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
     }
 
     private func save(_ source: PronunciationSource) {
@@ -63,6 +78,21 @@ private struct PronunciationSourceEditor: View {
     let save: (PronunciationSource) -> Void
 
     var body: some View {
+        SettingsPage {
+            editorContent
+        } actions: {
+            HStack {
+                PronunciationTestButton(source: source)
+                Spacer()
+                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("保存") { save(source); dismiss() }
+                    .keyboardShortcut(.defaultAction).disabled(source.validationMessage != nil)
+            }
+        }
+        .textFieldStyle(.roundedBorder).frame(width: 480, height: 540)
+    }
+
+    private var editorContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("发音来源").font(AppTypography.pageTitle)
             TextField("名称", text: $source.name)
@@ -86,14 +116,7 @@ private struct PronunciationSourceEditor: View {
             if let message = source.validationMessage {
                 Text(message).font(AppTypography.caption).foregroundColor(.secondary)
             }
-            HStack {
-                PronunciationTestButton(source: source)
-                Spacer()
-                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("保存") { save(source); dismiss() }
-                    .keyboardShortcut(.defaultAction).disabled(source.validationMessage != nil)
-            }
-        }.textFieldStyle(.roundedBorder).padding(24).frame(width: 480)
+        }
     }
 }
 

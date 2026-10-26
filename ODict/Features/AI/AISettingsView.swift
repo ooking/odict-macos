@@ -3,6 +3,18 @@ import SwiftUI
 struct AISettingsView: View {
     @ObservedObject var model: AISettingsModel
     var body: some View {
+        SettingsPage {
+            settingsContent
+        } actions: {
+            settingsActions
+        }
+        .textFieldStyle(.roundedBorder)
+        .disabled(model.isSaving || model.isLoading)
+        .onAppear { model.load() }
+        .onDisappear { model.cancelVerification() }
+    }
+
+    private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             group {
                 Text("服务连接").font(AppTypography.section)
@@ -51,6 +63,11 @@ struct AISettingsView: View {
                 Divider()
                 prompt("句子翻译", text: setting(\.translationPrompt), defaultValue: AIConfiguration.defaultTranslationPrompt)
             }
+        }
+    }
+
+    private var settingsActions: some View {
+        VStack(alignment: .leading, spacing: 8) {
             if let message = model.message {
                 Label(message, systemImage: model.succeeded ? "checkmark.circle" : "info.circle")
                     .font(AppTypography.secondary).foregroundColor(model.succeeded ? .secondary : .red)
@@ -64,10 +81,6 @@ struct AISettingsView: View {
                     .keyboardShortcut(.defaultAction).disabled(!model.loaded || model.isSaving)
             }
         }
-        .textFieldStyle(.roundedBorder)
-        .disabled(model.isSaving || model.isLoading)
-        .onAppear { model.load() }
-        .onDisappear { model.cancelVerification() }
     }
     @ViewBuilder private var verificationFeedback: some View {
         switch model.verificationState {

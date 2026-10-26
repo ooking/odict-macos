@@ -1,30 +1,9 @@
 import Foundation
 
-struct SavedServiceSettings: Sendable {
-    let address: String
-    let key: String
-}
-
-protocol ServiceSettingsServing {
-    func load() async throws -> SavedServiceSettings
-    func save(address: String, key: String) async throws
-}
-
-struct ServiceSettingsStore: ServiceSettingsServing {
-    static let defaultAddress = "https://odict-api.touchany.com"
-    func load() async throws -> SavedServiceSettings { try await KeychainStore.loadSettings() }
-    func save(address: String, key: String) async throws {
-        _ = try ServiceEndpoint(address)
-        guard !key.contains(where: { $0.isWhitespace || $0.isNewline }) else {
-            throw ServiceSettingsError.invalidKey
-        }
-        try await KeychainStore.saveSettings(address: address, key: key)
-    }
-}
-
-enum ServiceSettingsError: LocalizedError {
-    case invalidKey
-    var errorDescription: String? { "密钥中不能包含空格或换行。" }
+/// Built-in endpoints shared by online lookup, account login and device reporting.
+enum ODictService {
+    static let apiAddress = "https://odict-api.touchany.com"
+    static let webOrigin = "https://odict.touchany.com"
 }
 
 struct ServiceEndpoint: Sendable {

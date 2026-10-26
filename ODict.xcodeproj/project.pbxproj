@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB0200000000000000000004 = {isa = PBXBuildFile; fileRef = AB0100000000000000000004; };
+		AB0200000000000000000003 = {isa = PBXBuildFile; fileRef = AB0100000000000000000003; };
+		AB0200000000000000000002 = {isa = PBXBuildFile; fileRef = AB0100000000000000000002; };
+		AB0200000000000000000001 = {isa = PBXBuildFile; fileRef = AB0100000000000000000001; };
+		AB0200000000000000000000 = {isa = PBXBuildFile; fileRef = AB0100000000000000000000; };
 		AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000004; };
 		AA0020000000000000000003 /* PronunciationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000003; };
 		AA0020000000000000000002 /* PronunciationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000002; };
@@ -48,7 +53,7 @@
 		000000000000000000000609 /* ODict/Services/PronunciationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000509 /* ODict/Services/PronunciationService.swift */; };
 		00000000000000000000060A /* ODict/Services/RecentWordsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */; };
 		00000000000000000000060B /* ODict/Services/RequestRateLimit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */; };
-		00000000000000000000060C /* ODict/Services/ServiceSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */; };
+		00000000000000000000060C /* ODict/Services/ODictService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000050C /* ODict/Services/ODictService.swift */; };
 		000000000000000000000801 /* ODict/Features/Capture/HoverLookupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */; };
 		000000000000000000000A00 /* ODict/LocalDictionary/MDXBinary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000900 /* ODict/LocalDictionary/MDXBinary.swift */; };
 		000000000000000000000A01 /* ODict/LocalDictionary/MDXReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */; };
@@ -81,6 +86,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AB0100000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/TelemetryPrivacyView.swift"; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/AccountSettingsView.swift"; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/AccountStore.swift"; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/MacDeviceIdentity.swift"; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000000 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/AccountTransport.swift"; sourceTree = SOURCE_ROOT; };
 		AA0010000000000000000004 /* SystemSpeechVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/SystemSpeechVoice.swift; sourceTree = SOURCE_ROOT; };
 		AA0010000000000000000003 /* PronunciationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/PronunciationButton.swift; sourceTree = SOURCE_ROOT; };
 		AA0010000000000000000002 /* PronunciationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/PronunciationSettingsView.swift; sourceTree = SOURCE_ROOT; };
@@ -126,7 +136,7 @@
 		000000000000000000000509 /* ODict/Services/PronunciationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/PronunciationService.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/RecentWordsStore.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/RequestRateLimit.swift; sourceTree = SOURCE_ROOT; };
-		00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/ServiceSettingsStore.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000050C /* ODict/Services/ODictService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/ODictService.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000701 /* ODict/Features/Capture/HoverLookupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Capture/HoverLookupController.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000900 /* ODict/LocalDictionary/MDXBinary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/MDXBinary.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000901 /* ODict/LocalDictionary/MDXReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/MDXReader.swift; sourceTree = SOURCE_ROOT; };
@@ -173,6 +183,11 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				AB0100000000000000000004,
+				AB0100000000000000000003,
+				AB0100000000000000000002,
+				AB0100000000000000000001,
+				AB0100000000000000000000,
 				AA0010000000000000000004 /* SystemSpeechVoice.swift */,
 				AA0010000000000000000003 /* PronunciationButton.swift */,
 				AA0010000000000000000002 /* PronunciationSettingsView.swift */,
@@ -223,7 +238,7 @@
 				000000000000000000001504 /* ODict/Features/AI/AIHistoryModel.swift */,
 				000000000000000000001506 /* ODict/Features/AI/AIHistoryView.swift */,
 				00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */,
-				00000000000000000000050C /* ODict/Services/ServiceSettingsStore.swift */,
+				00000000000000000000050C /* ODict/Services/ODictService.swift */,
 				000000000000000000000306 /* ODict/Assets.xcassets */,
 				000000000000000000000300 /* ODict/Features/Capture/CaptureSupport.swift */,
 				000000000000000000000301 /* ODict/Features/Capture/ScreenSelectionController.swift */,
@@ -348,6 +363,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB0200000000000000000004,
+				AB0200000000000000000003,
+				AB0200000000000000000002,
+				AB0200000000000000000001,
+				AB0200000000000000000000,
 				AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */,
 				AA0020000000000000000003 /* PronunciationButton.swift in Sources */,
 				AA0020000000000000000002 /* PronunciationSettingsView.swift in Sources */,
@@ -395,7 +415,7 @@
 				000000000000000000000609 /* ODict/Services/PronunciationService.swift in Sources */,
 				00000000000000000000060A /* ODict/Services/RecentWordsStore.swift in Sources */,
 				00000000000000000000060B /* ODict/Services/RequestRateLimit.swift in Sources */,
-				00000000000000000000060C /* ODict/Services/ServiceSettingsStore.swift in Sources */,
+				00000000000000000000060C /* ODict/Services/ODictService.swift in Sources */,
 				000000000000000000000400 /* ODict/Features/Capture/CaptureSupport.swift in Sources */,
 				000000000000000000000401 /* ODict/Features/Capture/ScreenSelectionController.swift in Sources */,
 				000000000000000000000402 /* ODict/Features/Capture/CaptureCoordinator.swift in Sources */,
