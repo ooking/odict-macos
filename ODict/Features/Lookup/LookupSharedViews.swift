@@ -17,6 +17,7 @@ struct LookupFooter<Trailing: View>: View {
                 .allowsHitTesting(false)
             Text("ODict").font(.system(size: 12, weight: .semibold)).allowsHitTesting(false)
             Spacer().allowsHitTesting(false)
+            PronunciationButton(text: model.query, owner: model.pronunciationOwner)
             if showsCaptureTools {
                 CaptureToolTipIcon(method: .selection, icon: "text.cursor", action: captureSelection)
                 CaptureToolTipIcon(method: .screenshot, icon: "viewfinder", action: captureScreenshot)

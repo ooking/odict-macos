@@ -129,15 +129,8 @@ struct LookupResultView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(entry.word).font(AppTypography.word).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 10) {
-                    if let phonetic = entry.phonetic, !phonetic.isEmpty {
-                        Text(phonetic).font(.system(size: 14)).foregroundColor(lookupSecondaryInk).textSelection(.enabled)
-                    }
-                    Button { model.pronounce(entry.word) } label: {
-                        Image(systemName: "speaker.wave.2").font(.system(size: 14))
-                            .frame(width: 30, height: 28)
-                            .background(Color.primary.opacity(0.06)).cornerRadius(7)
-                    }.buttonStyle(.plain).foregroundColor(lookupSecondaryInk).help("朗读单词").accessibilityLabel("朗读单词")
+                if let phonetic = entry.phonetic, !phonetic.isEmpty {
+                    Text(phonetic).font(.system(size: 14)).foregroundColor(lookupSecondaryInk).textSelection(.enabled)
                 }
             }
             if let translation = entry.translation, !translation.isEmpty { definition("中文释义", translation) }

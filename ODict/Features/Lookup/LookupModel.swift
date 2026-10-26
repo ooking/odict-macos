@@ -2,7 +2,11 @@ import SwiftUI
 
 @MainActor
 final class LookupModel: ObservableObject {
-    @Published var query = ""
+    @Published var query = "" {
+        didSet {
+            if query != oldValue { pronunciation.stop(owner: pronunciationOwner) }
+        }
+    }
     @Published private(set) var mode: QueryMode
     let ai: AIQueryModel
     private let preferences: UserDefaults
@@ -29,7 +33,7 @@ final class LookupModel: ObservableObject {
             query = manualQuery
             contentVisible = true
         }
-        pronunciation.stop()
+        pronunciation.stop(owner: pronunciationOwner)
         if value == .ai {
             let router = dictionary
             Task { await router.releaseLocalResources() }
@@ -46,7 +50,7 @@ final class LookupModel: ObservableObject {
         guard restoreDraft else { return }
         cancelRequests()
         ai.reset()
-        pronunciation.stop()
+        pronunciation.stop(owner: pronunciationOwner)
         result = nil
         suggestions = []
         selectedSuggestionIndex = nil
@@ -125,7 +129,8 @@ final class LookupModel: ObservableObject {
     private let dictionary: DictionaryLookupServing
     private let history: RecentWordsStore
     private let resultCache: LookupResultCache
-    private let pronunciation = PronunciationService()
+    private let pronunciation = PronunciationService.shared
+    let pronunciationOwner = UUID()
     private var task: Task<Void, Never>?
     private var detailTask: Task<Void, Never>?
     private var previewWord: String?
@@ -399,7 +404,6 @@ final class LookupModel: ObservableObject {
         history.saveTranslations(recentTranslations, for: recent)
     }
 
-    func pronounce(_ word: String) { pronunciation.speak(word) }
 
     func clearHistory() {
         resultCache.clear()
@@ -459,6 +463,6 @@ final class LookupModel: ObservableObject {
             MemoryPhaseDiagnostics.snapshot("lookup.localResources.released")
             #endif
         }
-        pronunciation.stop()
+        pronunciation.stop(owner: pronunciationOwner)
     }
 }

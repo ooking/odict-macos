@@ -5,6 +5,7 @@ import AppKit
 private enum SettingsCategory: String, CaseIterable, Identifiable {
     case capture = "取词方式"
     case dictionaries = "词典管理"
+    case pronunciation = "发音"
     case history = "查询历史"
     case service = "在线词典"
     case ai = "AI"
@@ -16,6 +17,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .capture: return "text.cursor"
         case .dictionaries: return "books.vertical"
+        case .pronunciation: return "speaker.wave.2"
         case .history: return "clock.arrow.circlepath"
         case .service: return "network"
         case .ai: return "sparkles"
@@ -27,6 +29,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .capture: return "选择一种方式，了解用法并按需开启。"
         case .dictionaries: return "管理本地词典、查询顺序和词典资源。"
+        case .pronunciation: return "管理发音来源、启用状态和图标颜色。"
         case .history: return "设置词典和 AI 的历史保留数量。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
@@ -139,6 +142,7 @@ struct SettingsView: View {
         case .capture: captureSettings
         case .dictionaries:
             settingsGroup { LocalDictionarySettingsView(model: dictionaryModel) }
+        case .pronunciation: settingsGroup { PronunciationSettingsView() }
         case .history: historySettings
         case .service: serviceSettings.onAppear { model.load() }
         case .ai: AISettingsView(model: model.ai)

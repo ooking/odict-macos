@@ -12,7 +12,7 @@ xcrun swiftc -swift-version 5 -sdk "$sdk_path" -parse-as-library \
     ODict/Services/KeychainStore.swift ODict/Services/BlockingWorkQueue.swift \
     ODict/Services/ServiceSettingsStore.swift ODict/Services/HTTPTransport.swift \
     ODict/Services/RequestRateLimit.swift ODict/Services/RecentWordsStore.swift \
-    ODict/Services/PronunciationService.swift ODict/Services/LookupResultCache.swift ODict/Features/Lookup/LookupModel.swift \
+    ODict/Models/PronunciationSource.swift ODict/Services/PronunciationSettingsStore.swift ODict/Services/PronunciationService.swift ODict/Services/LookupResultCache.swift ODict/Features/Lookup/LookupModel.swift \
     ODict/LocalDictionary/MDXBinary.swift ODict/LocalDictionary/MDXReader.swift \
     ODict/LocalDictionary/LocalDictionaryStore.swift ODict/LocalDictionary/LocalDictionaryLibrary.swift \
     ODict/LocalDictionary/LocalArticleSummary.swift ODict/LocalDictionary/LocalArticleDocument.swift \
