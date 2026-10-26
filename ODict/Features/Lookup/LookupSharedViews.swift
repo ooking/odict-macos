@@ -59,7 +59,7 @@ private struct CaptureToolTipIcon: View {
             .foregroundColor(enabled ? Color.accentColor : lookupSecondaryInk)
             .accessibilityLabel(method.title)
             .accessibilityValue(enabled ? "已开启" : "未开启")
-            .accessibilityHint(method == .hover ? instruction : "停留鼠标查看取词示意")
+            .accessibilityHint(method == .hover ? (HoverTrigger(rawValue: hoverTrigger) ?? .control).instruction : "停留鼠标查看取词示意")
             .onHover { hovering in
                 dismissGuide()
                 guard hovering else { return }
@@ -79,7 +79,7 @@ private struct CaptureToolTipIcon: View {
                         Text(enabled ? "已开启" : "未开启")
                             .font(AppTypography.caption).foregroundColor(.secondary)
                     }
-                    CaptureMethodGuide(method: method, instruction: instruction)
+                    CaptureMethodGuide(method: method)
                     if method == .hover {
                         Text("此图标仅展示用法，请在设置中开启或调整。")
                             .font(AppTypography.caption).foregroundColor(.secondary)
@@ -106,10 +106,6 @@ private struct CaptureToolTipIcon: View {
     private var symbol: some View {
         Image(systemName: icon).font(.system(size: 14))
             .frame(width: 28, height: 28).contentShape(Rectangle())
-    }
-
-    private var instruction: String {
-        method.guideInstruction(hoverTrigger: HoverTrigger(rawValue: hoverTrigger) ?? .control)
     }
 
     private func dismissGuide() {

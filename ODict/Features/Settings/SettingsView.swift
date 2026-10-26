@@ -235,13 +235,9 @@ struct SettingsView: View {
         NotificationCenter.default.post(name: AIHistorySettings.changed, object: nil)
     }
 
-    private func captureInstruction(_ method: CaptureMethod) -> String {
-        method.guideInstruction(hoverTrigger: HoverTrigger(rawValue: hoverTrigger) ?? .control)
-    }
-
     private func captureMethodSettings(_ method: CaptureMethod) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            CaptureMethodGuide(method: method, instruction: captureInstruction(method))
+            CaptureMethodGuide(method: method)
 
             settingsGroup {
                 HStack {
@@ -402,7 +398,9 @@ struct SettingsView: View {
         HStack {
             Text(title)
             Spacer()
-            KeyboardShortcuts.Recorder(for: name).accessibilityLabel(title)
+            KeyboardShortcuts.Recorder(for: name) { _ in
+                NotificationCenter.default.post(name: CaptureMethod.guideShortcutChanged, object: name.rawValue)
+            }.accessibilityLabel(title)
         }.padding(.vertical, 4)
     }
 
