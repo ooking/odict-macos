@@ -66,8 +66,8 @@ actor AccountStore {
         }
         try await KeychainStore.saveSecret("", account: storage(endpoint)); sessions[endpoint] = nil
     }
-    func exchange(endpoint: String, code: String, verifier: String) async throws -> AccountUser {
-        let body = try AccountTransport.body(["code": code, "code_verifier": verifier, "redirect_uri": "com.touchany.odict:/auth/callback"])
+    func exchange(endpoint: String, code: String, verifier: String, redirectURI: String) async throws -> AccountUser {
+        let body = try AccountTransport.body(["code": code, "code_verifier": verifier, "redirect_uri": redirectURI])
         let next: AccountSession
         if MacDeviceIdentity.deviceID() != nil {
             next = try await MacDeviceService.shared.signedPost(AccountSession.self, endpoint: endpoint, path: "/auth/client/token", body: body)

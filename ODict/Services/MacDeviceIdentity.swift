@@ -5,15 +5,14 @@ import IOKit
 extension Data {
     var base64URL: String { base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "") }
 }
-// The device identifier is the hardware UUID with an odict prefix; never log it.
+// Only the versioned SHA-256 derivation crosses the network; never log hardware IDs.
 enum MacDeviceIdentity {
     static func deviceID() -> String? {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
         guard service != 0 else { return nil }
         defer { IOObjectRelease(service) }
-        guard let value = IORegistryEntryCreateCFProperty(service, kIOPlatformUUIDKey as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String,
-              let uuid = UUID(uuidString: value), uuid != UUID(uuidString: "00000000-0000-0000-0000-000000000000") else { return nil }
-        return "odict" + uuid.uuidString.lowercased()
+        guard let value = IORegistryEntryCreateCFProperty(service, kIOPlatformUUIDKey as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String else { return nil }
+        return MacDeviceIdentifier.derive(from: value)
     }
 }
 actor MacDeviceService {

@@ -76,7 +76,7 @@ AI 不在输入时请求，不保留无限缓存或完整响应日志。翻译�
 3. 按 Run。首次运行的设置窗口中，填入只读产品 API 密钥并保存，然后录制全局快捷键。
 4. 点击菜单栏书本图标查词。没有配置密钥时，显式查询会提示打开设置。
 
-默认 API：`https://odict-api.touchany.com`，无 `/api` 前缀。密钥在 [ODict API 管理页面](https://odict.touchany.com/admin/api-clients) 创建。不要填写管理密钥。接口契约见相邻 `odict-api/docs/product-api.md`。
+默认 API（现行配置）：`https://odict.touchany.com/api/`，通过同域反代访问，保留 `/api/` 前缀。密钥在 [ODict API 管理页面](https://odict.touchany.com/admin/api-clients) 创建。不要填写管理密钥。接口契约见相邻 `odict-api/docs/product-api.md`。
 
 ### 本机 Release 构建与更新
 

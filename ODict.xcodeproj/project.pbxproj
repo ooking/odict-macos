@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AC0200000000000000000001 /* MacDeviceIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0100000000000000000001; };
 		A184CF00AF004A35B19A4001 /* LookupWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A184CF00AF004A35B19A4002; };
 		AB0200000000000000000004 = {isa = PBXBuildFile; fileRef = AB0100000000000000000004; };
 		AB0200000000000000000003 = {isa = PBXBuildFile; fileRef = AB0100000000000000000003; };
@@ -87,6 +88,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AC0100000000000000000001 /* MacDeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/MacDeviceIdentifier.swift"; sourceTree = SOURCE_ROOT; };
 		A184CF00AF004A35B19A4002 /* LookupWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupWelcomeView.swift; sourceTree = SOURCE_ROOT; };
 		AB0100000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/TelemetryPrivacyView.swift"; sourceTree = SOURCE_ROOT; };
 		AB0100000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/AccountSettingsView.swift"; sourceTree = SOURCE_ROOT; };
@@ -188,6 +190,7 @@
 				AB0100000000000000000004,
 				AB0100000000000000000003,
 				AB0100000000000000000002,
+				AC0100000000000000000001 /* MacDeviceIdentifier.swift */,
 				AB0100000000000000000001,
 				AB0100000000000000000000,
 				AA0010000000000000000004 /* SystemSpeechVoice.swift */,
@@ -357,7 +360,7 @@
 			outputPaths = ("$(DERIVED_FILE_DIR)/ODict-Info.plist",);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n/bin/cp \"$SRCROOT/ODict/Info.plist\" \"$SCRIPT_OUTPUT_FILE_0\"\n/usr/bin/plutil -replace CFBundleVersion -string \"$(TZ=Asia/Shanghai /bin/date +%Y%m%d%H%M)\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
+			shellScript = "set -eu\n/bin/cp \"$SRCROOT/ODict/Info.plist\" \"$SCRIPT_OUTPUT_FILE_0\"\nif [ \"$CONFIGURATION\" = Debug ]; then\n    /usr/bin/plutil -insert NSAppTransportSecurity -xml \"<dict><key>NSAllowsLocalNetworking</key><true/></dict>\" \"$SCRIPT_OUTPUT_FILE_0\"\nfi\n/usr/bin/plutil -replace CFBundleVersion -string \"$(TZ=Asia/Shanghai /bin/date +%Y%m%d%H%M)\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -369,6 +372,7 @@
 				AB0200000000000000000004,
 				AB0200000000000000000003,
 				AB0200000000000000000002,
+				AC0200000000000000000001 /* MacDeviceIdentifier.swift in Sources */,
 				AB0200000000000000000001,
 				AB0200000000000000000000,
 				AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */,

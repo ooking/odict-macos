@@ -36,6 +36,9 @@ struct AboutSettingsView: View {
                         .font(AppTypography.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
+            #if DEBUG
+            group { DebugLoginSettingsView() }
+            #endif
             group {
                 Text("开发者").font(AppTypography.section)
                 Text(AppAboutInformation.developerName).font(AppTypography.body)
@@ -131,3 +134,60 @@ private struct AboutNoticeView: View {
         .padding(24).frame(width: 520, height: 420)
     }
 }
+
+#if DEBUG
+private struct DebugLoginSettingsView: View {
+    @State private var configuration = DebugLoginConfiguration.load()
+    @State private var message: String?
+    @State private var hasError = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("登录调试（仅 Debug）").font(AppTypography.section)
+            addressField("登录网页地址", text: $configuration.webOrigin)
+            addressField("API 地址", text: $configuration.apiAddress)
+            Text("本地同域反代示例：网页 http://localhost:5174，API http://localhost:5174/api/")
+                .font(AppTypography.caption).foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            addressField("登录回调 URL", text: $configuration.callback)
+            Text("保存后在下一次登录时生效。HTTP 仅支持本机地址。回调需使用 com.touchany.odict 协议，并与网页和服务端的允许配置一致。API 地址同时用于在线词典与设备服务。")
+                .font(AppTypography.caption).foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button("保存调试设置") {
+                    do {
+                        let value = try configuration.validated()
+                        try value.save()
+                        configuration = value
+                        hasError = false
+                        message = "已保存，下次登录将使用这些地址。"
+                    } catch {
+                        hasError = true
+                        message = error.localizedDescription
+                    }
+                }
+                Button("恢复线上默认值") {
+                    DebugLoginConfiguration.reset()
+                    configuration = DebugLoginConfiguration()
+                    hasError = false
+                    message = "已恢复线上默认地址，下次登录生效。"
+                }
+            }
+            if let message {
+                Text(message).font(AppTypography.caption)
+                    .foregroundColor(hasError ? .red : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func addressField(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(AppTypography.secondary)
+            TextField(title, text: text).textFieldStyle(.roundedBorder)
+                .accessibilityLabel(title)
+                .onChange(of: text.wrappedValue) { _ in message = nil }
+        }
+    }
+}
+#endif

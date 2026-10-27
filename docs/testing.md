@@ -8,6 +8,7 @@
 
 | 入口 | 主要范围 | 外部条件与影响 |
 | --- | --- | --- |
+| `sh scripts/check-device-identifier.sh` | 固定跨语言设备 ID 向量、大小写规范化及无效 UUID | 仅合成输入；不读取硬件、Keychain，不联网 |
 | `sh scripts/check-lookup.sh` | 查询状态、候选、取消及结果复用 | 模拟服务与隔离偏好，不需真实词典 API |
 | `sh scripts/check-runtime.sh` | HTTP 边界、配置、限流等 | 模拟传输/服务，不需真实凭据 |
 | `sh scripts/check-ai-settings.sh` | AI 配置与设置状态 | 模拟服务，不验证真实提供商 |

@@ -29,23 +29,28 @@ final class AccountLoginModel: NSObject, ObservableObject, ASWebAuthenticationPr
     }
     func login(didSave: @escaping () -> Void) {
         let endpoint = ODictService.apiAddress
+        let webOrigin = ODictService.webOrigin
+        let redirectURI = ODictService.loginCallback
         guard !busy else { return }
         busy = true; message = nil; task?.cancel(); revision = UUID(); let run = revision
         task = Task { [weak self] in
             defer { if self?.revision == run { self?.busy = false; self?.browser = nil; self?.task = nil } }
             do {
                 _ = try ServiceEndpoint(endpoint)
-                guard var url = URLComponents(string: ODictService.webOrigin), url.scheme == "https", url.host != nil, url.user == nil, url.password == nil,
+                guard var url = URLComponents(string: webOrigin), ODictService.allowsWebURL(url), url.host != nil, url.user == nil, url.password == nil,
                       (url.path.isEmpty || url.path == "/"), url.query == nil, url.fragment == nil else { throw DictionaryError.configuration }
+                guard let redirect = URLComponents(string: redirectURI), let callbackScheme = redirect.scheme else {
+                    throw DictionaryError.configuration
+                }
                 guard let self else { throw CancellationError() }
                 let verifier = try self.random(); let state = try self.random()
                 let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URL
                 url.path = "/auth/client"
-                url.queryItems = [.init(name: "client_id", value: "odict-macos"), .init(name: "redirect_uri", value: "com.touchany.odict:/auth/callback"),
+                url.queryItems = [.init(name: "client_id", value: "odict-macos"), .init(name: "redirect_uri", value: redirectURI),
                                   .init(name: "code_challenge", value: challenge), .init(name: "state", value: state)]
                 guard let address = url.url else { throw DictionaryError.configuration }
                 let callback: URL = try await withCheckedThrowingContinuation { continuation in
-                    let browser = ASWebAuthenticationSession(url: address, callbackURLScheme: "com.touchany.odict") { result, error in
+                    let browser = ASWebAuthenticationSession(url: address, callbackURLScheme: callbackScheme) { result, error in
                         if let result { continuation.resume(returning: result) }
                         else { continuation.resume(throwing: error ?? CancellationError()) }
                     }
@@ -54,12 +59,13 @@ final class AccountLoginModel: NSObject, ObservableObject, ASWebAuthenticationPr
                     if !browser.start() { self.browser = nil; continuation.resume(throwing: DictionaryError.configuration) }
                 }
                 try Task.checkCancellation()
-                guard self.revision == run, let parts = URLComponents(url: callback, resolvingAgainstBaseURL: false), parts.scheme == "com.touchany.odict", parts.path == "/auth/callback",
+                guard self.revision == run, let parts = URLComponents(url: callback, resolvingAgainstBaseURL: false), parts.scheme == redirect.scheme, parts.host == redirect.host, parts.port == redirect.port,
+                      parts.percentEncodedPath == redirect.percentEncodedPath, parts.user == nil, parts.password == nil, parts.fragment == nil,
                       parts.queryItems?.filter({ $0.name == "state" }).count == 1,
                       parts.queryItems?.first(where: { $0.name == "state" })?.value == state,
                       parts.queryItems?.filter({ $0.name == "code" }).count == 1,
                       let code = parts.queryItems?.first(where: { $0.name == "code" })?.value else { throw DictionaryError.unauthorized }
-                let user = try await AccountStore.shared.exchange(endpoint: endpoint, code: code, verifier: verifier)
+                let user = try await AccountStore.shared.exchange(endpoint: endpoint, code: code, verifier: verifier, redirectURI: redirectURI)
                 try Task.checkCancellation()
                 guard self.revision == run else { return }
                 self.user = user; self.message = "登录成功。"; didSave()

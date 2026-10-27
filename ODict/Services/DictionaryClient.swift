@@ -2,7 +2,6 @@ import Foundation
 
 // Immutable dependencies; URLSession lifecycle and buffering belong to the transport.
 final class DictionaryClient: DictionaryServing {
-    private let address = ODictService.apiAddress
     private let transport: HTTPTransporting
     private let rateLimit = RequestRateLimit()
 
@@ -25,6 +24,8 @@ final class DictionaryClient: DictionaryServing {
 
     private func request<T: Decodable>(path: [String], query: [URLQueryItem] = []) async throws -> T {
         try Task.checkCancellation()
+        // Capture once so a Debug server change cannot split one request across endpoints.
+        let address = ODictService.apiAddress
         let endpoint = try ServiceEndpoint(address)
         let url = try endpoint.url(path: path, query: query + [
             .init(name: "source_language", value: "zh-CN"), .init(name: "target_language", value: "zh-CN")
