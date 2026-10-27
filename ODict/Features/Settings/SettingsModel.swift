@@ -2,7 +2,7 @@ import SwiftUI
 
 @MainActor
 final class SettingsModel: ObservableObject {
-    @Published var showAI = false
+    @Published var category = SettingsCategory.capture
     let ai = AISettingsModel()
     var didSave: (() -> Void)?
 

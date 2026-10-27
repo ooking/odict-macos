@@ -2,7 +2,7 @@ import SwiftUI
 import KeyboardShortcuts
 import AppKit
 
-private enum SettingsCategory: String, CaseIterable, Identifiable {
+enum SettingsCategory: String, CaseIterable, Identifiable {
     case capture = "取词方式"
     case dictionaries = "词典管理"
     case pronunciation = "发音"
@@ -53,7 +53,6 @@ struct SettingsView: View {
     @State private var cacheCapacityDraft = String(LookupCacheSettings.capacity(in: .standard))
     @State private var historyCapacityDraft = String(AIHistorySettings.capacity())
     @State private var historyCapacityMessage: String?
-    @State private var category = SettingsCategory.capture
     @State private var selectedCaptureMethod = CaptureMethod.selection
     @State private var accessibilityAllowed = false
     @State private var screenAllowed = false
@@ -68,19 +67,18 @@ struct SettingsView: View {
             Divider()
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(category.rawValue).font(AppTypography.pageTitle)
-                    Text(category.subtitle).font(AppTypography.secondary).foregroundColor(.secondary)
+                    Text(model.category.rawValue).font(AppTypography.pageTitle)
+                    Text(model.category.subtitle).font(AppTypography.secondary).foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 28).padding(.top, 28)
                 categoryContent
-                    .id(category)
+                    .id(model.category)
             }
             .background(Color(nsColor: .windowBackgroundColor))
         }
         .font(AppTypography.body)
         .frame(minWidth: 760, minHeight: 480)
-        .onAppear { refreshPermissions(); if model.showAI { category = .ai } }
-        .onChange(of: model.showAI) { value in if value { category = .ai } }
+        .onAppear { refreshPermissions() }
         .alert("\(authorizationMethod?.title ?? "取词")需要\(authorizationMethod?.permissionTitle ?? "系统")权限",
                isPresented: $showCaptureAuthorization, presenting: authorizationMethod) { method in
             Button("前往授权") {
@@ -118,24 +116,24 @@ struct SettingsView: View {
     }
 
     private func categoryButton(_ item: SettingsCategory) -> some View {
-        Button { category = item } label: {
+        Button { model.category = item } label: {
             HStack(spacing: 12) {
                 Image(systemName: item.icon).font(.system(size: 17, weight: .medium)).frame(width: 22)
                 Text(item.rawValue).font(AppTypography.navigation)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12).padding(.vertical, 12)
-            .foregroundColor(category == item ? .white : .primary)
-            .background(category == item ? Color.accentColor : Color.clear)
+            .foregroundColor(model.category == item ? .white : .primary)
+            .background(model.category == item ? Color.accentColor : Color.clear)
             .cornerRadius(9)
             .contentShape(RoundedRectangle(cornerRadius: 9))
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(category == item ? .isSelected : [])
+        .accessibilityAddTraits(model.category == item ? .isSelected : [])
     }
 
     @ViewBuilder private var categoryContent: some View {
-        switch category {
+        switch model.category {
         case .capture: SettingsPage { captureSettings }
         case .dictionaries:
             LocalDictionarySettingsView(model: dictionaryModel)

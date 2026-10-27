@@ -9,6 +9,7 @@ struct LookupWindowActions {
     var interacted: () -> Void
     var dismissed: () -> Void
     var openAISettings: () -> Void = {}
+    var openSetup: (SettingsCategory) -> Void = { _ in }
 }
 
 /// Owns the native lookup window and its placement. Dismissal is always explicit.
@@ -78,7 +79,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             captureSelection: actions.captureSelection, captureScreenshot: actions.captureScreenshot,
             editQuery: actions.editQuery, openAISettings: actions.openAISettings, presentation: presentation,
             dragWindow: { [weak self] event in self?.dragWindow(event) },
-            togglePin: { [weak self] in self?.togglePin() }))
+            togglePin: { [weak self] in self?.togglePin() }, openSetup: actions.openSetup))
         hostingView.autoresizingMask = [.width, .height]
         if #available(macOS 13.0, *) { hostingView.sizingOptions = [] }
         if #available(macOS 26.0, *) {

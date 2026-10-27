@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A184CF00AF004A35B19A4001 /* LookupWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A184CF00AF004A35B19A4002; };
 		AB0200000000000000000004 = {isa = PBXBuildFile; fileRef = AB0100000000000000000004; };
 		AB0200000000000000000003 = {isa = PBXBuildFile; fileRef = AB0100000000000000000003; };
 		AB0200000000000000000002 = {isa = PBXBuildFile; fileRef = AB0100000000000000000002; };
@@ -86,6 +87,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A184CF00AF004A35B19A4002 /* LookupWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupWelcomeView.swift; sourceTree = SOURCE_ROOT; };
 		AB0100000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/TelemetryPrivacyView.swift"; sourceTree = SOURCE_ROOT; };
 		AB0100000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/AccountSettingsView.swift"; sourceTree = SOURCE_ROOT; };
 		AB0100000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/AccountStore.swift"; sourceTree = SOURCE_ROOT; };
@@ -254,6 +256,7 @@
 				000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */,
 				47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */,
 				046ED4425C8D48198BF359B5 /* LookupResultView.swift */,
+				A184CF00AF004A35B19A4002 /* LookupWelcomeView.swift */,
 				8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */,
 				FE0234BD0B3249DA8E0D1C3C /* MainLookupView.swift */,
 				000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */,
@@ -430,6 +433,7 @@
 				0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */,
 				F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */,
 				DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */,
+				A184CF00AF004A35B19A4001 /* LookupWelcomeView.swift in Sources */,
 				1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */,
 				D319DD8F6C544979B8F8BF52 /* MainLookupView.swift in Sources */,
 				000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */,

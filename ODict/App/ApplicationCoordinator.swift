@@ -20,7 +20,8 @@ final class ApplicationCoordinator: NSObject {
         interacted: { [weak self] in self?.hover.cancel(dismiss: false) },
         dismissed: { [weak self] in
             self?.lookupDismissed()
-        }, openAISettings: { [weak self] in self?.showSettings(ai: true) }))
+        }, openAISettings: { [weak self] in self?.showSettings(ai: true) },
+        openSetup: { [weak self] category in self?.showSettings(category: category) }))
     private lazy var hover: HoverLookupController = {
         let controller = HoverLookupController()
         controller.canBegin = { [weak self] in
@@ -125,10 +126,6 @@ final class ApplicationCoordinator: NSObject {
             defaults.set(!defaults.bool(forKey: HoverLookupController.preferenceKey), forKey: HoverLookupController.preferenceKey)
             NotificationCenter.default.post(name: HoverLookupController.preferenceChanged, object: nil)
         }
-        if !UserDefaults.standard.bool(forKey: "didWelcome") {
-            showSettings()
-            UserDefaults.standard.set(true, forKey: "didWelcome")
-        }
         LifecycleDiagnostics.record("launch.ready")
     }
 
@@ -168,9 +165,9 @@ final class ApplicationCoordinator: NSObject {
         LifecycleDiagnostics.record(restored ? "lookup.focusRestored" : "lookup.focusRestoreFailed")
     }
 
-    private func showSettings(ai: Bool = false) {
+    private func showSettings(ai: Bool = false, category: SettingsCategory? = nil) {
         hover.cancel()
-        settings.show(ai: ai)
+        settings.show(category: category ?? (ai ? .ai : nil))
     }
 
     private func rememberSource() {

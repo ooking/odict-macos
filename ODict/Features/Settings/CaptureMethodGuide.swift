@@ -56,28 +56,28 @@ struct CaptureMethodGuide: View {
                     .padding(.horizontal, 5).padding(.vertical, 2)
                     .background(method == .selection ? Color.accentColor.opacity(0.18) : Color.clear)
                     .cornerRadius(3)
-                    .overlay(alignment: .bottomTrailing) {
+                    .overlay {
+                        if method == .screenshot {
+                            RoundedRectangle(cornerRadius: 3)
+                                .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
+                                .overlay(alignment: .bottomTrailing) {
+                                    Image(systemName: "plus").font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.accentColor).offset(x: 8, y: 8)
+                                }
+                        }
+                    }
+                    .overlay(alignment: .topLeading) {
                         if method == .hover {
                             Image(systemName: "cursorarrow")
                                 .font(.system(size: 19, weight: .semibold))
                                 .foregroundColor(.accentColor)
-                                .offset(x: 10, y: 13)
+                                .offset(x: 22, y: 9)
                         }
                     }
                 Text("to the world.")
             }
             .font(.system(size: 19, weight: .medium, design: .serif))
             .padding(.horizontal, 12).padding(.vertical, 6)
-            .overlay {
-                if method == .screenshot {
-                    RoundedRectangle(cornerRadius: 3)
-                        .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
-                        .overlay(alignment: .bottomTrailing) {
-                            Image(systemName: "plus").font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.accentColor).offset(x: 8, y: 8)
-                        }
-                }
-            }
 
             HStack(spacing: 8) {
                 Image(systemName: "arrow.down").foregroundColor(.secondary)

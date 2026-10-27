@@ -11,6 +11,7 @@ struct MainLookupView: View {
     let editQuery: () -> Void
     let openAISettings: () -> Void
     let dragWindow: (NSEvent) -> Void
+    var openSetup: (SettingsCategory) -> Void = { _ in }
     @State private var searchFocused = false
 
     var body: some View {
@@ -23,9 +24,16 @@ struct MainLookupView: View {
                         candidateSidebar.frame(width: min(220, geometry.size.width * 0.36))
                         Divider()
                     }
-                    LookupResultView(model: model, openSettings: openSettings,
-                        captureScreenshot: captureScreenshot, openAISettings: openAISettings, captureSelection: captureSelection)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if model.mode == .dictionary, model.query.isEmpty, model.recent.isEmpty,
+                       model.captureStatus == nil, model.message == nil,
+                       !model.isLoading, !model.isSuggesting, model.contentVisible {
+                        LookupWelcomeView(openSetup: openSetup)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        LookupResultView(model: model, openSettings: openSettings,
+                            captureScreenshot: captureScreenshot, openAISettings: openAISettings, captureSelection: captureSelection)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
             Divider()

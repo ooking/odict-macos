@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 enum LookupWindowLayout {
-    static let defaultSize = NSSize(width: 480, height: 440)
+    static let defaultSize = NSSize(width: 480, height: 600)
     static let minimumSize = NSSize(width: 440, height: 360)
 }
 
@@ -29,6 +29,7 @@ struct LookupView: View {
     @ObservedObject var presentation: LookupPresentation
     let dragWindow: (NSEvent) -> Void
     var togglePin: () -> Void = {}
+    var openSetup: (SettingsCategory) -> Void = { _ in }
 
     var body: some View {
         Group {
@@ -36,7 +37,7 @@ struct LookupView: View {
             case .manual:
                 MainLookupView(model: model, openSettings: openSettings, close: close,
                     captureSelection: captureSelection, captureScreenshot: captureScreenshot,
-                    editQuery: editQuery, openAISettings: openAISettings, dragWindow: dragWindow)
+                    editQuery: editQuery, openAISettings: openAISettings, dragWindow: dragWindow, openSetup: openSetup)
             case .capture:
                 CaptureLookupView(model: model, openSettings: openSettings, close: close,
                     captureSelection: captureSelection, captureScreenshot: captureScreenshot,
