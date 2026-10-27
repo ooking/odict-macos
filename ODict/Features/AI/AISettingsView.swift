@@ -38,6 +38,12 @@ struct AISettingsView: View {
                 verificationFeedback
             }
             group {
+                Text("词典查询回退").font(AppTypography.section)
+                Toggle("识别到句子时自动用 AI 翻译", isOn: setting(\.autoTranslateSentences))
+                help("在词典模式下，截图、选中取词和手动查询识别到句子时，直接发送给已配置的 AI 服务。关闭时先显示原文，由你确认。句子识别为近似判断。")
+                help("单词或短语未查到时仍需确认。AI 仅用于本次查询，不会更改默认查询模式。")
+            }
+            group {
                 Text("模型行为").font(AppTypography.section)
                 Toggle("启用思考", isOn: setting(\.thinking))
                 Picker("思考接口", selection: setting(\.thinkingFormat)) {

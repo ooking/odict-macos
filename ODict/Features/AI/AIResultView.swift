@@ -8,10 +8,24 @@ struct AIResultView: View {
     var isPresentation = false
     var captureScreenshot: (() -> Void)? = nil
     var restoredInput: (String) -> Void = { _ in }
+    var showsSourceBeforeAnswer = false
     @State private var copied = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                if showsSourceBeforeAnswer {
+                    Label("本次使用 AI", systemImage: "sparkles")
+                        .font(AppTypography.caption).foregroundColor(.secondary)
+                }
+                if model.answer == nil, !query.isEmpty, isPresentation || showsSourceBeforeAnswer {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("原文").font(AppTypography.caption).foregroundColor(.secondary)
+                        Text(query).font(AppTypography.secondary).textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Divider()
+                }
                 if model.answer != nil || model.hasSubmitted {
                     AIHistorySaveStatus(history: model.history)
                 }

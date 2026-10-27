@@ -24,7 +24,7 @@ final class LookupModel: ObservableObject {
     }
 
     func setMode(_ value: QueryMode) {
-        guard value != mode else { return }
+        guard value != mode || isUsingAIForCurrentQuery else { return }
         cancelRequests()
         ai.reset()
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
@@ -44,7 +44,7 @@ final class LookupModel: ObservableObject {
 
     func beginManual() {
         let manualMode = QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary
-        let restoreDraft = captureContext || mode != manualMode || query != manualQuery
+        let restoreDraft = captureContext || mode != manualMode || query != manualQuery || isUsingAIForCurrentQuery
         captureContext = false
         setMode(manualMode)
         guard restoreDraft else { return }
@@ -60,11 +60,36 @@ final class LookupModel: ObservableObject {
         contentVisible = false
     }
 
-    /// Explicitly carry source text; the mode picker only restores drafts.
+    /// One-query override: never changes either persisted mode or manual drafts.
     func useAIForCurrentQuery() {
-        let text = query
-        setMode(.ai)
-        editQuery(text, composing: false)
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, text.count <= AIConfiguration.maximumInput else { return }
+        cancelRequests()
+        ai.reset()
+        result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
+        contentVisible = true
+        isUsingAIForCurrentQuery = true
+        let router = dictionary
+        Task { await router.releaseLocalResources() }
+        ai.submit(text)
+    }
+
+    var offersAITranslation: Bool {
+        mode == .dictionary && !isUsingAIForCurrentQuery && !isLoading && !isSuggesting
+            && (sentenceDetected || dictionaryMiss)
+    }
+
+    private func routeSentence(_ text: String) -> Bool {
+        guard !QueryTextClassifier.isWordOrPhrase(text) else { return false }
+        sentenceDetected = true
+        if text.count > AIConfiguration.maximumInput {
+            message = "内容过长，请分段查询，每次最多 \(AIConfiguration.maximumInput) 字。"
+        } else if ai.savedConfiguration.autoTranslateSentences && ai.isConfigured {
+            useAIForCurrentQuery()
+        } else {
+            message = "这段内容可能是句子，建议使用 AI 翻译。"
+        }
+        return true
     }
 
     func lookupCaptured(_ text: String) {
@@ -117,6 +142,8 @@ final class LookupModel: ObservableObject {
     @Published private(set) var selectedSuggestionIndex: Int?
     @Published private(set) var isLoading = false
     @Published private(set) var isSuggesting = false
+    @Published private(set) var isUsingAIForCurrentQuery = false
+    @Published private(set) var sentenceDetected = false
     @Published private(set) var dictionaryMiss = false
     @Published private(set) var message: String?
     @Published private(set) var captureStatus: String?
@@ -228,7 +255,15 @@ final class LookupModel: ObservableObject {
         message = nil
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard mode == .dictionary else { return }
-        guard !text.isEmpty, text.count <= 255 else { return }
+        guard !text.isEmpty else { return }
+        // While typing, offer confirmation but never send source text to AI.
+        if !QueryTextClassifier.isWordOrPhrase(text) {
+            sentenceDetected = true
+            message = text.count > AIConfiguration.maximumInput
+                ? "内容过长，请分段查询，每次最多 \(AIConfiguration.maximumInput) 字。"
+                : "这段内容可能是句子，建议使用 AI 翻译。"
+            return
+        }
         let token = revision
         isSuggesting = true
         task = Task {
@@ -328,7 +363,7 @@ final class LookupModel: ObservableObject {
         selectedSuggestionIndex = nil
         message = nil
         guard !text.isEmpty else { return }
-        guard text.count <= 255 else { message = "词典支持 255 字以内的单词或短语。查询句子请切换到 AI。"; return }
+        if routeSentence(text) { return }
         let token = revision
         isLoading = true
         task = Task {
@@ -413,6 +448,8 @@ final class LookupModel: ObservableObject {
     }
 
     private func cancelRequests() {
+        if isUsingAIForCurrentQuery { ai.reset(); isUsingAIForCurrentQuery = false }
+        sentenceDetected = false
         dictionaryMiss = false
         captureStatus = nil
         captureIsBusy = false

@@ -18,10 +18,10 @@ struct LookupResultView: View {
         Group {
             if !model.contentVisible {
                 EmptyView()
-            } else if model.mode == .ai && model.captureStatus == nil {
+            } else if (model.mode == .ai || model.isUsingAIForCurrentQuery) && model.captureStatus == nil {
                 AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
                     isPresentation: isCapture, captureScreenshot: isCapture ? captureScreenshot : nil,
-                    restoredInput: model.restoreAIInput)
+                    restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery)
             } else if let article = model.localArticle, model.contentVisible {
                 VStack(alignment: .leading, spacing: 0) {
                     LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
@@ -37,6 +37,9 @@ struct LookupResultView: View {
             if !visible { localRenderer.release() }
         }
         .onChange(of: model.mode) { _ in localRenderer.release() }
+        .onChange(of: model.isUsingAIForCurrentQuery) { active in
+            if active { localRenderer.release() }
+        }
         .onChange(of: model.entry != nil) { online in
             if online { localRenderer.release() }
         }
@@ -80,7 +83,9 @@ struct LookupResultView: View {
                 } else if model.query.isEmpty {
                     if model.recent.isEmpty { emptyState } else { recentList }
                 }
-                if let message = model.message {
+                if model.offersAITranslation {
+                    aiTranslationOffer
+                } else if let message = model.message {
                     Label {
                         Text(message).fixedSize(horizontal: false, vertical: true)
                     } icon: { Image(systemName: "info.circle") }
@@ -88,9 +93,6 @@ struct LookupResultView: View {
                     HStack(spacing: 12) {
                         Button("重试") { model.submit() }
                         if isCapture { Button("截图取词", action: captureScreenshot) }
-                        if !isCapture, model.mode == .dictionary, model.dictionaryMiss || model.query.count > 255 {
-                            Button("用 AI 翻译") { model.useAIForCurrentQuery() }
-                        }
                         Button("打开设置", action: openSettings)
                     }.controlSize(.small)
                 }
@@ -101,6 +103,41 @@ struct LookupResultView: View {
         }
         // New entry starts at its heading instead of inheriting a long previous word's scroll position.
         .id(model.entry?.word ?? "pending")
+    }
+
+    private var aiTranslationOffer: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label(model.sentenceDetected ? "用 AI 翻译这段内容？" : "词典暂未找到释义", systemImage: "sparkles")
+                .font(AppTypography.section)
+            Text(model.message ?? "可以尝试使用 AI 翻译。")
+                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("原文").font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
+                Text(model.query).font(AppTypography.body).textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(14)
+            .background(Color.primary.opacity(0.04)).cornerRadius(8)
+            if model.query.trimmingCharacters(in: .whitespacesAndNewlines).count <= AIConfiguration.maximumInput {
+                HStack(spacing: 12) {
+                    if model.ai.isConfigured {
+                        Button("仅本次用 AI 翻译", action: model.useAIForCurrentQuery)
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button("配置 AI 服务", action: openAISettings).buttonStyle(.borderedProminent)
+                    }
+                    if isCapture { Button("重新截图", action: captureScreenshot) }
+                    else if model.dictionaryMiss { Button("重试词典查询") { model.submit() } }
+                }.controlSize(.small)
+                Text(model.ai.isConfigured
+                     ? "确认后，原文将发送至已配置的 AI 服务。默认查询模式保持不变。"
+                     : "先在「设置 → AI」配置服务，再确认翻译。")
+                    .font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private var emptyState: some View {

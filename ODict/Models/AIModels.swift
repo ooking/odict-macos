@@ -16,11 +16,38 @@ enum AITaskKind: String, CaseIterable, Identifiable, Codable, Sendable {
     }
     func resolved(for text: String) -> Self {
         guard self == .automatic else { return self }
-        if text.contains(where: { ".!?。！？\n".contains($0) }) || text.split(whereSeparator: \.isWhitespace).count > 5 {
-            return .translation
+        return QueryTextClassifier.isWordOrPhrase(text) ? .word : .translation
+    }
+}
+
+/// Bounded, local heuristic shared by dictionary routing and AI task selection.
+/// OCR line wraps are whitespace; abbreviations and decimals are not sentence stops.
+enum QueryTextClassifier {
+    static func isWordOrPhrase(_ raw: String) -> Bool {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return true }
+        guard text.count <= 255 else { return false }
+        if text.contains(where: { "!?。！？；;".contains($0) }) { return false }
+        let words = text.split(whereSeparator: \.isWhitespace)
+        if words.count > 5 { return false }
+        // An internal dot may belong to a decimal or abbreviation (U.S., e.g.).
+        if words.contains(where: { word in
+            word.hasSuffix(".") && word.count > 1 && word.filter({ $0 == "." }).count == 1
+                && !["mr.", "mrs.", "ms.", "dr.", "st.", "vs.", "etc."].contains(word.lowercased())
+        }) { return false }
+        let han = text.unicodeScalars.filter { (0x3400...0x9FFF).contains($0.value) }.count
+        if han > 6 { return false }
+        if han >= 4, ["我是", "你是", "这是", "那是", "是否", "为什么", "怎么", "了吗"].contains(where: text.contains) {
+            return false
         }
-        let chinese = text.unicodeScalars.filter { (0x3400...0x9FFF).contains($0.value) }.count
-        return chinese > 6 ? .translation : .word
+        if words.count >= 2 {
+            let tokens = words.map { $0.lowercased().trimmingCharacters(in: .punctuationCharacters) }
+            let subjects: Set<String> = ["i", "you", "he", "she", "it", "we", "they", "this", "that"]
+            let verbs: Set<String> = ["am", "is", "are", "was", "were", "have", "has", "had", "do", "does", "did", "can", "could", "will", "would", "should", "must", "need", "want", "like", "love", "know", "think", "feel", "go", "went", "see", "saw"]
+            if subjects.contains(tokens[0]), verbs.contains(tokens[1]) { return false }
+            if tokens.count >= 3, verbs.contains(tokens[0]), subjects.contains(tokens[1]) { return false }
+        }
+        return true
     }
 }
 
@@ -70,6 +97,12 @@ enum AIThinkingFormat: String, CaseIterable, Identifiable, Codable, Sendable {
 struct AIConfiguration: Codable, Equatable, Sendable {
     var address = ""
     var model = ""
+    // Optional storage keeps previously saved configurations decodable.
+    private var automaticSentenceTranslation: Bool?
+    var autoTranslateSentences: Bool {
+        get { automaticSentenceTranslation ?? false }
+        set { automaticSentenceTranslation = newValue }
+    }
     var thinking = false
     var thinkingFormat: AIThinkingFormat = .automatic
     var target: AITargetLanguage = .automatic
