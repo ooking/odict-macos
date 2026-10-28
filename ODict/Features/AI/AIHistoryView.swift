@@ -16,8 +16,9 @@ struct AIHistoryView: View {
             }
             if history.isLoading { ProgressView().controlSize(.small) }
             if let message = history.message {
-                Text(message).font(AppTypography.caption).foregroundColor(.secondary)
-                Button("重试") { history.retry(); history.load() }.controlSize(.small)
+                LookupNotice(title: "历史记录暂不可用", message: message, icon: "clock") {
+                    Button("重新加载") { history.retry(); history.load() }.buttonStyle(LookupActionStyle())
+                }
             }
             if history.records.isEmpty && !history.isLoading, let emptySettings {
                 LookupEmptyState(subtitle: "输入单词查释义，输入句子看翻译", openSettings: emptySettings)
@@ -42,10 +43,8 @@ struct AIHistorySaveStatus: View {
     @ObservedObject var history: AIHistoryModel
     var body: some View {
         if let message = history.message {
-            VStack(alignment: .leading, spacing: 6) {
-                Label(message, systemImage: "exclamationmark.circle")
-                    .font(AppTypography.caption).foregroundColor(.secondary)
-                Button("重试保存") { history.retry(); history.load() }.controlSize(.small)
+            LookupNotice(title: "历史记录尚未保存", message: message, icon: "exclamationmark.circle") {
+                Button("重新保存") { history.retry(); history.load() }.buttonStyle(LookupActionStyle())
             }
         }
     }

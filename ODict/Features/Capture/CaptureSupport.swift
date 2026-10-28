@@ -59,10 +59,8 @@ enum CaptureError: LocalizedError {
 /// Keep engine faults distinct from a poor crop: both capture modes share OCR.
 struct OCRFailurePresentation {
     let message: String
-    let offersScreenshot: Bool
 
     init(_ failure: OCRFailure) {
-        offersScreenshot = failure.allowsScreenshotRetry
         if failure.isRecovering {
             message = "识别模型缓存缺失，正在自动修复，可能需要约一分钟。请稍后重新取词；也可暂时使用选中取词或手动输入。"
             return

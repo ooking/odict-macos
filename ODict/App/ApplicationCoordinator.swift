@@ -38,7 +38,7 @@ final class ApplicationCoordinator: NSObject {
         }
         controller.onFailure = { [weak self] message, anchor in
             guard let self else { return }
-            self.model.presentCaptureStatus(message, busy: false, offersScreenshot: self.hover.failureOffersScreenshot)
+            self.model.presentCaptureStatus(message, busy: false)
             self.lookup.show(anchor: anchor, hover: true)
         }
         controller.onInteraction = { [weak self] in self?.lookup.promote() }
@@ -58,8 +58,7 @@ final class ApplicationCoordinator: NSObject {
         }
         coordinator.onFailure = { [weak self] message, anchor in
             guard let self else { return }
-            self.model.presentCaptureStatus(message, busy: false, preservingManualInput: self.selectionReturnsToInput,
-                offersScreenshot: self.capture.failureOffersScreenshot)
+            self.model.presentCaptureStatus(message, busy: false, preservingManualInput: self.selectionReturnsToInput)
             if self.selectionReturnsToInput { return }
             self.lookup.show(anchor: anchor, mode: .capture)
         }

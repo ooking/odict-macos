@@ -156,3 +156,81 @@ struct LookupDragArea: NSViewRepresentable {
 }
 
 
+
+/// Shared, passive presentation for lookup decisions and recoverable status messages.
+/// No observers, retained services, timers or hover state are needed here.
+struct LookupNotice<Actions: View>: View {
+    let title: String
+    let message: String
+    var icon = "info.circle"
+    var isBusy = false
+    var source: String? = nil
+    var footnote: String? = nil
+    @ViewBuilder var actions: () -> Actions
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.accentColor.opacity(0.09))
+                    if isBusy { ProgressView().controlSize(.small) }
+                    else {
+                        Image(systemName: icon).font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.accentColor).accessibilityHidden(true)
+                    }
+                }.frame(width: 38, height: 38)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title).font(.system(size: 17, weight: .semibold)).foregroundColor(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(message).font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let source, !source.isEmpty { LookupSourceText(text: source) }
+            actions()
+            if let footnote {
+                Text(footnote).font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
+    }
+}
+
+struct LookupSourceText: View {
+    let text: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("原文").font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
+            Text(text).font(AppTypography.body).foregroundColor(.primary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.035)))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.06)))
+    }
+}
+
+/// Explicit fill and contrast keep primary actions visible in light capture panels.
+/// Native Button semantics, keyboard handling and focus behavior are preserved.
+struct LookupActionStyle: ButtonStyle {
+    var prominent = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .medium))
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .foregroundColor(prominent ? .white : .primary)
+            .background(RoundedRectangle(cornerRadius: 9)
+                .fill(prominent ? Color.accentColor : Color.primary.opacity(configuration.isPressed ? 0.09 : 0.045)))
+            .overlay(RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(prominent ? Color.clear : Color.primary.opacity(0.09)))
+            .opacity(!isEnabled ? 0.45 : configuration.isPressed ? 0.8 : 1)
+            .contentShape(RoundedRectangle(cornerRadius: 9))
+    }
+}

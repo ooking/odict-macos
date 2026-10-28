@@ -7,10 +7,8 @@ let lookupSecondaryInk = Color(nsColor: .labelColor).opacity(0.72)
 struct LookupResultView: View {
     @ObservedObject var model: LookupModel
     let openSettings: () -> Void
-    let captureScreenshot: () -> Void
     let openAISettings: () -> Void
     var isCapture = false
-    var captureSelection: (() -> Void)? = nil
     @StateObject private var localRenderer = LocalArticleRenderer()
     @State private var confirmClearHistory = false
 
@@ -20,7 +18,7 @@ struct LookupResultView: View {
                 EmptyView()
             } else if (model.mode == .ai || model.isUsingAIForCurrentQuery) && model.captureStatus == nil {
                 AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
-                    isPresentation: isCapture, captureScreenshot: isCapture ? captureScreenshot : nil,
+                    isPresentation: isCapture,
                     restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery)
             } else if let article = model.localArticle, model.contentVisible {
                 VStack(alignment: .leading, spacing: 0) {
@@ -56,45 +54,33 @@ struct LookupResultView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if let status = model.captureStatus {
-                    HStack(alignment: .top, spacing: 10) {
-                        if model.captureIsBusy { ProgressView().controlSize(.small) }
-                        Text(status).font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if !model.captureIsBusy {
-                        HStack(spacing: 12) {
-                            if model.captureOffersScreenshot {
-                                Button("截图取词", action: captureScreenshot)
-                                Button("打开设置", action: openSettings)
-                            } else {
-                                if let captureSelection { Button("选中取词", action: captureSelection) }
-                                Button("退出 ODict") { NSApp.terminate(nil) }
-                            }
-                        }.controlSize(.small)
-                    }
+                    LookupNotice(title: model.captureIsBusy ? "正在取词" : "本次取词未完成",
+                        message: status, icon: "text.viewfinder", isBusy: model.captureIsBusy,
+                        footnote: model.captureIsBusy ? nil : "关闭窗口后，可重新使用取词快捷键。") { EmptyView() }
                 } else if let entry = model.entry {
                     entryContent(entry)
                     if let source = model.source {
                         Text("来源：" + source).font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
                     }
                 } else if model.isLoading || model.isSuggesting {
-                    Text(model.isSuggesting ? "正在查找候选词…" : "正在载入释义…")
-                        .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk).padding(.top, 12)
+                    LookupNotice(title: model.isSuggesting ? "正在查找候选词" : "正在载入释义",
+                        message: "请稍候…", isBusy: true) { EmptyView() }
                 } else if model.query.isEmpty {
                     if model.recent.isEmpty { emptyState } else { recentList }
                 }
                 if model.offersAITranslation {
                     aiTranslationOffer
                 } else if let message = model.message {
-                    Label {
-                        Text(message).fixedSize(horizontal: false, vertical: true)
-                    } icon: { Image(systemName: "info.circle") }
-                    .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-                    HStack(spacing: 12) {
-                        Button("重试") { model.submit() }
-                        if isCapture { Button("截图取词", action: captureScreenshot) }
-                        Button("打开设置", action: openSettings)
-                    }.controlSize(.small)
+                    if model.result != nil {
+                        Text(message).font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        LookupNotice(title: "暂时无法完成查询", message: message,
+                            source: model.query.isEmpty ? nil : model.query,
+                            footnote: isCapture ? "关闭窗口后，可重新使用取词快捷键。" : "可以修改输入后再次查询。") {
+                            Button("打开设置", action: openSettings).buttonStyle(LookupActionStyle())
+                        }
+                    }
                 }
             }
             .padding(.horizontal, showingHistory ? 12 : 22)
@@ -106,36 +92,25 @@ struct LookupResultView: View {
     }
 
     private var aiTranslationOffer: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label(model.sentenceDetected ? "用 AI 翻译这段内容？" : "词典暂未找到释义", systemImage: "sparkles")
-                .font(AppTypography.section)
-            Text(model.message ?? "可以尝试使用 AI 翻译。")
-                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-                .fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("原文").font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
-                Text(model.query).font(AppTypography.body).textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(14)
-            .background(Color.primary.opacity(0.04)).cornerRadius(8)
+        LookupNotice(title: model.sentenceDetected ? "用 AI 翻译这段内容？" : "词典暂未找到释义",
+            message: model.query.count > AIConfiguration.maximumInput
+                ? (model.message ?? "请缩短内容后再查询。")
+                : model.sentenceDetected ? "这段内容可能是句子，词典更适合查询单词和短语。"
+                : "词典中没有找到对应释义，可以尝试用 AI 翻译。",
+            icon: "sparkles", source: model.query,
+            footnote: model.query.count > AIConfiguration.maximumInput ? nil : model.ai.isConfigured
+                ? "原文将发送至已配置的 AI 服务，仅本次使用 AI。"
+                : "在「设置 → AI」配置服务后，再确认翻译。") {
             if model.query.trimmingCharacters(in: .whitespacesAndNewlines).count <= AIConfiguration.maximumInput {
-                HStack(spacing: 12) {
-                    if model.ai.isConfigured {
-                        Button("仅本次用 AI 翻译", action: model.useAIForCurrentQuery)
-                            .buttonStyle(.borderedProminent)
-                    } else {
-                        Button("配置 AI 服务", action: openAISettings).buttonStyle(.borderedProminent)
-                    }
-                    if isCapture { Button("重新截图", action: captureScreenshot) }
-                    else if model.dictionaryMiss { Button("重试词典查询") { model.submit() } }
-                }.controlSize(.small)
-                Text(model.ai.isConfigured
-                     ? "确认后，原文将发送至已配置的 AI 服务。默认查询模式保持不变。"
-                     : "先在「设置 → AI」配置服务，再确认翻译。")
-                    .font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
-                    .fixedSize(horizontal: false, vertical: true)
+                if model.ai.isConfigured {
+                    Button(action: model.useAIForCurrentQuery) {
+                        Label("仅本次用 AI 翻译", systemImage: "sparkles")
+                    }.buttonStyle(LookupActionStyle(prominent: true))
+                } else {
+                    Button(action: openAISettings) {
+                        Label("配置 AI 服务", systemImage: "slider.horizontal.3")
+                    }.buttonStyle(LookupActionStyle(prominent: true))
+                }
             }
         }
     }
@@ -312,12 +287,8 @@ struct LookupEmptyState: View {
     let openSettings: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("随手一查，继续阅读").font(.system(size: 18, weight: .medium))
-            Text(subtitle)
-                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-            Button("快捷键与设置", action: openSettings)
-                .buttonStyle(.link).font(AppTypography.caption).padding(.top, 4)
-        }.padding(.vertical, 18)
+        LookupNotice(title: "随手一查，继续阅读", message: subtitle, icon: "book.closed") {
+            Button("快捷键与设置", action: openSettings).buttonStyle(LookupActionStyle())
+        }.padding(.vertical, 14)
     }
 }

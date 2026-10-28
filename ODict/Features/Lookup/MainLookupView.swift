@@ -31,7 +31,7 @@ struct MainLookupView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         LookupResultView(model: model, openSettings: openSettings,
-                            captureScreenshot: captureScreenshot, openAISettings: openAISettings, captureSelection: captureSelection)
+                            openAISettings: openAISettings)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }

@@ -6,7 +6,6 @@ struct AIResultView: View {
     let query: String
     let openSettings: () -> Void
     var isPresentation = false
-    var captureScreenshot: (() -> Void)? = nil
     var restoredInput: (String) -> Void = { _ in }
     var showsSourceBeforeAnswer = false
     @State private var copied = false
@@ -18,12 +17,7 @@ struct AIResultView: View {
                         .font(AppTypography.caption).foregroundColor(.secondary)
                 }
                 if model.answer == nil, !query.isEmpty, isPresentation || showsSourceBeforeAnswer {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("原文").font(AppTypography.caption).foregroundColor(.secondary)
-                        Text(query).font(AppTypography.secondary).textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    LookupSourceText(text: query)
                     Divider()
                 }
                 if model.answer != nil || model.hasSubmitted {
@@ -48,9 +42,14 @@ struct AIResultView: View {
                         }
                     }
                 } else if model.isCancelled {
-                    Label(model.isViewingHistory ? "未完成的历史回答" : model.answer == nil ? "已停止生成" : "已停止，保留已有内容", systemImage: "stop.circle")
-                        .font(AppTypography.secondary).foregroundColor(.secondary)
-                    if model.answer == nil { Button("重新生成") { model.submit(model.submittedText) }.controlSize(.small) }
+                    LookupNotice(title: model.isViewingHistory ? "未完成的历史回答" : "已停止生成",
+                        message: model.answer == nil ? "尚未生成回答，可以使用当前原文重新生成。" : "已保留生成的内容，可继续阅读或重新生成。",
+                        icon: "stop.circle") {
+                        if model.answer == nil {
+                            Button("重新生成") { model.submit(model.submittedText) }
+                                .buttonStyle(LookupActionStyle(prominent: true))
+                        }
+                    }
                 }
                 if let answer = model.answer {
                     if let date = model.historyDate {
@@ -60,12 +59,7 @@ struct AIResultView: View {
                     if model.isShowingPreviousAnswer {
                         Text(model.isLoading ? "上次结果 · 正在生成新的回答" : "上次结果").font(AppTypography.caption).foregroundColor(.secondary)
                     }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("原文").font(AppTypography.caption).foregroundColor(.secondary)
-                        Text(model.sourceText).font(AppTypography.secondary).textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    LookupSourceText(text: model.sourceText)
                     Divider()
                     VStack(alignment: .leading, spacing: 8) {
                         Text("译文 / 释义").font(AppTypography.caption).foregroundColor(.secondary)
@@ -79,7 +73,7 @@ struct AIResultView: View {
                                 copied = true
                             } label: { Label(copied ? "已复制" : "复制", systemImage: copied ? "checkmark" : "doc.on.doc") }
                             Button { model.submit(model.sourceText) } label: { Label("重新生成", systemImage: "arrow.clockwise") }
-                        }.buttonStyle(.borderless).controlSize(.small)
+                        }.buttonStyle(LookupActionStyle())
                     }
                     if !model.isLoading {
                         Text("AI 生成 · \(model.answerModel)")
@@ -91,13 +85,11 @@ struct AIResultView: View {
                             model.restoreHistory(id, restoredInput: restoredInput)
                         }, emptySettings: openSettings)
                     } else if !model.isConfigured {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("配置 AI 后开始查询").font(.system(size: 18, weight: .medium))
-                            Text("在设置中填写服务地址、模型和密钥。")
-                                .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+                        LookupNotice(title: "配置 AI 后开始查询", message: "填写服务地址、模型和密钥，即可翻译句子或解释词语。",
+                            icon: "sparkles") {
                             Button("配置 AI 服务", action: openSettings)
-                                .buttonStyle(.link).font(AppTypography.caption).padding(.top, 4)
-                        }.padding(.vertical, 18)
+                                .buttonStyle(LookupActionStyle(prominent: true))
+                        }
                     } else {
                         Text("选中或截图取词后，原文与结果会显示在这里。")
                             .font(AppTypography.secondary).foregroundColor(.secondary)
@@ -105,13 +97,17 @@ struct AIResultView: View {
                 }
 
                 if let message = model.message {
-                    Label(message, systemImage: "info.circle").font(AppTypography.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    HStack {
-                        if model.isConfigured { Button("重试") { model.submit(model.hasSubmitted ? model.submittedText : query) } }
-                        if let captureScreenshot { Button("截图取词", action: captureScreenshot) }
-                        Button("AI 设置", action: openSettings)
-                    }.controlSize(.small)
+                    LookupNotice(title: "AI 暂时无法完成请求", message: message,
+                        icon: "exclamationmark.circle") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            if model.isConfigured {
+                                Button("重新生成") { model.submit(model.hasSubmitted ? model.submittedText : query) }
+                                    .buttonStyle(LookupActionStyle(prominent: true))
+                            }
+                            Button("AI 设置", action: openSettings)
+                                .buttonStyle(LookupActionStyle(prominent: !model.isConfigured))
+                        }
+                    }
                 }
             }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
         }
