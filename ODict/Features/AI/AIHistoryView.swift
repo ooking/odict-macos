@@ -77,30 +77,3 @@ private struct AIHistoryRow: View {
     }
 }
 
-/// Observe only history metadata so loading or clearing updates the entry immediately.
-struct AIHistoryMenu: View {
-    @ObservedObject var history: AIHistoryModel
-    let select: (UUID) -> Void
-    @State private var isPresented = false
-
-    var body: some View {
-        if !history.records.isEmpty {
-            HStack {
-                Spacer()
-                Button("最近查过") { isPresented = true }
-                    .buttonStyle(.borderless).controlSize(.small)
-                    .popover(isPresented: $isPresented) {
-                        ScrollView {
-                            AIHistoryView(history: history) { id in
-                                isPresented = false
-                                select(id)
-                            }.padding(16)
-                        }.frame(width: 380, height: 440)
-                    }
-            }
-            .onChange(of: history.records.isEmpty) { empty in
-                if empty { isPresented = false }
-            }
-        }
-    }
-}

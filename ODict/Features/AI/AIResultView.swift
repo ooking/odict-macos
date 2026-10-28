@@ -19,7 +19,6 @@ struct AIResultView: View {
                 content
             }
         }
-        .onAppear { if !isPresentation { model.history.load() } }
         .onChange(of: model.isLoading) { loading in if loading { copied = false } }
         .onChange(of: model.isRestoringHistory) { restoring in if restoring { copied = false } }
     }
@@ -36,12 +35,6 @@ struct AIResultView: View {
             }
             if model.answer != nil || model.hasSubmitted {
                 AIHistorySaveStatus(history: model.history)
-            }
-            if !isPresentation, model.answer != nil || model.hasSubmitted {
-                AIHistoryMenu(history: model.history) { id in
-                    model.restoreHistory(id, restoredInput: restoredInput)
-                }
-                .disabled(model.isLoading || model.isRestoringHistory)
             }
 
             if model.isLoading {
@@ -83,10 +76,7 @@ struct AIResultView: View {
                     LookupSourceText(text: model.sourceText)
                     Divider()
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("译文 / 释义").font(AppTypography.caption).foregroundColor(.secondary)
-                    AIMarkdownView(markdown: answer.markdown)
-                }
+                AIMarkdownView(markdown: answer.markdown)
                 if !model.isLoading {
                     HStack(spacing: 12) {
                         Button {
@@ -149,7 +139,6 @@ private struct AIAnswerSkeletonView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("译文 / 释义").font(AppTypography.caption).foregroundColor(.secondary)
             ForEach(paragraphWidths.indices, id: \.self) { paragraph in
                 VStack(alignment: .leading, spacing: 9) {
                     ForEach(paragraphWidths[paragraph].indices, id: \.self) { line in

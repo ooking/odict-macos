@@ -285,7 +285,6 @@ struct SettingsView: View {
                                 ForEach(HoverTrigger.allCases) { trigger in Text(trigger.title).tag(trigger.rawValue) }
                             }.labelsHidden().pickerStyle(.menu).frame(width: 200)
                         }
-                        shortcutRow("开启 / 关闭悬停取词", name: .toggleHoverLookup)
                         Divider()
                         permissionRow("屏幕录制（可选）", allowed: screenAllowed, screenRecording: true) {
                             authorizePermission(screenRecording: true)

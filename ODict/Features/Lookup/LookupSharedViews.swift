@@ -81,11 +81,6 @@ private struct CaptureToolTipIcon: View {
                             .font(AppTypography.caption).foregroundColor(.secondary)
                     }
                     CaptureMethodGuide(method: method)
-                    if method == .hover {
-                        Text("此图标仅展示用法，请在设置中开启或调整。")
-                            .font(AppTypography.caption).foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
                 .padding(18).frame(width: 320)
             }

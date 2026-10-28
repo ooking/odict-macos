@@ -31,13 +31,18 @@ struct CaptureMethodGuide: View {
         .onAppear(perform: refreshShortcut)
         .onChange(of: method) { _ in refreshShortcut() }
         .onReceive(NotificationCenter.default.publisher(for: CaptureMethod.guideShortcutChanged)) { notification in
-            guard notification.object as? String == method.guideShortcutName.rawValue else { return }
+            guard let name = method.guideShortcutName,
+                  notification.object as? String == name.rawValue else { return }
             refreshShortcut()
         }
     }
 
     private func refreshShortcut() {
-        shortcutDescription = KeyboardShortcuts.getShortcut(for: method.guideShortcutName)?.description
+        guard let name = method.guideShortcutName else {
+            shortcutDescription = nil
+            return
+        }
+        shortcutDescription = KeyboardShortcuts.getShortcut(for: name)?.description
     }
 
     private var illustration: some View {
@@ -96,11 +101,11 @@ extension CaptureMethod {
     // locally; no global event monitor, polling, or retained observer is needed.
     static let guideShortcutChanged = Notification.Name("ODict.captureGuideShortcutChanged")
 
-    var guideShortcutName: KeyboardShortcuts.Name {
+    var guideShortcutName: KeyboardShortcuts.Name? {
         switch self {
         case .selection: return .selectedTextLookup
         case .screenshot: return .screenshotLookup
-        case .hover: return .toggleHoverLookup
+        case .hover: return nil
         }
     }
 
@@ -117,9 +122,7 @@ extension CaptureMethod {
             }
             return "按 \(shortcutDescription) → 框选文字区域 → 本机识别并查询"
         case .hover:
-            let toggle = shortcutDescription.map { "开启 / 关闭悬停取词：\($0)" }
-                ?? "开启 / 关闭悬停取词：未设置快捷键，可在设置中调整。"
-            return hoverTrigger.instruction + "\n" + toggle
+            return hoverTrigger.instruction
         }
     }
 }

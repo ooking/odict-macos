@@ -133,8 +133,15 @@ private enum AIMarkdownParser {
                 index += 1
                 while index < lines.count {
                     let next = trim(lines[index])
+                    // A Markdown hard break starts a separate native text block.
+                    // Let SwiftUI size the label and translation independently
+                    // instead of relying on multiline attributed text sizing.
+                    if hasHardBreak(paragraph[paragraph.count - 1]) { break }
                     if next.isEmpty || isSpecial(next) || (index + 1 < lines.count && next.contains("|") && isTableSeparator(lines[index + 1])) { break }
                     paragraph.append(lines[index]); index += 1
+                }
+                if paragraph[paragraph.count - 1].reversed().prefix(while: { $0 == "\\" }).count % 2 == 1 {
+                    paragraph[paragraph.count - 1].removeLast()
                 }
                 append(.paragraph(inline(paragraph.joined(separator: "\n"))))
             }
@@ -145,6 +152,11 @@ private enum AIMarkdownParser {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
     }
     private static func trim(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private static func hasHardBreak(_ line: String) -> Bool {
+        if line.hasSuffix("  ") { return true }
+        // An escaped backslash is literal content, rather than a hard break.
+        return line.reversed().prefix(while: { $0 == "\\" }).count % 2 == 1
+    }
     private static func heading(_ text: String) -> (Int, String)? {
         let count = text.prefix(while: { $0 == "#" }).count
         guard (1...6).contains(count), text.dropFirst(count).first?.isWhitespace == true else { return nil }

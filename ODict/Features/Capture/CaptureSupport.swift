@@ -187,7 +187,7 @@ final class CaptureCancellation: @unchecked Sendable {
 typealias HoverWordHit = HoverLookupKit.HoverWordHit
 typealias HoverWords = HoverLookupKit.HoverWords
 
-/// The hover gesture is independent of the shortcut that turns the feature on/off.
+/// The hover gesture applies while the feature is enabled in settings.
 /// Keep the previous Control behavior when upgrading or encountering an invalid preference.
 enum HoverTrigger: String, CaseIterable, Identifiable {
     case none, command, control, option, shift
@@ -208,11 +208,11 @@ enum HoverTrigger: String, CaseIterable, Identifiable {
     }
     var instruction: String {
         switch self {
-        case .none: return "鼠标停在单词上约 0.3 秒即可取词，无需按键。"
-        case .command: return "按住 Command，将鼠标停在单词上约 0.3 秒即可取词。"
-        case .control: return "按住 Control，将鼠标停在单词上约 0.3 秒即可取词。"
-        case .option: return "按住 Option，将鼠标停在单词上约 0.3 秒即可取词。"
-        case .shift: return "按住 Shift，将鼠标停在单词上约 0.3 秒即可取词。"
+        case .none: return "鼠标停在单词上即可取词。"
+        case .command: return "按住 Command，鼠标停在单词上即可取词。"
+        case .control: return "按住 Control，鼠标停在单词上即可取词。"
+        case .option: return "按住 Option，鼠标停在单词上即可取词。"
+        case .shift: return "按住 Shift，鼠标停在单词上即可取词。"
         }
     }
     var moduleModifier: HoverModifier { HoverModifier(rawValue: rawValue) ?? .control }
