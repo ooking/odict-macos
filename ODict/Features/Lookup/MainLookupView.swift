@@ -18,21 +18,41 @@ struct MainLookupView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            GeometryReader { geometry in
-                HStack(alignment: .top, spacing: 0) {
-                    if model.hasMultipleSuggestions {
-                        candidateSidebar.frame(width: min(220, geometry.size.width * 0.36))
-                        Divider()
+            if model.mode == .ai {
+                // One scroll surface keeps the full read-only source reachable without
+                // allowing a long source to push the answer outside the window.
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            aiComposer.padding(.horizontal, 16).padding(.vertical, 12)
+                                .id("ai-composer")
+                            Divider()
+                            LookupResultView(model: model, openSettings: openSettings,
+                                openAISettings: openAISettings, scrollsAIContent: false)
+                        }
                     }
-                    if model.mode == .dictionary, model.query.isEmpty, model.recent.isEmpty,
-                       model.captureStatus == nil, model.message == nil,
-                       !model.isLoading, !model.isSuggesting, model.contentVisible {
-                        LookupWelcomeView(openSetup: openSetup)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        LookupResultView(model: model, openSettings: openSettings,
-                            openAISettings: openAISettings)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onChange(of: model.focusRequest) { _ in
+                        proxy.scrollTo("ai-composer", anchor: .top)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                GeometryReader { geometry in
+                    HStack(alignment: .top, spacing: 0) {
+                        if model.hasMultipleSuggestions {
+                            candidateSidebar.frame(width: min(220, geometry.size.width * 0.36))
+                            Divider()
+                        }
+                        if model.mode == .dictionary, model.query.isEmpty, model.recent.isEmpty,
+                           model.captureStatus == nil, model.message == nil,
+                           !model.isLoading, !model.isSuggesting, model.contentVisible {
+                            LookupWelcomeView(openSetup: openSetup)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            LookupResultView(model: model, openSettings: openSettings,
+                                openAISettings: openAISettings)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     }
                 }
             }
@@ -58,15 +78,18 @@ struct MainLookupView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 28, maxHeight: 28, alignment: .leading)
             .background { LookupDragArea(drag: dragWindow) }
-            if model.mode == .ai {
-                AIComposerView(model: model.ai, text: model.query, focusRequest: model.focusRequest,
-                    allowsFocus: model.acceptsSearchFocus, changed: { text in
-                        editQuery(); model.editQuery(text, composing: false)
-                    }, clear: {
-                        editQuery(); model.editQuery("", composing: false); model.focusRequest = UUID()
-                    }, close: close)
-            } else { searchBar }
+            if model.mode != .ai { searchBar }
         }.padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    private var aiComposer: some View {
+        AIComposerView(model: model.ai, text: model.query, focusRequest: model.focusRequest,
+            allowsFocus: model.acceptsSearchFocus, changed: { text in
+                editQuery(); model.editQuery(text, composing: false)
+            }, clear: {
+                model.ai.reset()
+                editQuery(); model.editQuery("", composing: false); model.focusRequest = UUID()
+            }, close: close)
     }
 
     private var searchBar: some View {

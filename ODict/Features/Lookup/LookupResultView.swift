@@ -9,6 +9,7 @@ struct LookupResultView: View {
     let openSettings: () -> Void
     let openAISettings: () -> Void
     var isCapture = false
+    var scrollsAIContent = true
     @StateObject private var localRenderer = LocalArticleRenderer()
     @State private var confirmClearHistory = false
 
@@ -19,7 +20,8 @@ struct LookupResultView: View {
             } else if (model.mode == .ai || model.isUsingAIForCurrentQuery) && model.captureStatus == nil {
                 AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
                     isPresentation: isCapture,
-                    restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery)
+                    restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery,
+                    showsSource: isCapture || model.mode != .ai, scrollsContent: scrollsAIContent)
             } else if let article = model.localArticle, model.contentVisible {
                 VStack(alignment: .leading, spacing: 0) {
                     LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })

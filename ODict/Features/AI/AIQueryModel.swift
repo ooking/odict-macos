@@ -14,6 +14,7 @@ final class AIQueryModel: ObservableObject {
     @Published private(set) var answerModel = ""
     @Published private(set) var isRestoringHistory = false
     @Published private(set) var isViewingHistory = false
+    @Published private(set) var isEditingInput = true
     let history: AIHistoryModel
     private let client: AIQueryServing
     private let configuration: () -> AIConfiguration
@@ -37,6 +38,7 @@ final class AIQueryModel: ObservableObject {
     }
     var isConfigured: Bool { !savedConfiguration.address.isEmpty && !savedConfiguration.model.isEmpty }
     var hasSubmitted: Bool { !submittedText.isEmpty }
+    var isInputLocked: Bool { isLoading || isRestoringHistory || !isEditingInput }
     var isShowingPreviousAnswer: Bool { answer != nil && sourceText != submittedText && !hasStreamContent }
 
     func submit(_ raw: String) {
@@ -56,6 +58,7 @@ final class AIQueryModel: ObservableObject {
         hasStreamContent = false
         message = nil
         isLoading = true
+        isEditingInput = false
         let token = revision
         let client = client
         task = Task { [weak self] in
@@ -106,6 +109,10 @@ final class AIQueryModel: ObservableObject {
         isCancelled = true
         message = nil
     }
+    func beginEditingInput() {
+        guard !isLoading, !isRestoringHistory else { return }
+        isEditingInput = true
+    }
     func reset() {
         archivePartialAnswer()
         invalidateRequest()
@@ -113,6 +120,7 @@ final class AIQueryModel: ObservableObject {
         answerID = nil; archivedAnswerID = nil; answerModel = ""
         isCancelled = false; hasStreamContent = false
         isViewingHistory = false
+        isEditingInput = true
     }
     // The history writer owns any pending disk write independently of this view.
     func suspend() { reset() }
@@ -134,6 +142,7 @@ final class AIQueryModel: ObservableObject {
                 self.answer = AIAnswer(markdown: record.markdown)
                 self.isCancelled = record.isPartial; self.hasStreamContent = true; self.message = nil
                 self.isViewingHistory = true
+                self.isEditingInput = false
                 restoredInput(record.source)
             } catch {
                 guard !Task.isCancelled, self?.revision == token else { return }

@@ -8,6 +8,7 @@ struct AITextInput: NSViewRepresentable {
     let focusRequest: UUID
     var allowsFocus: Bool
     let isEditable: Bool
+    var expandsToFit = false
     let changed: (String) -> Void
     let rejected: () -> Void
     let measuredHeight: (CGFloat) -> Void
@@ -44,7 +45,9 @@ struct AITextInput: NSViewRepresentable {
         editor.submit = submit; editor.cancel = cancel
         editor.isEditable = isEditable
         editor.isSelectable = true
-        editor.setAccessibilityHelp(isEditable ? "回车查询，Shift 加回车换行" : "正在翻译，结束或停止后可以编辑")
+        editor.setAccessibilityLabel(isEditable ? "AI 输入" : "AI 原文，只读")
+        editor.setAccessibilityHelp(isEditable ? "回车查询，Shift 加回车换行" : "可以选择和复制原文，点击编辑按钮后修改")
+        scroll.hasVerticalScroller = !expandsToFit
         if editor.string != text, !editor.hasMarkedText() { editor.string = text }
         context.coordinator.fontStyler.apply(to: editor, appearance: appearance.value)
         context.coordinator.measure(scroll)
@@ -78,11 +81,12 @@ struct AITextInput: NSViewRepresentable {
             manager.ensureLayout(for: container)
             let lineHeight = InputFontStyler.lineHeight
             let inset = editor.textContainerInset.height * 2
-            let height = min(lineHeight * 3 + inset, max(lineHeight + inset, ceil(manager.usedRect(for: container).height) + inset))
+            let contentHeight = max(lineHeight + inset, ceil(manager.usedRect(for: container).height) + inset)
+            let height = parent.expandsToFit ? contentHeight : min(lineHeight * 3 + inset, contentHeight)
             guard abs(lastHeight - height) > 0.5 else { return }
             lastHeight = height
             DispatchQueue.main.async { [weak self, weak scroll] in
-                guard let self, scroll?.window != nil else { return }
+                guard let self, scroll?.window != nil, self.lastHeight == height else { return }
                 self.parent.measuredHeight(height)
             }
         }
