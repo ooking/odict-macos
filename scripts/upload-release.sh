@@ -126,7 +126,7 @@ cat > "$work_dir/$notes_name" <<EOF
 
 ### 安装
 
-1. 下载附件 $zip_name，解压后将 ODict.app 拖入“应用程序”。升级前请完全退出旧版。
+1. 下载附件 ${zip_name}，解压后将 ODict.app 拖入“应用程序”。升级前请完全退出旧版。
 2. 首次打开若被系统拦截，仅在确认下载来源可信后，进入“系统设置 → 隐私与安全性 → 仍要打开”；macOS 12 对应“系统偏好设置 → 安全性与隐私 → 通用”。受管理设备可能不允许手动放行。
 3. 按需授予应用请求的系统权限。
 
@@ -144,7 +144,7 @@ EOF
 for filename in "$zip_name" "$checksum_name" "$notes_name"; do
     mv "$work_dir/$filename" "$output_dir/$filename"
 done
-echo "已打包 ODict $version（Build $build_number）：$output_dir/$zip_name"
+echo "已打包 ODict ${version}（Build ${build_number}）：$output_dir/$zip_name"
 echo "即将发布至 $repo，标签 $tag，类型 Pre-release。"
 
 # A failed response can still mean the server created a draft, so warn from here on.
