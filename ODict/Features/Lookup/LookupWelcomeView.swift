@@ -17,9 +17,9 @@ struct LookupWelcomeView: View {
                     sourceIcon("network", color: .accentColor)
                     VStack(alignment: .leading, spacing: 7) {
                         Text("连接在线词典").font(AppTypography.section)
-                        Text("配置服务后，输入单词即可查询。")
+                        Text("无需导入词典，联网即可查词。")
                             .font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-                        Text("支持中文找单词")
+                        Text("也可用中文找英文单词")
                             .font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
                         Button("连接在线词典") { openSetup(.service) }
                             .buttonStyle(.borderedProminent)
@@ -31,9 +31,9 @@ struct LookupWelcomeView: View {
                 Text("也可以选择")
                     .font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
                 sourceRow(icon: "book", color: .accentColor, title: "本地词典",
-                          detail: "导入词典，离线使用", action: "添加词典", destination: .dictionaries)
+                          detail: "导入 MDX 2.0 词典，离线查词更方便", action: "添加本地词典", destination: .dictionaries)
                 sourceRow(icon: "sparkles", color: .purple, title: "AI 翻译与解释",
-                          detail: "翻译句子、解释用法", action: "配置 AI", destination: .ai)
+                          detail: "结合语境讲解词义，让句子和用法更易懂", action: "配置 AI", destination: .ai)
                 Divider()
                 VStack(alignment: .leading, spacing: 10) {
                     Text("本地优先查询，未收录时使用在线词典。\n无需全部配置，选择适合你的方式。")

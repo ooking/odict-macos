@@ -4,7 +4,7 @@ import AppKit
 
 enum SettingsCategory: String, CaseIterable, Identifiable {
     case capture = "取词方式"
-    case dictionaries = "词典管理"
+    case dictionaries = "本地词典"
     case pronunciation = "发音"
     case history = "查询历史"
     case service = "在线词典"

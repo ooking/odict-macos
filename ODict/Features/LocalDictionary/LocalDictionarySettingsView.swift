@@ -117,7 +117,9 @@ struct LocalDictionarySettingsView: View {
 
     private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("词典管理").font(AppTypography.section)
+            Text("本地词典").font(AppTypography.section)
+            Text("支持 MDX 2.0 词典，可搭配 MDD 图片、音频资源包。")
+                .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             Picker("查询方式", selection: $model.mode) {
                 ForEach(DictionaryMode.allCases) { mode in Text(mode.title).tag(mode) }
             }.onChange(of: model.mode) { _ in model.changeMode() }
