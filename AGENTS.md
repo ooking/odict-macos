@@ -5,4 +5,4 @@
 - 不为简单交互引入新框架、常驻轮询、重复事件监听、无限缓存或常驻动画。悬停等局部交互应只更新对应视图。
 - 查询保留防抖、取消及旧响应保护；候选列表和最近记录应有明确上限；重型服务按需创建。
 - 密钥只保存在 Keychain，不写入源码、UserDefaults 或日志。
-- 用户要求每次修改后自动重新编译，无需再次询问；使用 `sh scripts/build-release.sh` 编译 Release 双架构版本，沿用项目配置的 Team 和 Apple Development 开发签名。不得使用 `CODE_SIGNING_ALLOWED=NO` 或 `codesign --sign -` 绕过、覆盖开发签名；签名失败应报告原因，不回退临时签名。测试和界面验证仍需先简述方案，得到同意后再执行。报告时区分编译、逻辑检查、实际界面验证和内存测量。
+- 仅在用户明确要求时编译，不再每次修改后自动编译；编译时使用 `sh scripts/build-release.sh` 编译 Release 双架构版本，沿用项目配置的 Team 和 Apple Development 开发签名。不得使用 `CODE_SIGNING_ALLOWED=NO` 或 `codesign --sign -` 绕过、覆盖开发签名；签名失败应报告原因，不回退临时签名。测试和界面验证仍需先简述方案，得到同意后再执行。报告时区分编译、逻辑检查、实际界面验证和内存测量。

@@ -15,11 +15,12 @@ private final class ProfiledArticleWebView: WKWebView {
 /// Local presentation has its own lifecycle. It never consumes or mutates Entry,
 /// and preserves dictionary-specific tags, classes, and definition content.
 struct LocalArticleView: View {
+    @ObservedObject private var appearance = ReadingAppearanceStore.shared
     let article: LocalArticle
     let renderer: LocalArticleRenderer
     let lookup: (String) -> Void
     var body: some View {
-        LocalArticleWebView(article: article, renderer: renderer, lookup: lookup)
+        LocalArticleWebView(article: article, renderer: renderer, appearance: appearance.value, lookup: lookup)
     }
 }
 
@@ -29,9 +30,9 @@ final class LocalArticleRenderer: ObservableObject {
     fileprivate var view: WKWebView?
     fileprivate var coordinator: LocalWebCoordinator?
 
-    fileprivate func acquire(article: LocalArticle, lookup: @escaping (String) -> Void) -> WKWebView {
+    fileprivate func acquire(article: LocalArticle, appearance: ReadingAppearance, lookup: @escaping (String) -> Void) -> WKWebView {
         if let view, let coordinator {
-            coordinator.update(view, article: article, lookup: lookup)
+            coordinator.update(view, article: article, appearance: appearance, lookup: lookup)
             return view
         }
         #if DEBUG
@@ -55,7 +56,7 @@ final class LocalArticleRenderer: ObservableObject {
         view.setValue(false, forKey: "drawsBackground")
         self.view = view
         self.coordinator = coordinator
-        coordinator.update(view, article: article, lookup: lookup)
+        coordinator.update(view, article: article, appearance: appearance, lookup: lookup)
         return view
     }
 
@@ -77,13 +78,14 @@ final class LocalArticleRenderer: ObservableObject {
 private struct LocalArticleWebView: NSViewRepresentable {
     let article: LocalArticle
     let renderer: LocalArticleRenderer
+    let appearance: ReadingAppearance
     let lookup: (String) -> Void
     func makeCoordinator() -> LocalArticleRenderer { renderer }
     func makeNSView(context: Context) -> WKWebView {
-        renderer.acquire(article: article, lookup: lookup)
+        renderer.acquire(article: article, appearance: appearance, lookup: lookup)
     }
     func updateNSView(_ view: WKWebView, context: Context) {
-        _ = renderer.acquire(article: article, lookup: lookup)
+        _ = renderer.acquire(article: article, appearance: appearance, lookup: lookup)
     }
     static func dismantleNSView(_ view: WKWebView, coordinator: LocalArticleRenderer) {
         // Drop the document and audio during loading, but keep the engine reusable.
@@ -99,6 +101,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     private var lookup: ((String) -> Void)?
     private var pageURL: URL?
     private var activeNavigation: WKNavigation?
+    private var appearanceCSS = ""
+    private var lastAppearance: ReadingAppearance?
     private var requests: [ObjectIdentifier: Task<Void, Never>] = [:]
     private var audio: NSSound?
     private var audioTask: Task<Void, Never>?
@@ -106,9 +110,26 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     private var renderingMemory: MemoryPhaseDiagnostics.Span?
     #endif
 
-    func update(_ view: WKWebView, article: LocalArticle, lookup: @escaping (String) -> Void) {
+    func update(_ view: WKWebView, article: LocalArticle, appearance: ReadingAppearance, lookup: @escaping (String) -> Void) {
         self.lookup = lookup
-        guard self.article?.id != article.id else { return }
+        let css: String
+        if lastAppearance == appearance {
+            css = appearanceCSS
+        } else {
+            css = appearance.localCSS
+            lastAppearance = appearance
+        }
+        let styleChanged = appearanceCSS != css
+        appearanceCSS = css
+        guard self.article?.id != article.id else {
+            if styleChanged, let pageURL,
+               LocalArticleLink.isSameDocument(view.url, as: pageURL) {
+                view.evaluateJavaScript(appearanceScript) { _, error in
+                    if let error { Self.report(error, event: "appearance.failed", kind: "style") }
+                }
+            }
+            return
+        }
         #if DEBUG
         renderingMemory?.mark("superseded")
         renderingMemory = MemoryPhaseDiagnostics.Span("article.render")
@@ -145,6 +166,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         view.stopLoading()
         cancelAll()
         article = nil
+        appearanceCSS = ""
+        lastAppearance = nil
         lookup = nil
         pageURL = nil
         if unloadDocument { view.loadHTMLString("", baseURL: nil) }
@@ -226,6 +249,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         // and flush layout with the final inline stylesheet before showing it.
         let ready = """
         (() => {
+          \(appearanceScript)
           if (document.readyState !== 'complete' || !document.getElementById('odict-local-overrides')?.sheet) return false;
           void document.documentElement.offsetHeight;
           return true;
@@ -254,6 +278,10 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             LocalDictionaryDebug.trace("page.visible", articleID: self.article?.id, "finalStylesReady=true")
             #endif
         }
+    }
+
+    private var appearanceScript: String {
+        LocalReadingAppearance.script(css: appearanceCSS, pageURL: pageURL)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

@@ -4,6 +4,7 @@ import AppKit
 // Handle field-editor commands rather than monitoring keys globally. Marked text
 // belongs to the input method, including its arrow and Return key handling.
 struct CandidateSearchField: NSViewRepresentable {
+    @ObservedObject private var appearance = ReadingAppearanceStore.shared
     let text: String
     let changed: (String, Bool) -> Void
     @Binding var focused: Bool
@@ -41,6 +42,7 @@ struct CandidateSearchField: NSViewRepresentable {
         if field.stringValue != text, !composing {
             field.stringValue = text
         }
+        if !composing { context.coordinator.fontStyler.apply(to: field, appearance: appearance.value) }
         if context.coordinator.lastFocusRequest != focusRequest {
             context.coordinator.lastFocusRequest = focusRequest
             if allowsFocus { field.requestFocus() }
@@ -50,16 +52,31 @@ struct CandidateSearchField: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: CandidateSearchField
         var lastFocusRequest: UUID?
+        let fontStyler = InputFontStyler()
         init(_ parent: CandidateSearchField) { self.parent = parent }
 
         func controlTextDidChange(_ notification: Notification) {
             guard let field = notification.object as? NSTextField else { return }
             let composing = (field.currentEditor() as? NSTextView)?.hasMarkedText() ?? false
+            if !composing { fontStyler.apply(to: field, appearance: parent.appearance.value) }
             parent.changed(field.stringValue, composing)
         }
 
-        func controlTextDidBeginEditing(_ notification: Notification) { parent.focused = true }
-        func controlTextDidEndEditing(_ notification: Notification) { parent.focused = false }
+        func controlTextDidBeginEditing(_ notification: Notification) {
+            // AppKit shares the field editor with other controls, which may
+            // have replaced its attributes since this field last had focus.
+            fontStyler.invalidate()
+            if let field = notification.object as? NSTextField {
+                fontStyler.apply(to: field, appearance: parent.appearance.value)
+            }
+            parent.focused = true
+        }
+        func controlTextDidEndEditing(_ notification: Notification) {
+            if let field = notification.object as? NSTextField {
+                fontStyler.apply(to: field, appearance: parent.appearance.value)
+            }
+            parent.focused = false
+        }
 
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             guard !textView.hasMarkedText() else { return false }

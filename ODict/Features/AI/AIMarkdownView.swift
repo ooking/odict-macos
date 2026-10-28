@@ -10,7 +10,7 @@ struct AIMarkdownView: View {
             ForEach(blocks) { block in
                 switch block.content {
                 case .heading(let level, let text):
-                    Text(text).font(.system(size: level == 1 ? 23 : level == 2 ? 19 : 16, weight: .semibold))
+                    ReadingText(text, scale: (level == 1 ? 23.0 : level == 2 ? 19.0 : 16.0) / 14, bold: true)
                         .textSelection(.enabled).padding(.top, block.id == 0 ? 0 : 5)
                 case .paragraph(let text):
                     prose(text)
@@ -54,13 +54,13 @@ struct AIMarkdownView: View {
         })
     }
     private func prose(_ text: AttributedString) -> some View {
-        Text(text).font(AppTypography.body).lineSpacing(5).textSelection(.enabled)
+        ReadingText(text).textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
     }
     private func tableRow(_ values: [AttributedString], isHeader: Bool = false) -> some View {
         HStack(alignment: .top, spacing: 14) {
             ForEach(Array(values.enumerated()), id: \.offset) { _, value in
-                Text(value).font(.system(size: 14, weight: isHeader ? .semibold : .regular)).textSelection(.enabled)
+                ReadingText(value, bold: isHeader).textSelection(.enabled)
                     .frame(width: 140, alignment: .leading).fixedSize(horizontal: false, vertical: true)
             }
         }.padding(.vertical, 7)

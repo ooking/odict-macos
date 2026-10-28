@@ -133,10 +133,10 @@ private struct CandidateRow: View {
             HStack(spacing: 0) {
                 RoundedRectangle(cornerRadius: 2).fill(selected ? Color.accentColor : .clear).frame(width: 3)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(item.word).font(AppTypography.candidate).foregroundColor(.primary)
+                    ReadingText(item.word, bold: true, fixedSize: 16).foregroundColor(.primary)
                         .lineLimit(2)
                     if let text = item.translationPreview ?? item.translation {
-                        Text(text).font(AppTypography.secondary).foregroundColor(lookupSecondaryInk).lineLimit(2)
+                        ReadingText(text, fixedSize: 13).foregroundColor(lookupSecondaryInk).lineLimit(2)
                     }
                 }.padding(.horizontal, 12).padding(.vertical, 11).frame(maxWidth: .infinity, alignment: .leading)
             }

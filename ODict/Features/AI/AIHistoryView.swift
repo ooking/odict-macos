@@ -58,12 +58,12 @@ private struct AIHistoryRow: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(item.sourcePreview).font(AppTypography.secondary).foregroundColor(.primary).lineLimit(2)
-                Text(item.answerPreview).font(AppTypography.caption).foregroundColor(.secondary).lineLimit(2)
+                ReadingText(item.sourcePreview, fixedSize: 13).foregroundColor(.primary).lineLimit(2)
+                ReadingText(item.answerPreview, fixedSize: 12).foregroundColor(.secondary).lineLimit(2)
                 HStack(spacing: 8) {
-                    Text(item.date.formatted(date: .abbreviated, time: .shortened))
-                    Text(item.model).lineLimit(1)
-                    if item.isPartial { Text("未完成") }
+                    ReadingText(item.date.formatted(date: .abbreviated, time: .shortened), fixedSize: 10)
+                    ReadingText(item.model, fixedSize: 10).lineLimit(1)
+                    if item.isPartial { ReadingText("未完成", fixedSize: 10) }
                 }.font(.system(size: 10)).foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

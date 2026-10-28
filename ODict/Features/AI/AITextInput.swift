@@ -3,6 +3,7 @@ import AppKit
 
 /// Native multiline editor, no global event monitor; IME owns Return while composing.
 struct AITextInput: NSViewRepresentable {
+    @ObservedObject private var appearance = ReadingAppearanceStore.shared
     let text: String
     let focusRequest: UUID
     var allowsFocus: Bool
@@ -45,6 +46,7 @@ struct AITextInput: NSViewRepresentable {
         editor.isSelectable = true
         editor.setAccessibilityHelp(isEditable ? "回车查询，Shift 加回车换行" : "正在翻译，结束或停止后可以编辑")
         if editor.string != text, !editor.hasMarkedText() { editor.string = text }
+        context.coordinator.fontStyler.apply(to: editor, appearance: appearance.value)
         context.coordinator.measure(scroll)
         if context.coordinator.lastFocus != focusRequest, allowsFocus, isEditable {
             context.coordinator.lastFocus = focusRequest
@@ -57,10 +59,12 @@ struct AITextInput: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: AITextInput
         var lastFocus: UUID?
+        let fontStyler = InputFontStyler()
         private var lastHeight: CGFloat = 0
         init(_ parent: AITextInput) { self.parent = parent }
         func textDidChange(_ notification: Notification) {
             guard let editor = notification.object as? NSTextView, !editor.hasMarkedText() else { return }
+            fontStyler.apply(to: editor, appearance: parent.appearance.value)
             parent.changed(editor.string)
             if let scroll = editor.enclosingScrollView { measure(scroll) }
         }
@@ -72,7 +76,7 @@ struct AITextInput: NSViewRepresentable {
                 editor.setFrameSize(NSSize(width: width, height: max(35, editor.frame.height)))
             }
             manager.ensureLayout(for: container)
-            let lineHeight = manager.defaultLineHeight(for: editor.font ?? AppTypography.search)
+            let lineHeight = InputFontStyler.lineHeight
             let inset = editor.textContainerInset.height * 2
             let height = min(lineHeight * 3 + inset, max(lineHeight + inset, ceil(manager.usedRect(for: container).height) + inset))
             guard abs(lastHeight - height) > 0.5 else { return }

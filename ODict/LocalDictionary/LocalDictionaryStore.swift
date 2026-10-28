@@ -133,7 +133,9 @@ enum LocalDictionaryOverrides {
     static let defaultCSS = """
     /* ODict local dictionary overrides. Edit freely; user changes are preserved.
        Optional odict-overrides.js runs after the article loads.
-       Dictionary-specific selectors belong in this file, not in the app. */
+       Dictionary-specific layout and colors belong in this file, not in the app.
+       Configure reading fonts and sizes in Settings > Appearance; do not set
+       font-family, font-size or font shorthand here. */
     :root {
       color-scheme: light dark;
       --odict-text: CanvasText;
@@ -149,7 +151,7 @@ enum LocalDictionaryOverrides {
       background: transparent !important;
       color: var(--odict-text) !important;
     }
-    body { margin: 14px; font-size: 16px; overflow-wrap: anywhere; }
+    body { margin: 14px; overflow-wrap: anywhere; }
     img, video, table { max-width: 100%; }
     @media (prefers-color-scheme: dark) {
       :root {

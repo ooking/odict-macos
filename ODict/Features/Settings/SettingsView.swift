@@ -9,6 +9,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case history = "查询历史"
     case service = "在线词典"
     case ai = "AI"
+    case appearance = "外观"
     case privacy = "权限与隐私"
     case about = "关于"
 
@@ -21,6 +22,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .history: return "clock.arrow.circlepath"
         case .service: return "network"
         case .ai: return "sparkles"
+        case .appearance: return "paintpalette"
         case .privacy: return "hand.raised"
         case .about: return "info.circle"
         }
@@ -33,6 +35,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .history: return "设置词典和 AI 的历史保留数量。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
+        case .appearance: return "设置阅读内容的字体与排版。"
         case .privacy: return "管理取词所需的系统权限，了解数据如何使用。"
         case .about: return "了解 ODict、开发者与开源许可。"
         }
@@ -152,6 +155,7 @@ struct SettingsView: View {
         case .service:
             SettingsPage { serviceSettings }
         case .ai: AISettingsView(model: model.ai)
+        case .appearance: AppearanceSettingsView()
         case .privacy: SettingsPage { privacySettings }
         case .about: SettingsPage { AboutSettingsView() }
         }

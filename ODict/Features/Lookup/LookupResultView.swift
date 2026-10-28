@@ -139,10 +139,10 @@ struct LookupResultView: View {
     private func entryContent(_ entry: Entry) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(entry.word).font(AppTypography.word).textSelection(.enabled)
+                ReadingText(entry.word, bold: true, fixedSize: 30).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 if let phonetic = entry.phonetic, !phonetic.isEmpty {
-                    Text(phonetic).font(.system(size: 14)).foregroundColor(lookupSecondaryInk).textSelection(.enabled)
+                    ReadingText(phonetic, fixedSize: 14).foregroundColor(lookupSecondaryInk).textSelection(.enabled)
                 }
             }
             if let translation = entry.translation, !translation.isEmpty { definition("中文释义", translation) }
@@ -156,7 +156,7 @@ struct LookupResultView: View {
                     ForEach(Array(entry.inflections.enumerated()), id: \.offset) { _, form in
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             Text(form.typeName).font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
-                            Button(form.form) { model.lookup(form.form) }.buttonStyle(.link)
+                            Button { model.lookup(form.form) } label: { ReadingText(form.form, fixedSize: 13) }.buttonStyle(.link)
                                 .font(AppTypography.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -176,7 +176,7 @@ struct LookupResultView: View {
     private func definition(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             sectionTitle(title)
-            Text(text).font(AppTypography.body).lineSpacing(4)
+            ReadingText(text)
                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -195,12 +195,10 @@ private struct RecentWordRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 16) {
                 // The history panel is 440pt wide. Keep a stable word column and
                 // give the longer definitions the remaining space.
-                Text(word)
-                    .font(AppTypography.navigation)
+                ReadingText(word, bold: true, fixedSize: 14)
                     .foregroundColor(.primary)
                     .frame(width: 132, alignment: .leading)
-                Text(translation ?? "")
-                    .font(AppTypography.secondary)
+                ReadingText(translation ?? "", fixedSize: 13)
                     .foregroundColor(lookupSecondaryInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .multilineTextAlignment(.leading)

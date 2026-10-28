@@ -205,7 +205,7 @@ struct LookupSourceText: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("原文").font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
-            Text(text).font(AppTypography.body).foregroundColor(.primary).textSelection(.enabled)
+            ReadingText(text, fixedSize: 14).foregroundColor(.primary).textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
