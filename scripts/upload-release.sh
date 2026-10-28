@@ -92,7 +92,13 @@ case "$signature" in
     *'Authority=Apple Development:'*) ;;
     *) fail '此脚本仅发布现有 Apple Development 开发签名产物。' ;;
 esac
-/usr/bin/lipo "$binary" -verify_arch arm64 x86_64 || fail '产物必须同时包含 arm64 和 x86_64 架构。'
+architectures=$(/usr/bin/lipo -archs "$binary") || fail '无法读取应用架构。'
+for required_arch in arm64 x86_64; do
+    case " $architectures " in
+        *" $required_arch "*) ;;
+        *) fail '产物必须同时包含 arm64 和 x86_64 架构。' ;;
+    esac
+done
 
 # Use an explicit GitHub host, regardless of the current checkout or GH_HOST.
 gh_repo="github.com/$repo"
