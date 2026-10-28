@@ -22,6 +22,9 @@ usage() {
 
 cleanup() {
     result=$?
+    if [ "$result" -eq 0 ] && [ "$completed" != yes ]; then
+        result=1
+    fi
     trap - EXIT
     if [ -n "$work_dir" ]; then
         rm -rf "$work_dir"
@@ -38,6 +41,7 @@ trap 'exit 143' TERM
 
 if [ "$#" -eq 1 ] && { [ "$1" = --help ] || [ "$1" = -h ]; }; then
     usage
+    completed=yes
     exit 0
 fi
 [ "$#" -eq 1 ] || { usage >&2; exit 1; }
@@ -52,7 +56,7 @@ esac
 
 command -v gh >/dev/null 2>&1 || fail '请先安装 GitHub CLI（gh），并运行 gh auth login --hostname github.com。'
 gh auth status --hostname github.com >/dev/null 2>&1 || fail 'GitHub 尚未登录或凭据不可用，请运行 gh auth login --hostname github.com。'
-[ -d "$app" ] && [ -f "$app/Contents/Info.plist" ] || fail "缺少编译产物：$app。请先单独编译。"
+[ -d "$app" ] && [ -f "$app/Contents/Info.plist" ] || fail "缺少编译产物：${app}。请先单独编译。"
 
 output_dir="$(pwd)/build/releases/$tag"
 mkdir -p "$output_dir"
@@ -79,12 +83,12 @@ esac
 [ "$(plist_value CFBundlePackageType)" = APPL ] || fail '产物不是应用程序包。'
 case "$minimum_os" in
     12.0|12.0.0) ;;
-    *) fail "产物最低系统版本为 $minimum_os，与发布说明要求的 macOS 12 不一致。" ;;
+    *) fail "产物最低系统版本为 ${minimum_os}，与发布说明要求的 macOS 12 不一致。" ;;
 esac
 binary="$snapshot/Contents/MacOS/$executable"
 [ -f "$binary" ] && [ -x "$binary" ] || fail '应用可执行文件缺失或不可执行。'
 for resource in LICENSE THIRD_PARTY_NOTICES.md; do
-    [ -f "$snapshot/Contents/Resources/$resource" ] || fail "应用缺少资源：$resource。"
+    [ -f "$snapshot/Contents/Resources/$resource" ] || fail "应用缺少资源：${resource}。"
 done
 /usr/bin/codesign --verify --deep --strict --all-architectures "$snapshot" || fail '应用签名验证失败，不会上传或修改签名。'
 signature=$(/usr/bin/codesign --display --verbose=4 "$snapshot" 2>&1) || fail '无法读取签名信息。'
@@ -102,7 +106,7 @@ done
 
 # Use an explicit GitHub host, regardless of the current checkout or GH_HOST.
 gh_repo="github.com/$repo"
-gh api --hostname github.com "repos/$repo/git/ref/tags/$tag" >/dev/null || fail "无法确认远程标签 $tag；请先将对应版本标签推送到 GitHub。"
+gh api --hostname github.com "repos/$repo/git/ref/tags/$tag" >/dev/null || fail "无法确认远程标签 ${tag}；请先将对应版本标签推送到 GitHub。"
 # Listing also finds drafts; API errors must never be mistaken for an absent release.
 existing=$(gh api --hostname github.com --paginate "repos/$repo/releases?per_page=100" \
     --jq ".[] | select(.tag_name == \"$tag\") | .id") || fail '无法检查已有 Release，已停止。'
@@ -145,7 +149,7 @@ for filename in "$zip_name" "$checksum_name" "$notes_name"; do
     mv "$work_dir/$filename" "$output_dir/$filename"
 done
 echo "已打包 ODict ${version}（Build ${build_number}）：$output_dir/$zip_name"
-echo "即将发布至 $repo，标签 $tag，类型 Pre-release。"
+echo "即将发布至 ${repo}，标签 ${tag}，类型 Pre-release。"
 
 # A failed response can still mean the server created a draft, so warn from here on.
 remote_attempted=yes
