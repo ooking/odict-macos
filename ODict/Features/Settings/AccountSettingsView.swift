@@ -47,7 +47,7 @@ final class AccountLoginModel: NSObject, ObservableObject, ASWebAuthenticationPr
                 let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URL
                 url.path = "/auth/client"
                 url.queryItems = [.init(name: "client_id", value: "odict-macos"), .init(name: "redirect_uri", value: redirectURI),
-                                  .init(name: "code_challenge", value: challenge), .init(name: "state", value: state)]
+                                  .init(name: "code_challenge", value: challenge), .init(name: "code_challenge_method", value: "S256"), .init(name: "state", value: state)]
                 guard let address = url.url else { throw DictionaryError.configuration }
                 let callback: URL = try await withCheckedThrowingContinuation { continuation in
                     let browser = ASWebAuthenticationSession(url: address, callbackURLScheme: callbackScheme) { result, error in

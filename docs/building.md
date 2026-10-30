@@ -115,3 +115,7 @@ Debug 构建在「设置 → 关于 → 登录调试」提供登录网页地址�
 - `/api/` 统一入口必须分流到两个后端监听器：Mac 登录、设备接口及 Bearer 查词请求进入客户端监听器，网页账号及匿名查词请求进入网页监听器。本地规则位于相邻 odict-web 的 `scripts/api-proxy.ts`；生产规则位于其 `docs/nginx.conf`，更新静态网页不会自动部署 Nginx 配置。
 
 调试地址保存在本机偏好设置中；登录凭证仍按 API 地址区分并保存在 Keychain。设置不增加后台任务、网络监听或常驻服务。
+
+## 通用账户协议更新
+
+Mac 授权请求显式声明 S256，token/refresh/logout 均发送 client_id=odict-macos。需要配套 API 的 016_auth_clients 迁移及新版网站，不兼容旧客户端请求。数据库 SQL 与发布顺序见相邻 odict-api/docs/auth-clients.md。本轮未编译 Mac，也未执行迁移或部署。

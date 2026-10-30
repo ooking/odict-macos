@@ -135,10 +135,10 @@ final class ApplicationCoordinator: NSObject {
 
     func toggleLookup() {
         hover.cancel()
-        if lookup.isVisible && !lookup.isCapture { lookup.hide(); return }
+        if !lookup.isCapture && lookup.isPresentedForInteraction { lookup.hide(); return }
         capture.cancel()
         rememberSource()
-        lookup.show(anchor: nil)
+        lookup.showManual()
     }
 
     private func lookupDismissed() {

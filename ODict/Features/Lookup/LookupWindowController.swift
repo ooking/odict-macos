@@ -45,6 +45,32 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel.isVisible }
 
+    /// An ordered-in window may still be behind another app or on another Space.
+    /// Nonactivating floating panels can own keyboard focus without activating ODict.
+    var isPresentedForInteraction: Bool {
+        panel.isVisible && panel.isKeyWindow && panel.isOnActiveSpace
+            && panel.occlusionState.contains(.visible)
+            && (panel.isFloatingPanel || NSApp.isActive)
+    }
+
+    /// Restore an existing manual session without resetting its query or AI override.
+    func showManual() {
+        guard panel.isVisible, !isCapture else {
+            show(anchor: nil)
+            return
+        }
+        focusManualWindow()
+    }
+
+    private func focusManualWindow() {
+        // Settings shares the normal window level with lookup. Activate the app
+        // before ordering lookup so it can come forward from behind another app.
+        if !panel.isFloatingPanel { NSApp.activate(ignoringOtherApps: true) }
+        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
+        model.focusRequest = UUID()
+    }
+
     /// Settings uses a normal window. While it is open, use the same level so
     /// ordinary click/activation ordering works without hiding either window.
     func setSettingsPresented(_ presented: Bool) {
@@ -170,9 +196,10 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         if hover {
             if isHover { panel.makeFirstResponder(nil) }
             panel.orderFrontRegardless()
+        } else if mode == .manual {
+            focusManualWindow()
         } else {
             panel.makeKeyAndOrderFront(nil)
-            if mode == .manual { model.focusRequest = UUID() }
         }
         status.highlight(true)
         LifecycleDiagnostics.record(updatingHover ? "lookup.hoverUpdated" : "lookup.show.end", panel: panel)

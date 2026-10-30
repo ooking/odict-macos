@@ -38,7 +38,7 @@ actor AccountStore {
         if let pending = refreshes[endpoint] { return try await pending.value.accessToken }
         let generation = generations[endpoint] ?? UUID(); generations[endpoint] = generation
         let task = Task<AccountSession, Error> {
-            let body = try AccountTransport.body(["refresh_token": value.refreshToken])
+            let body = try AccountTransport.body(["client_id": "odict-macos", "refresh_token": value.refreshToken])
             let next = try await AccountTransport.post(AccountSession.self, endpoint: endpoint, path: "/auth/client/refresh", body: body)
             try Task.checkCancellation()
             guard self.generations[endpoint] == generation else { throw CancellationError() }
@@ -62,12 +62,12 @@ actor AccountStore {
         let value = try await load(endpoint: endpoint)
         // Retain local credentials if revocation fails so the user can retry.
         if let value {
-            _ = try await AccountTransport.post(AccountAcknowledgement.self, endpoint: endpoint, path: "/auth/client/logout", body: AccountTransport.body(["refresh_token": value.refreshToken]))
+            _ = try await AccountTransport.post(AccountAcknowledgement.self, endpoint: endpoint, path: "/auth/client/logout", body: AccountTransport.body(["client_id": "odict-macos", "refresh_token": value.refreshToken]))
         }
         try await KeychainStore.saveSecret("", account: storage(endpoint)); sessions[endpoint] = nil
     }
     func exchange(endpoint: String, code: String, verifier: String, redirectURI: String) async throws -> AccountUser {
-        let body = try AccountTransport.body(["code": code, "code_verifier": verifier, "redirect_uri": redirectURI])
+        let body = try AccountTransport.body(["client_id": "odict-macos", "code": code, "code_verifier": verifier, "redirect_uri": redirectURI])
         let next: AccountSession
         if MacDeviceIdentity.deviceID() != nil {
             next = try await MacDeviceService.shared.signedPost(AccountSession.self, endpoint: endpoint, path: "/auth/client/token", body: body)
