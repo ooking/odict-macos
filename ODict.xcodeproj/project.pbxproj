@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A83000000000000000000001 /* LookupSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83000000000000000000002; };
 		AC0400000000000000000003 = {isa = PBXBuildFile; fileRef = AC0300000000000000000003; };
 		AC0400000000000000000002 = {isa = PBXBuildFile; fileRef = AC0300000000000000000002; };
 		AC0400000000000000000001 = {isa = PBXBuildFile; fileRef = AC0300000000000000000001; };
@@ -92,6 +93,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A83000000000000000000002 /* LookupSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSkeletonView.swift; sourceTree = SOURCE_ROOT; };
 		AC0300000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/LocalReadingAppearance.swift; sourceTree = SOURCE_ROOT; };
 		AC0300000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/AppearanceSettingsView.swift; sourceTree = SOURCE_ROOT; };
 		AC0300000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/ReadingText.swift; sourceTree = SOURCE_ROOT; };
@@ -270,6 +272,7 @@
 				000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */,
 				000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */,
 				47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */,
+				A83000000000000000000002 /* LookupSkeletonView.swift */,
 				046ED4425C8D48198BF359B5 /* LookupResultView.swift */,
 				A184CF00AF004A35B19A4002 /* LookupWelcomeView.swift */,
 				8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */,
@@ -452,6 +455,7 @@
 				0000000000000000000000CC /* ODict/Features/Lookup/LookupModel.swift in Sources */,
 				0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */,
 				F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */,
+				A83000000000000000000001 /* LookupSkeletonView.swift in Sources */,
 				DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */,
 				A184CF00AF004A35B19A4001 /* LookupWelcomeView.swift in Sources */,
 				1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */,

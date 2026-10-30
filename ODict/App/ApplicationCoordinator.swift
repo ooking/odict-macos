@@ -198,6 +198,9 @@ final class ApplicationCoordinator: NSObject {
             model.presentCaptureStatus("正在读取选中文字…", busy: true, preservingManualInput: true)
         } else {
             anchor = prepareCapture()
+            model.presentCaptureStatus("正在读取选中文字…", busy: true)
+            // Show progress without taking focus from the selection's source app.
+            lookup.show(anchor: anchor, hover: true)
         }
         capture.takeSelection(pid: captureOriginPID, anchor: anchor, primaryTop: NSScreen.screens.first?.frame.maxY ?? 0)
     }

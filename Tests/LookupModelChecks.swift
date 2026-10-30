@@ -59,6 +59,20 @@ private struct LookupModelChecks {
         localModel.clearHistory()
         precondition(history.load().isEmpty && history.loadTranslations(for: ["apple"]).isEmpty,
                      "clear words and their summaries together")
+        // A suspended result surface must reopen for recognition, then hand off
+        // to the query without leaving stale capture status or accepting old work.
+        localModel.suspend()
+        localModel.presentCaptureStatus("正在识别文字…", busy: true)
+        precondition(localModel.contentVisible && localModel.captureIsBusy && localModel.result == nil,
+                     "recognition must show loading even after suspension")
+        localModel.lookupCaptured("apple")
+        precondition(localModel.captureStatus == nil && !localModel.captureIsBusy && localModel.isLoading,
+                     "capture must hand off directly to dictionary loading")
+        try await settled(localModel)
+        precondition(localModel.result?.word == "apple", "captured query must complete")
+        localModel.presentCaptureStatus("无法取词", busy: false)
+        precondition(localModel.contentVisible && !localModel.captureIsBusy && localModel.result == nil,
+                     "capture failure must replace loading with a visible notice")
         let draftModel = LookupModel(router: localRouter, history: history, preferences: defaults)
         draftModel.lookupHovered("hover-only")
         try await settled(draftModel)
@@ -110,7 +124,8 @@ private struct LookupModelChecks {
         precondition(draftModel.query == "imported-selection",
                      "selection failure must not replace the saved manual draft")
         // Repeated hits at different screen positions must share the visible
-        // capture request/result, but hide, failure and source changes must retry.
+        // capture request/result. Hiding drops the view, completed results may
+        // use the bounded cache, and source changes must invalidate that cache.
         let hoverFixture = FixtureDictionary()
         let hoverModel = LookupModel(dictionary: hoverFixture, history: history, preferences: defaults)
         hoverModel.lookupHovered("echo")
@@ -128,11 +143,22 @@ private struct LookupModelChecks {
         hoverModel.suspend()
         hoverModel.lookupHovered("next")
         try await settled(hoverModel)
-        precondition(hoverFixture.entryRequests.count == 3, "hidden capture must not reuse cancelled work")
+        precondition(hoverFixture.entryRequests.count == 2 && hoverModel.entry?.word == "next",
+                     "hidden capture may restore a completed result from the bounded cache")
         hoverModel.sourcesChanged()
         hoverModel.lookupHovered("next")
         try await settled(hoverModel)
-        precondition(hoverFixture.entryRequests.count == 4, "source changes must invalidate reuse")
+        precondition(hoverFixture.entryRequests.count == 3, "source changes must invalidate reuse")
+        hoverModel.lookupHovered("cancelled-hover")
+        try await Task.sleep(nanoseconds: 10_000_000)
+        hoverModel.suspend()
+        try await Task.sleep(nanoseconds: 60_000_000)
+        precondition(hoverModel.result == nil && !hoverModel.isLoading,
+                     "cancelled hover must not restore a hidden result")
+        hoverModel.lookupHovered("cancelled-hover")
+        try await settled(hoverModel)
+        precondition(hoverFixture.entryRequests.filter { $0 == "cancelled-hover" }.count == 2,
+                     "cancelled in-flight work must not populate the result cache")
         hoverModel.lookupHovered("entry-failure")
         try await settled(hoverModel)
         hoverModel.lookupHovered("entry-failure")

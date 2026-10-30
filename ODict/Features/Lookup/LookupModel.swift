@@ -200,6 +200,7 @@ final class LookupModel: ObservableObject {
     }
 
     func presentCaptureStatus(_ text: String, busy: Bool, preservingManualInput: Bool = false) {
+        contentVisible = true
         if !preservingManualInput { captureContext = true }
         ai.reset()
         cancelRequests()
@@ -264,6 +265,10 @@ final class LookupModel: ObservableObject {
         let token = revision
         isSuggesting = true
         task = Task {
+            #if DEBUG
+            let loading = MemoryPhaseDiagnostics.Span("lookup.suggestions")
+            defer { loading.mark(Task.isCancelled ? "cancelled" : "finished") }
+            #endif
             defer { if token == revision { isSuggesting = false; task = nil } }
             do {
                 try await Task.sleep(nanoseconds: 350_000_000)
@@ -271,6 +276,9 @@ final class LookupModel: ObservableObject {
                 if isChinese(text) { results = try await dictionary.search(text, translation: true) }
                 else { results = try await dictionary.suggestions(text) }
                 guard !Task.isCancelled, token == revision else { return }
+                #if DEBUG
+                loading.mark("candidates.ready")
+                #endif
                 acceptSuggestions(results)
                 if results.isEmpty {
                     dictionaryMiss = true
@@ -323,6 +331,10 @@ final class LookupModel: ObservableObject {
         result = nil
         isLoading = true
         detailTask = Task {
+            #if DEBUG
+            let loading = MemoryPhaseDiagnostics.Span("lookup.preview")
+            defer { loading.mark(Task.isCancelled ? "cancelled" : "finished") }
+            #endif
             defer {
                 if token == detailRevision {
                     isLoading = false; detailTask = nil; previewWord = nil; rememberPreview = false
@@ -364,6 +376,10 @@ final class LookupModel: ObservableObject {
         let token = revision
         isLoading = true
         task = Task {
+            #if DEBUG
+            let loading = MemoryPhaseDiagnostics.Span("lookup.submit")
+            defer { loading.mark(Task.isCancelled ? "cancelled" : "finished") }
+            #endif
             // acceptSuggestions may start a detail request; don't clear its spinner.
             defer { if token == revision { if detailTask == nil { isLoading = false }; task = nil } }
             do {

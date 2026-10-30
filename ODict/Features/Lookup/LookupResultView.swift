@@ -17,11 +17,15 @@ struct LookupResultView: View {
         Group {
             if !model.contentVisible {
                 EmptyView()
+            } else if model.captureIsBusy {
+                DictionaryLoadingView(status: model.captureStatus ?? "正在取词…")
             } else if (model.mode == .ai || model.isUsingAIForCurrentQuery) && model.captureStatus == nil {
                 AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
                     isPresentation: isCapture,
                     restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery,
                     showsSource: isCapture || model.mode != .ai, scrollsContent: scrollsAIContent)
+            } else if model.result == nil && (model.isLoading || model.isSuggesting) {
+                DictionaryLoadingView()
             } else if let article = model.localArticle, model.contentVisible {
                 VStack(alignment: .leading, spacing: 0) {
                     LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
@@ -53,44 +57,44 @@ struct LookupResultView: View {
     }
 
     private var detailPane: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if let status = model.captureStatus {
-                    LookupNotice(title: model.captureIsBusy ? "正在取词" : "本次取词未完成",
-                        message: status, icon: "text.viewfinder", isBusy: model.captureIsBusy,
-                        footnote: model.captureIsBusy ? nil : "关闭窗口后，可重新使用取词快捷键。") { EmptyView() }
-                } else if let entry = model.entry {
-                    entryContent(entry)
-                    if let source = model.source {
-                        Text("来源：" + source).font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if let status = model.captureStatus {
+                        LookupNotice(title: "本次取词未完成",
+                            message: status, icon: "text.viewfinder",
+                            footnote: "关闭窗口后，可重新使用取词快捷键。") { EmptyView() }
+                    } else if let entry = model.entry {
+                        entryContent(entry)
+                        if let source = model.source {
+                            Text("来源：" + source).font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
+                        }
+                    } else if model.query.isEmpty {
+                        if model.recent.isEmpty { emptyState } else { recentList }
                     }
-                } else if model.isLoading || model.isSuggesting {
-                    LookupNotice(title: model.isSuggesting ? "正在查找候选词" : "正在载入释义",
-                        message: "请稍候…", isBusy: true) { EmptyView() }
-                } else if model.query.isEmpty {
-                    if model.recent.isEmpty { emptyState } else { recentList }
-                }
-                if model.offersAITranslation {
-                    aiTranslationOffer
-                } else if let message = model.message {
-                    if model.result != nil {
-                        Text(message).font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        LookupNotice(title: "暂时无法完成查询", message: message,
-                            source: model.query.isEmpty ? nil : model.query,
-                            footnote: isCapture ? "关闭窗口后，可重新使用取词快捷键。" : "可以修改输入后再次查询。") {
-                            Button("打开设置", action: openSettings).buttonStyle(LookupActionStyle())
+                    if model.offersAITranslation {
+                        aiTranslationOffer
+                    } else if let message = model.message {
+                        if model.result != nil {
+                            Text(message).font(AppTypography.secondary).foregroundColor(lookupSecondaryInk)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            LookupNotice(title: "暂时无法完成查询", message: message,
+                                source: model.query.isEmpty ? nil : model.query,
+                                footnote: isCapture ? "关闭窗口后，可重新使用取词快捷键。" : "可以修改输入后再次查询。") {
+                                Button("打开设置", action: openSettings).buttonStyle(LookupActionStyle())
+                            }
                         }
                     }
                 }
+                .id("entry-top")
+                .padding(.horizontal, showingHistory ? 12 : 22)
+                .padding(.vertical, showingHistory ? 16 : 22)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, showingHistory ? 12 : 22)
-            .padding(.vertical, showingHistory ? 16 : 22)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // New entry starts at its heading instead of inheriting a long previous word's scroll position.
+            .onChange(of: model.entry?.word) { _ in proxy.scrollTo("entry-top", anchor: .top) }
         }
-        // New entry starts at its heading instead of inheriting a long previous word's scroll position.
-        .id(model.entry?.word ?? "pending")
     }
 
     private var aiTranslationOffer: some View {

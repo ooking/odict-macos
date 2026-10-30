@@ -17,10 +17,22 @@ private final class ProfiledArticleWebView: WKWebView {
 struct LocalArticleView: View {
     @ObservedObject private var appearance = ReadingAppearanceStore.shared
     let article: LocalArticle
-    let renderer: LocalArticleRenderer
+    @ObservedObject var renderer: LocalArticleRenderer
     let lookup: (String) -> Void
     var body: some View {
-        LocalArticleWebView(article: article, renderer: renderer, appearance: appearance.value, lookup: lookup)
+        ZStack(alignment: .topLeading) {
+            LocalArticleWebView(article: article, renderer: renderer, appearance: appearance.value, lookup: lookup)
+                .opacity(renderer.isReady(article.id) ? 1 : 0)
+                .allowsHitTesting(renderer.isReady(article.id))
+                .accessibilityHidden(!renderer.isReady(article.id))
+            if renderer.hasFailed(article.id) {
+                LookupNotice(title: "词典页面暂时无法显示", message: "页面加载失败，请重试。") {
+                    Button("重新加载") { renderer.retry() }.buttonStyle(LookupActionStyle())
+                }.padding(22)
+            } else if !renderer.isReady(article.id) {
+                DictionaryLoadingView()
+            }
+        }
     }
 }
 
@@ -29,6 +41,43 @@ struct LocalArticleView: View {
 final class LocalArticleRenderer: ObservableObject {
     fileprivate var view: WKWebView?
     fileprivate var coordinator: LocalWebCoordinator?
+    fileprivate enum Presentation {
+        case loading
+        case ready(UUID)
+        case failed(UUID)
+    }
+    @Published private var presentation = Presentation.loading
+
+    func isReady(_ id: UUID) -> Bool {
+        if case .ready(let readyID) = presentation {
+            return readyID == id && coordinator?.articleID == id && view?.isHidden == false
+        }
+        return false
+    }
+
+    func hasFailed(_ id: UUID) -> Bool {
+        if case .failed(let failedID) = presentation {
+            return failedID == id && coordinator?.articleID == id && coordinator?.hasFailed == true
+        }
+        return false
+    }
+
+    // Navigation may start in updateNSView. Publish on the next main turn, and
+    // reject notifications from a cleared or superseded document.
+    fileprivate func present(_ state: Presentation, articleID: UUID) {
+        let revision = coordinator?.presentationRevision
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.coordinator?.articleID == articleID,
+                  self.coordinator?.presentationRevision == revision else { return }
+            self.presentation = state
+        }
+    }
+
+    func retry() {
+        guard let view else { return }
+        presentation = .loading
+        coordinator?.retry(view)
+    }
 
     fileprivate func acquire(article: LocalArticle, appearance: ReadingAppearance, lookup: @escaping (String) -> Void) -> WKWebView {
         if let view, let coordinator {
@@ -40,6 +89,7 @@ final class LocalArticleRenderer: ObservableObject {
         defer { memory.mark("finished") }
         #endif
         let coordinator = LocalWebCoordinator()
+        coordinator.renderer = self
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(coordinator, forURLScheme: LocalWebCoordinator.scheme)
@@ -98,6 +148,10 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     static let scheme = LocalArticleDocument.scheme
     private static let log = Logger(subsystem: "com.touchany.odict.mac", category: "LocalArticle")
     private var article: LocalArticle?
+    var articleID: UUID? { article?.id }
+    private(set) var hasFailed = false
+    fileprivate var presentationRevision = UUID()
+    weak var renderer: LocalArticleRenderer?
     private var lookup: ((String) -> Void)?
     private var pageURL: URL?
     private var activeNavigation: WKNavigation?
@@ -144,6 +198,9 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         view.stopLoading()
         cancelAll()
         self.article = article
+        hasFailed = false
+        presentationRevision = UUID()
+        renderer?.present(.loading, articleID: article.id)
         // A fresh origin for every document rejects late requests from old pages,
         // even when two consecutive entries come from the same dictionary.
         let url = URL(string: "\(Self.scheme)://\(article.id.uuidString.lowercased())/__odict_article.html")!
@@ -166,6 +223,8 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         view.stopLoading()
         cancelAll()
         article = nil
+        hasFailed = false
+        presentationRevision = UUID()
         appearanceCSS = ""
         lastAppearance = nil
         lookup = nil
@@ -263,8 +322,13 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
                 #endif
                 return
             }
-            if let error { Self.report(error, event: "document.readiness.failed", kind: "document"); return }
+            if let error {
+                Self.report(error, event: "document.readiness.failed", kind: "document")
+                self.failPresentation()
+                return
+            }
             guard result as? Bool == true else {
+                self.failPresentation()
                 #if DEBUG
                 LocalDictionaryDebug.trace("page.notReady", articleID: self.article?.id)
                 #endif
@@ -272,6 +336,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             }
             self.activeNavigation = nil
             webView.isHidden = false
+            if let id = self.article?.id { self.renderer?.present(.ready(id), articleID: id) }
             #if DEBUG
             self.renderingMemory?.mark("visible")
             self.renderingMemory = nil
@@ -286,13 +351,35 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         Self.report(error, event: "navigation.failed", kind: "document")
+        if let navigation, navigation === activeNavigation { failPresentation() }
     }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         Self.report(error, event: "navigation.failed", kind: "provisional")
+        if let navigation, navigation === activeNavigation { failPresentation() }
     }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         Self.log.error("event=webcontent.terminated")
+        failPresentation()
     }
+
+    private func failPresentation() {
+        guard let id = article?.id else { return }
+        activeNavigation = nil
+        hasFailed = true
+        renderer?.view?.isHidden = true
+        renderer?.present(.failed(id), articleID: id)
+        #if DEBUG
+        renderingMemory?.mark("failed")
+        renderingMemory = nil
+        #endif
+    }
+
+    func retry(_ view: WKWebView) {
+        guard let article, let appearance = lastAppearance, let lookup else { return }
+        self.article = nil
+        update(view, article: article, appearance: appearance, lookup: lookup)
+    }
+
     private static func report(_ error: Error, event: String, kind: String) {
         let error = error as NSError
         guard error.domain != NSURLErrorDomain || error.code != NSURLErrorCancelled else { return }

@@ -48,7 +48,7 @@ struct AIResultView: View {
                     }
                 }
                 if !model.hasStreamContent {
-                    AIAnswerSkeletonView()
+                    LookupSkeletonView(accessibilityText: "正在生成译文，回答将在此处显示")
                 }
             } else if model.isCancelled {
                 LookupNotice(title: model.isViewingHistory ? "未完成的历史回答" : "已停止生成",
@@ -130,29 +130,3 @@ struct AIResultView: View {
     }
 }
 
-/// Static, bounded placeholders avoid animation timers and disappear at the first
-/// streamed text. Native colors also respect dark mode and increased contrast.
-private struct AIAnswerSkeletonView: View {
-    private let paragraphWidths: [[CGFloat]] = [
-        [1, 0.94, 0.68], [1, 0.86, 0.54], [0.96, 0.72]
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ForEach(paragraphWidths.indices, id: \.self) { paragraph in
-                VStack(alignment: .leading, spacing: 9) {
-                    ForEach(paragraphWidths[paragraph].indices, id: \.self) { line in
-                        GeometryReader { geometry in
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.primary.opacity(0.08))
-                                .frame(width: geometry.size.width * paragraphWidths[paragraph][line])
-                        }.frame(height: 12)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("正在生成译文，回答将在此处显示")
-    }
-}
