@@ -3,39 +3,10 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CE505000000000000000000D /* ODict/Features/Settings/GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */; };
-		CE505000000000000000000C /* ODict/LocalDictionary/SystemDictionaryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */; };
-		CE505000000000000000000B /* ODict/LocalDictionary/LookupSourceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */; };
-		A83000000000000000000001 /* LookupSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83000000000000000000002; };
-		AC0400000000000000000003 = {isa = PBXBuildFile; fileRef = AC0300000000000000000003; };
-		AC0400000000000000000002 = {isa = PBXBuildFile; fileRef = AC0300000000000000000002; };
-		AC0400000000000000000001 = {isa = PBXBuildFile; fileRef = AC0300000000000000000001; };
-		AC0400000000000000000000 = {isa = PBXBuildFile; fileRef = AC0300000000000000000000; };
-		AC0200000000000000000001 /* MacDeviceIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0100000000000000000001; };
-		A184CF00AF004A35B19A4001 /* LookupWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A184CF00AF004A35B19A4002; };
-		AB0200000000000000000004 = {isa = PBXBuildFile; fileRef = AB0100000000000000000004; };
-		AB0200000000000000000003 = {isa = PBXBuildFile; fileRef = AB0100000000000000000003; };
-		AB0200000000000000000002 = {isa = PBXBuildFile; fileRef = AB0100000000000000000002; };
-		AB0200000000000000000001 = {isa = PBXBuildFile; fileRef = AB0100000000000000000001; };
-		AB0200000000000000000000 = {isa = PBXBuildFile; fileRef = AB0100000000000000000000; };
-		AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000004; };
-		AA0020000000000000000003 /* PronunciationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000003; };
-		AA0020000000000000000002 /* PronunciationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000002; };
-		AA0020000000000000000001 /* PronunciationSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000001; };
-		AA0020000000000000000000 /* PronunciationSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000000; };
-		000000000000000000001701 /* AboutSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001700; };
-		000000000000000000001603 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001601; };
-		000000000000000000001604 /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001602; };
-		F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AB45503A3D4716B94A5916; };
-		DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046ED4425C8D48198BF359B5; };
-		1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1F3B2C19A541A492909AF3; };
-		D319DD8F6C544979B8F8BF52 /* MainLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0234BD0B3249DA8E0D1C3C; };
-		000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */; };
-		000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */; };
 		000000000000000000000016 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000015 /* KeyboardShortcuts */; };
 		0000000000000000000000C8 /* ODict/App/ODictApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000064 /* ODict/App/ODictApp.swift */; };
 		0000000000000000000000C9 /* ODict/Models/DictionaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* ODict/Models/DictionaryModels.swift */; };
@@ -72,6 +43,10 @@
 		000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */; };
 		000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */; };
 		000000000000000000000A06 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */; };
+		000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */; };
+		000000000000000000000A08 /* ODict/LocalDictionary/LocalArticleDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */; };
+		000000000000000000000A09 /* ODict/LocalDictionary/LocalArticleLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */; };
+		000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */; };
 		000000000000000000000E00 /* ODict/Models/AIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D00 /* ODict/Models/AIModels.swift */; };
 		000000000000000000000E01 /* ODict/Services/AISettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D01 /* ODict/Services/AISettingsStore.swift */; };
 		000000000000000000000E02 /* ODict/Services/AIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000D02 /* ODict/Services/AIClient.swift */; };
@@ -85,50 +60,45 @@
 		000000000000000000000F03 /* ODict/Services/AIStreamTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */; };
 		000000000000000000000F05 /* ODict/Services/AIStreamDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */; };
 		000000000000000000001003 /* HoverLookupKit in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000001002 /* HoverLookupKit */; };
-		000000000000000000000A08 /* ODict/LocalDictionary/LocalArticleDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */; };
-		000000000000000000000A09 /* ODict/LocalDictionary/LocalArticleLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */; };
-		000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */; };
-		000000000000000000001201 /* LookupResultCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001200 /* LookupResultCache.swift */; };
+		000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */; };
+		000000000000000000001201 /* ODict/Services/LookupResultCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001200 /* ODict/Services/LookupResultCache.swift */; };
 		000000000000000000001501 /* ODict/Models/AIHistoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001500 /* ODict/Models/AIHistoryModels.swift */; };
+		000000000000000000001603 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001601 /* LICENSE */; };
+		000000000000000000001604 /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001602 /* THIRD_PARTY_NOTICES.md */; };
+		000000000000000000001701 /* ODict/Features/Settings/AboutSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001700 /* ODict/Features/Settings/AboutSettingsView.swift */; };
 		000000000000000000001901 /* ODict/Models/TranslationMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001900 /* ODict/Models/TranslationMethod.swift */; };
 		000000000000000000001903 /* ODict/Models/TranslationHistoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001902 /* ODict/Models/TranslationHistoryModels.swift */; };
 		000000000000000000001905 /* ODict/Services/TranslationHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001904 /* ODict/Services/TranslationHistoryStore.swift */; };
 		000000000000000000001907 /* ODict/Features/Lookup/TranslationHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001906 /* ODict/Features/Lookup/TranslationHistoryModel.swift */; };
 		000000000000000000001909 /* ODict/Features/Lookup/TranslationMethodPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001908 /* ODict/Features/Lookup/TranslationMethodPicker.swift */; };
 		00000000000000000000190B /* ODict/Features/Lookup/TranslationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000190A /* ODict/Features/Lookup/TranslationHistoryView.swift */; };
+		1CC47E566AFE4DD58C62D25F /* ODict/Features/Lookup/CaptureLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1F3B2C19A541A492909AF3 /* ODict/Features/Lookup/CaptureLookupView.swift */; };
+		A184CF00AF004A35B19A4001 /* ODict/Features/Lookup/LookupWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A184CF00AF004A35B19A4002 /* ODict/Features/Lookup/LookupWelcomeView.swift */; };
+		A83000000000000000000001 /* ODict/Features/Lookup/LookupSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83000000000000000000002 /* ODict/Features/Lookup/LookupSkeletonView.swift */; };
+		AA0020000000000000000000 /* ODict/Models/PronunciationSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000000 /* ODict/Models/PronunciationSource.swift */; };
+		AA0020000000000000000001 /* ODict/Services/PronunciationSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000001 /* ODict/Services/PronunciationSettingsStore.swift */; };
+		AA0020000000000000000002 /* ODict/Features/Settings/PronunciationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000002 /* ODict/Features/Settings/PronunciationSettingsView.swift */; };
+		AA0020000000000000000003 /* ODict/Features/Lookup/PronunciationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000003 /* ODict/Features/Lookup/PronunciationButton.swift */; };
+		AA0020000000000000000004 /* ODict/Services/SystemSpeechVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010000000000000000004 /* ODict/Services/SystemSpeechVoice.swift */; };
+		AB0200000000000000000000 /* ODict/Services/AccountTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0100000000000000000000 /* ODict/Services/AccountTransport.swift */; };
+		AB0200000000000000000001 /* ODict/Services/MacDeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0100000000000000000001 /* ODict/Services/MacDeviceIdentity.swift */; };
+		AB0200000000000000000002 /* ODict/Services/AccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0100000000000000000002 /* ODict/Services/AccountStore.swift */; };
+		AB0200000000000000000003 /* ODict/Features/Settings/AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0100000000000000000003 /* ODict/Features/Settings/AccountSettingsView.swift */; };
+		AB0200000000000000000004 /* ODict/Features/Settings/TelemetryPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0100000000000000000004 /* ODict/Features/Settings/TelemetryPrivacyView.swift */; };
+		AC0200000000000000000001 /* ODict/Services/MacDeviceIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0100000000000000000001 /* ODict/Services/MacDeviceIdentifier.swift */; };
+		AC0400000000000000000000 /* ODict/Features/Appearance/ReadingAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0300000000000000000000 /* ODict/Features/Appearance/ReadingAppearance.swift */; };
+		AC0400000000000000000001 /* ODict/Features/Appearance/ReadingText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0300000000000000000001 /* ODict/Features/Appearance/ReadingText.swift */; };
+		AC0400000000000000000002 /* ODict/Features/Appearance/AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0300000000000000000002 /* ODict/Features/Appearance/AppearanceSettingsView.swift */; };
+		AC0400000000000000000003 /* ODict/Features/Appearance/LocalReadingAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0300000000000000000003 /* ODict/Features/Appearance/LocalReadingAppearance.swift */; };
+		CE505000000000000000000B /* ODict/LocalDictionary/LookupSourceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */; };
+		CE505000000000000000000C /* ODict/LocalDictionary/SystemDictionaryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */; };
+		CE505000000000000000000D /* ODict/Features/Settings/GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */; };
+		D319DD8F6C544979B8F8BF52 /* ODict/Features/Lookup/MainLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0234BD0B3249DA8E0D1C3C /* ODict/Features/Lookup/MainLookupView.swift */; };
+		DC28BB8C9FFE422EA02ADABE /* ODict/Features/Lookup/LookupResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046ED4425C8D48198BF359B5 /* ODict/Features/Lookup/LookupResultView.swift */; };
+		F5A1AC8902844A05B4AB1F2A /* ODict/Features/Lookup/LookupSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AB45503A3D4716B94A5916 /* ODict/Features/Lookup/LookupSharedViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/GeneralSettingsView.swift; sourceTree = SOURCE_ROOT; };
-		CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/SystemDictionaryService.swift; sourceTree = SOURCE_ROOT; };
-		CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LookupSourceSettings.swift; sourceTree = SOURCE_ROOT; };
-		A83000000000000000000002 /* LookupSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSkeletonView.swift; sourceTree = SOURCE_ROOT; };
-		AC0300000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/LocalReadingAppearance.swift; sourceTree = SOURCE_ROOT; };
-		AC0300000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/AppearanceSettingsView.swift; sourceTree = SOURCE_ROOT; };
-		AC0300000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/ReadingText.swift; sourceTree = SOURCE_ROOT; };
-		AC0300000000000000000000 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/ReadingAppearance.swift; sourceTree = SOURCE_ROOT; };
-		AC0100000000000000000001 /* MacDeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/MacDeviceIdentifier.swift"; sourceTree = SOURCE_ROOT; };
-		A184CF00AF004A35B19A4002 /* LookupWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupWelcomeView.swift; sourceTree = SOURCE_ROOT; };
-		AB0100000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/TelemetryPrivacyView.swift"; sourceTree = SOURCE_ROOT; };
-		AB0100000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Features/Settings/AccountSettingsView.swift"; sourceTree = SOURCE_ROOT; };
-		AB0100000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/AccountStore.swift"; sourceTree = SOURCE_ROOT; };
-		AB0100000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/MacDeviceIdentity.swift"; sourceTree = SOURCE_ROOT; };
-		AB0100000000000000000000 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ODict/Services/AccountTransport.swift"; sourceTree = SOURCE_ROOT; };
-		AA0010000000000000000004 /* SystemSpeechVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/SystemSpeechVoice.swift; sourceTree = SOURCE_ROOT; };
-		AA0010000000000000000003 /* PronunciationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/PronunciationButton.swift; sourceTree = SOURCE_ROOT; };
-		AA0010000000000000000002 /* PronunciationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/PronunciationSettingsView.swift; sourceTree = SOURCE_ROOT; };
-		AA0010000000000000000001 /* PronunciationSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/PronunciationSettingsStore.swift; sourceTree = SOURCE_ROOT; };
-		AA0010000000000000000000 /* PronunciationSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/PronunciationSource.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001700 /* AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/AboutSettingsView.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001600 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
-		000000000000000000001601 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
-		000000000000000000001602 /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = THIRD_PARTY_NOTICES.md; sourceTree = SOURCE_ROOT; };
-		47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSharedViews.swift; sourceTree = SOURCE_ROOT; };
-		046ED4425C8D48198BF359B5 /* LookupResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupResultView.swift; sourceTree = SOURCE_ROOT; };
-		8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/CaptureLookupView.swift; sourceTree = SOURCE_ROOT; };
-		FE0234BD0B3249DA8E0D1C3C /* MainLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/MainLookupView.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/CaptureMethodGuide.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleSummary.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000006 /* ODict.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ODict.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00000000000000000000001E /* ODict/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = ODict/Info.plist; sourceTree = SOURCE_ROOT; };
 		00000000000000000000001F /* ODict/ODict.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ODict/ODict.entitlements; sourceTree = SOURCE_ROOT; };
@@ -168,6 +138,10 @@
 		000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/DictionaryRouter.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/LocalDictionary/LocalArticleView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000907 /* ODict/LocalDictionary/LocalArticleSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleSummary.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleDocument.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleLink.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalDictionaryDebug.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000D00 /* ODict/Models/AIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/AIModels.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000D01 /* ODict/Services/AISettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AISettingsStore.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000D02 /* ODict/Services/AIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIClient.swift; sourceTree = SOURCE_ROOT; };
@@ -180,17 +154,43 @@
 		000000000000000000000F00 /* ODict/Features/AI/AIMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIMarkdownView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000F02 /* ODict/Services/AIStreamTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIStreamTransport.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIStreamDecoder.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000000908 /* ODict/LocalDictionary/LocalArticleDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleDocument.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalArticleLink.swift; sourceTree = SOURCE_ROOT; };
-		00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalDictionaryDebug.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001200 /* LookupResultCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/LookupResultCache.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/CaptureMethodGuide.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001200 /* ODict/Services/LookupResultCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/LookupResultCache.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001500 /* ODict/Models/AIHistoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/AIHistoryModels.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001600 /* Config/Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
+		000000000000000000001601 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
+		000000000000000000001602 /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = THIRD_PARTY_NOTICES.md; sourceTree = SOURCE_ROOT; };
+		000000000000000000001700 /* ODict/Features/Settings/AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/AboutSettingsView.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001900 /* ODict/Models/TranslationMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/TranslationMethod.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001902 /* ODict/Models/TranslationHistoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/TranslationHistoryModels.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001904 /* ODict/Services/TranslationHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/TranslationHistoryStore.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001906 /* ODict/Features/Lookup/TranslationHistoryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/TranslationHistoryModel.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001908 /* ODict/Features/Lookup/TranslationMethodPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/TranslationMethodPicker.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000190A /* ODict/Features/Lookup/TranslationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/TranslationHistoryView.swift; sourceTree = SOURCE_ROOT; };
+		046ED4425C8D48198BF359B5 /* ODict/Features/Lookup/LookupResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupResultView.swift; sourceTree = SOURCE_ROOT; };
+		47AB45503A3D4716B94A5916 /* ODict/Features/Lookup/LookupSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSharedViews.swift; sourceTree = SOURCE_ROOT; };
+		8E1F3B2C19A541A492909AF3 /* ODict/Features/Lookup/CaptureLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/CaptureLookupView.swift; sourceTree = SOURCE_ROOT; };
+		A184CF00AF004A35B19A4002 /* ODict/Features/Lookup/LookupWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupWelcomeView.swift; sourceTree = SOURCE_ROOT; };
+		A83000000000000000000002 /* ODict/Features/Lookup/LookupSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSkeletonView.swift; sourceTree = SOURCE_ROOT; };
+		AA0010000000000000000000 /* ODict/Models/PronunciationSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/PronunciationSource.swift; sourceTree = SOURCE_ROOT; };
+		AA0010000000000000000001 /* ODict/Services/PronunciationSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/PronunciationSettingsStore.swift; sourceTree = SOURCE_ROOT; };
+		AA0010000000000000000002 /* ODict/Features/Settings/PronunciationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/PronunciationSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		AA0010000000000000000003 /* ODict/Features/Lookup/PronunciationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/PronunciationButton.swift; sourceTree = SOURCE_ROOT; };
+		AA0010000000000000000004 /* ODict/Services/SystemSpeechVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/SystemSpeechVoice.swift; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000000 /* ODict/Services/AccountTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AccountTransport.swift; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000001 /* ODict/Services/MacDeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/MacDeviceIdentity.swift; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000002 /* ODict/Services/AccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AccountStore.swift; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000003 /* ODict/Features/Settings/AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/AccountSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		AB0100000000000000000004 /* ODict/Features/Settings/TelemetryPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/TelemetryPrivacyView.swift; sourceTree = SOURCE_ROOT; };
+		AC0100000000000000000001 /* ODict/Services/MacDeviceIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/MacDeviceIdentifier.swift; sourceTree = SOURCE_ROOT; };
+		AC0300000000000000000000 /* ODict/Features/Appearance/ReadingAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/ReadingAppearance.swift; sourceTree = SOURCE_ROOT; };
+		AC0300000000000000000001 /* ODict/Features/Appearance/ReadingText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/ReadingText.swift; sourceTree = SOURCE_ROOT; };
+		AC0300000000000000000002 /* ODict/Features/Appearance/AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/AppearanceSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		AC0300000000000000000003 /* ODict/Features/Appearance/LocalReadingAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/LocalReadingAppearance.swift; sourceTree = SOURCE_ROOT; };
+		CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LookupSourceSettings.swift; sourceTree = SOURCE_ROOT; };
+		CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/SystemDictionaryService.swift; sourceTree = SOURCE_ROOT; };
+		CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/GeneralSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		FE0234BD0B3249DA8E0D1C3C /* ODict/Features/Lookup/MainLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/MainLookupView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -209,23 +209,23 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
-				AC0300000000000000000003,
-				AC0300000000000000000002,
-				AC0300000000000000000001,
-				AC0300000000000000000000,
-				AB0100000000000000000004,
-				AB0100000000000000000003,
-				AB0100000000000000000002,
-				AC0100000000000000000001 /* MacDeviceIdentifier.swift */,
-				AB0100000000000000000001,
-				AB0100000000000000000000,
-				AA0010000000000000000004 /* SystemSpeechVoice.swift */,
-				AA0010000000000000000003 /* PronunciationButton.swift */,
-				AA0010000000000000000002 /* PronunciationSettingsView.swift */,
-				AA0010000000000000000001 /* PronunciationSettingsStore.swift */,
-				AA0010000000000000000000 /* PronunciationSource.swift */,
-				000000000000000000001700 /* AboutSettingsView.swift */,
-				000000000000000000001600 /* Signing.xcconfig */,
+				AC0300000000000000000003 /* ODict/Features/Appearance/LocalReadingAppearance.swift */,
+				AC0300000000000000000002 /* ODict/Features/Appearance/AppearanceSettingsView.swift */,
+				AC0300000000000000000001 /* ODict/Features/Appearance/ReadingText.swift */,
+				AC0300000000000000000000 /* ODict/Features/Appearance/ReadingAppearance.swift */,
+				AB0100000000000000000004 /* ODict/Features/Settings/TelemetryPrivacyView.swift */,
+				AB0100000000000000000003 /* ODict/Features/Settings/AccountSettingsView.swift */,
+				AB0100000000000000000002 /* ODict/Services/AccountStore.swift */,
+				AC0100000000000000000001 /* ODict/Services/MacDeviceIdentifier.swift */,
+				AB0100000000000000000001 /* ODict/Services/MacDeviceIdentity.swift */,
+				AB0100000000000000000000 /* ODict/Services/AccountTransport.swift */,
+				AA0010000000000000000004 /* ODict/Services/SystemSpeechVoice.swift */,
+				AA0010000000000000000003 /* ODict/Features/Lookup/PronunciationButton.swift */,
+				AA0010000000000000000002 /* ODict/Features/Settings/PronunciationSettingsView.swift */,
+				AA0010000000000000000001 /* ODict/Services/PronunciationSettingsStore.swift */,
+				AA0010000000000000000000 /* ODict/Models/PronunciationSource.swift */,
+				000000000000000000001700 /* ODict/Features/Settings/AboutSettingsView.swift */,
+				000000000000000000001600 /* Config/Signing.xcconfig */,
 				000000000000000000001601 /* LICENSE */,
 				000000000000000000001602 /* THIRD_PARTY_NOTICES.md */,
 				000000000000000000000F04 /* ODict/Services/AIStreamDecoder.swift */,
@@ -266,7 +266,7 @@
 				000000000000000000000508 /* ODict/Services/HTTPTransport.swift */,
 				000000000000000000000509 /* ODict/Services/PronunciationService.swift */,
 				00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */,
-				000000000000000000001200 /* LookupResultCache.swift */,
+				000000000000000000001200 /* ODict/Services/LookupResultCache.swift */,
 				000000000000000000001500 /* ODict/Models/AIHistoryModels.swift */,
 				00000000000000000000190A /* ODict/Features/Lookup/TranslationHistoryView.swift */,
 				000000000000000000001908 /* ODict/Features/Lookup/TranslationMethodPicker.swift */,
@@ -289,12 +289,12 @@
 				000000000000000000000067 /* ODict/Services/DictionaryClient.swift */,
 				000000000000000000000068 /* ODict/Features/Lookup/LookupModel.swift */,
 				000000000000000000000069 /* ODict/Features/Lookup/LookupView.swift */,
-				47AB45503A3D4716B94A5916 /* LookupSharedViews.swift */,
-				A83000000000000000000002 /* LookupSkeletonView.swift */,
-				046ED4425C8D48198BF359B5 /* LookupResultView.swift */,
-				A184CF00AF004A35B19A4002 /* LookupWelcomeView.swift */,
-				8E1F3B2C19A541A492909AF3 /* CaptureLookupView.swift */,
-				FE0234BD0B3249DA8E0D1C3C /* MainLookupView.swift */,
+				47AB45503A3D4716B94A5916 /* ODict/Features/Lookup/LookupSharedViews.swift */,
+				A83000000000000000000002 /* ODict/Features/Lookup/LookupSkeletonView.swift */,
+				046ED4425C8D48198BF359B5 /* ODict/Features/Lookup/LookupResultView.swift */,
+				A184CF00AF004A35B19A4002 /* ODict/Features/Lookup/LookupWelcomeView.swift */,
+				8E1F3B2C19A541A492909AF3 /* ODict/Features/Lookup/CaptureLookupView.swift */,
+				FE0234BD0B3249DA8E0D1C3C /* ODict/Features/Lookup/MainLookupView.swift */,
 				000000000000000000001100 /* ODict/Features/Settings/CaptureMethodGuide.swift */,
 				00000000000000000000006A /* ODict/Features/Settings/SettingsView.swift */,
 				00000000000000000000001E /* ODict/Info.plist */,
@@ -344,7 +344,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2710;
 			};
 			buildConfigurationList = 000000000000000000000002 /* Build configuration list for PBXProject "ODict" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -358,7 +358,7 @@
 			mainGroup = 000000000000000000000003;
 			packageReferences = (
 				000000000000000000000014 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
-				000000000000000000001001 /* XCLocalSwiftPackageReference "HoverLookupKit" */,
+				000000000000000000001001 /* XCLocalSwiftPackageReference "Packages/HoverLookupKit" */,
 			);
 			productRefGroup = 000000000000000000000004 /* Products */;
 			projectDirPath = "";
@@ -387,10 +387,15 @@
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
-			files = ();
-			inputPaths = ("$(SRCROOT)/ODict/Info.plist",);
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/ODict/Info.plist",
+			);
 			name = "Generate timestamp build version";
-			outputPaths = ("$(DERIVED_FILE_DIR)/ODict-Info.plist",);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/ODict-Info.plist",
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eu\n/bin/cp \"$SRCROOT/ODict/Info.plist\" \"$SCRIPT_OUTPUT_FILE_0\"\n/usr/bin/plutil -replace CFBundleVersion -string \"$(TZ=Asia/Shanghai /bin/date +%Y%m%d%H%M)\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
@@ -402,22 +407,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AC0400000000000000000003,
-				AC0400000000000000000002,
-				AC0400000000000000000001,
-				AC0400000000000000000000,
-				AB0200000000000000000004,
-				AB0200000000000000000003,
-				AB0200000000000000000002,
-				AC0200000000000000000001 /* MacDeviceIdentifier.swift in Sources */,
-				AB0200000000000000000001,
-				AB0200000000000000000000,
-				AA0020000000000000000004 /* SystemSpeechVoice.swift in Sources */,
-				AA0020000000000000000003 /* PronunciationButton.swift in Sources */,
-				AA0020000000000000000002 /* PronunciationSettingsView.swift in Sources */,
-				AA0020000000000000000001 /* PronunciationSettingsStore.swift in Sources */,
-				AA0020000000000000000000 /* PronunciationSource.swift in Sources */,
-				000000000000000000001701 /* AboutSettingsView.swift in Sources */,
+				AC0400000000000000000003 /* ODict/Features/Appearance/LocalReadingAppearance.swift in Sources */,
+				AC0400000000000000000002 /* ODict/Features/Appearance/AppearanceSettingsView.swift in Sources */,
+				AC0400000000000000000001 /* ODict/Features/Appearance/ReadingText.swift in Sources */,
+				AC0400000000000000000000 /* ODict/Features/Appearance/ReadingAppearance.swift in Sources */,
+				AB0200000000000000000004 /* ODict/Features/Settings/TelemetryPrivacyView.swift in Sources */,
+				AB0200000000000000000003 /* ODict/Features/Settings/AccountSettingsView.swift in Sources */,
+				AB0200000000000000000002 /* ODict/Services/AccountStore.swift in Sources */,
+				AC0200000000000000000001 /* ODict/Services/MacDeviceIdentifier.swift in Sources */,
+				AB0200000000000000000001 /* ODict/Services/MacDeviceIdentity.swift in Sources */,
+				AB0200000000000000000000 /* ODict/Services/AccountTransport.swift in Sources */,
+				AA0020000000000000000004 /* ODict/Services/SystemSpeechVoice.swift in Sources */,
+				AA0020000000000000000003 /* ODict/Features/Lookup/PronunciationButton.swift in Sources */,
+				AA0020000000000000000002 /* ODict/Features/Settings/PronunciationSettingsView.swift in Sources */,
+				AA0020000000000000000001 /* ODict/Services/PronunciationSettingsStore.swift in Sources */,
+				AA0020000000000000000000 /* ODict/Models/PronunciationSource.swift in Sources */,
+				000000000000000000001701 /* ODict/Features/Settings/AboutSettingsView.swift in Sources */,
 				000000000000000000000F05 /* ODict/Services/AIStreamDecoder.swift in Sources */,
 				000000000000000000000F03 /* ODict/Services/AIStreamTransport.swift in Sources */,
 				000000000000000000000F01 /* ODict/Features/AI/AIMarkdownView.swift in Sources */,
@@ -440,7 +445,7 @@
 				000000000000000000000A09 /* ODict/LocalDictionary/LocalArticleLink.swift in Sources */,
 				000000000000000000000A08 /* ODict/LocalDictionary/LocalArticleDocument.swift in Sources */,
 				000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */,
-				000000000000000000001201 /* LookupResultCache.swift in Sources */,
+				000000000000000000001201 /* ODict/Services/LookupResultCache.swift in Sources */,
 				000000000000000000001501 /* ODict/Models/AIHistoryModels.swift in Sources */,
 				00000000000000000000190B /* ODict/Features/Lookup/TranslationHistoryView.swift in Sources */,
 				000000000000000000001909 /* ODict/Features/Lookup/TranslationMethodPicker.swift in Sources */,
@@ -478,12 +483,12 @@
 				0000000000000000000000CB /* ODict/Services/DictionaryClient.swift in Sources */,
 				0000000000000000000000CC /* ODict/Features/Lookup/LookupModel.swift in Sources */,
 				0000000000000000000000CD /* ODict/Features/Lookup/LookupView.swift in Sources */,
-				F5A1AC8902844A05B4AB1F2A /* LookupSharedViews.swift in Sources */,
-				A83000000000000000000001 /* LookupSkeletonView.swift in Sources */,
-				DC28BB8C9FFE422EA02ADABE /* LookupResultView.swift in Sources */,
-				A184CF00AF004A35B19A4001 /* LookupWelcomeView.swift in Sources */,
-				1CC47E566AFE4DD58C62D25F /* CaptureLookupView.swift in Sources */,
-				D319DD8F6C544979B8F8BF52 /* MainLookupView.swift in Sources */,
+				F5A1AC8902844A05B4AB1F2A /* ODict/Features/Lookup/LookupSharedViews.swift in Sources */,
+				A83000000000000000000001 /* ODict/Features/Lookup/LookupSkeletonView.swift in Sources */,
+				DC28BB8C9FFE422EA02ADABE /* ODict/Features/Lookup/LookupResultView.swift in Sources */,
+				A184CF00AF004A35B19A4001 /* ODict/Features/Lookup/LookupWelcomeView.swift in Sources */,
+				1CC47E566AFE4DD58C62D25F /* ODict/Features/Lookup/CaptureLookupView.swift in Sources */,
+				D319DD8F6C544979B8F8BF52 /* ODict/Features/Lookup/MainLookupView.swift in Sources */,
 				000000000000000000001101 /* ODict/Features/Settings/CaptureMethodGuide.swift in Sources */,
 				0000000000000000000000CE /* ODict/Features/Settings/SettingsView.swift in Sources */,
 			);
@@ -495,9 +500,40 @@
 		00000000000000000000000B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
@@ -506,8 +542,37 @@
 		00000000000000000000000C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
@@ -516,14 +581,16 @@
 		};
 		00000000000000000000000D /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 000000000000000000001600 /* Signing.xcconfig */;
+			baseConfigurationReference = 000000000000000000001600 /* Config/Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_TESTABILITY = YES;
@@ -550,14 +617,16 @@
 		};
 		00000000000000000000000E /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 000000000000000000001600 /* Signing.xcconfig */;
+			baseConfigurationReference = 000000000000000000001600 /* Config/Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = ODict/ODict.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -604,6 +673,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		000000000000000000001001 /* XCLocalSwiftPackageReference "Packages/HoverLookupKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/HoverLookupKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		000000000000000000000014 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -615,22 +691,15 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
-/* Begin XCLocalSwiftPackageReference section */
-        000000000000000000001001 /* XCLocalSwiftPackageReference "HoverLookupKit" */ = {
-            isa = XCLocalSwiftPackageReference;
-            relativePath = Packages/HoverLookupKit;
-        };
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-        000000000000000000001002 /* HoverLookupKit */ = {
-            isa = XCSwiftPackageProductDependency;
-            productName = HoverLookupKit;
-        };
 		000000000000000000000015 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 000000000000000000000014 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
+		};
+		000000000000000000001002 /* HoverLookupKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HoverLookupKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -2,7 +2,6 @@ import AppKit
 import CoreText
 import Vision
 import CoreML
-import HoverLookupKit
 
 @main
 struct HoverWordChecks {
@@ -33,12 +32,6 @@ struct HoverWordChecks {
     }
 
     static func main() async throws {
-        if HoverLookupKit.ScreenTextService.isOCRWorker {
-            exit(await HoverLookupKit.ScreenTextService.runOCRWorker())
-        }
-        // Exercise the same process boundary as the app using generated images.
-        HoverLookupKit.ScreenTextService.enableProcessIsolation()
-        defer { HoverLookupKit.ScreenTextService.stopProcessIsolation() }
         // No capture, permissions, UI automation, preferences, keychain or network access.
         let automaticRequest = VNRecognizeTextRequest()
         let defaultRevision = automaticRequest.revision

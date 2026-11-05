@@ -19,8 +19,8 @@ final class OCRRecovery: @unchecked Sendable {
          now: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
          repair: @escaping @Sendable (URL) async -> Bool = {
              guard await OCRRepairProcess().run(executable: $0) else { return false }
-            // A repair exit alone is insufficient: verify through the host's
-            // configured recognition path (a fresh worker when isolated).
+             // A child exit alone is insufficient: the original runtime must
+             // successfully read the regenerated resources too.
              return await ScreenTextService.verifyAfterRepair()
          }) {
         self.availability = availability

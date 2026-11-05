@@ -85,13 +85,7 @@ public final class ScreenTextService: HoverWordRecognizing {
     static func verifyAfterRepair() async -> Bool {
         do {
             return try await recoveryVerification.run(timeout: 3_000_000_000) {
-                if OCRWorkerRuntime.shared.isEnabled {
-                    let request = OCRWorkerRequest(mode: .verify, width: 1, height: 1,
-                        maximumCount: 1, region: nil, point: nil)
-                    let response = try await OCRWorkerRuntime.shared.run(request)
-                    return response.status == .success
-                }
-                return await verifyRecoveredModels()
+                await verifyRecoveredModels()
             }
         } catch { return false }
     }
@@ -113,16 +107,7 @@ public final class ScreenTextService: HoverWordRecognizing {
     }
 
     public func recognize(_ image: CGImage, maximumCount: Int = 4000) async throws -> String {
-        if OCRWorkerRuntime.shared.isEnabled {
-            let limit = min(max(1, maximumCount), 65_536)
-            let request = OCRWorkerRequest(mode: .text, width: image.width, height: image.height,
-                maximumCount: limit, region: nil, point: nil)
-            let response = try await isolatedResponse(request, image: image)
-            guard let text = response.text, !text.isEmpty else { throw HoverLookupError.noText }
-            guard text.count <= limit else { throw HoverLookupError.tooLong }
-            return text
-        }
-        return try await recognize(image) { observations in
+        try await recognize(image) { observations in
             let ordered = observations.sorted { $0.boundingBox.midY > $1.boundingBox.midY }
             var rows: [[VNRecognizedTextObservation]] = []
             for observation in ordered {
@@ -152,17 +137,7 @@ public final class ScreenTextService: HoverWordRecognizing {
     }
 
     public func recognizeWord(_ image: CGImage, region: CGRect, point: CGPoint) async throws -> HoverWordHit? {
-        if OCRWorkerRuntime.shared.isEnabled {
-            let request = OCRWorkerRequest(mode: .word, width: image.width, height: image.height,
-                maximumCount: 255, region: region, point: point)
-            let response = try await isolatedResponse(request, image: image)
-            guard let text = response.text else { return nil }
-            guard !text.isEmpty, text.count <= 255, let bounds = response.anchor,
-                  HoverWords.valid(bounds), region.insetBy(dx: 1, dy: 1).contains(bounds),
-                  bounds.insetBy(dx: -1, dy: -2).contains(point) else { throw HoverLookupError.recognitionFailed }
-            return HoverWordHit(text: text, anchor: bounds)
-        }
-        return try await recognize(image) { observations in
+        try await recognize(image) { observations in
             var best: HoverWordHit?
             for observation in observations {
                 guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.35,
@@ -184,33 +159,6 @@ public final class ScreenTextService: HoverWordRecognizing {
         }
     }
 
-    private func isolatedResponse(_ request: OCRWorkerRequest, image: CGImage) async throws -> OCRWorkerResponse {
-        try prepare()
-        let response = try await OCRWorkerRuntime.shared.run(request, image: image)
-        try Task.checkCancellation()
-        switch response.status {
-        case .success:
-            Self.availability.recovered()
-            return response
-        case .noText: throw HoverLookupError.noText
-        case .tooLong: throw HoverLookupError.tooLong
-        case .failure:
-            guard let failure = response.failure else { throw HoverLookupError.recognitionFailed }
-            throw Self.record(failure)
-        case .unavailable: throw HoverLookupError.recognitionFailed
-        }
-    }
-
-    private static func record(_ original: OCRFailure) -> OCRFailure {
-        var failure = original
-        availability.record(failure)
-        failure = recovery.start(for: failure)
-        let first = failure.automaticErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
-        let second = failure.compatibilityErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
-        log.error("kind=\(failure.kind.rawValue, privacy: .public) cacheState=\(failure.cacheState.rawValue, privacy: .public) automatic=\(first, privacy: .public) compatibility=\(second, privacy: .public)")
-        return failure
-    }
-
     private func recognize<Value: Sendable>(_ image: CGImage,
                                   consume: @escaping @Sendable ([VNRecognizedTextObservation]) throws -> Value) async throws -> Value {
         try prepare()
@@ -228,9 +176,14 @@ public final class ScreenTextService: HoverWordRecognizing {
                     do { observations = try Self.perform(image, policy: .compatibleCPU, cancellation: cancellation) }
                     catch {
                         try cancellation.check()
-                        let failure = OCRFailure.classify(automatic: automaticError, compatibility: error,
+                        var failure = OCRFailure.classify(automatic: automaticError, compatibility: error,
                             cacheState: OCRCacheInspection.state())
-                        throw Self.record(failure)
+                        Self.availability.record(failure)
+                        failure = Self.recovery.start(for: failure)
+                        let first = failure.automaticErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
+                        let second = failure.compatibilityErrors.map { "\($0.domain):\($0.code)" }.joined(separator: ",")
+                        Self.log.error("kind=\(failure.kind.rawValue, privacy: .public) cacheState=\(failure.cacheState.rawValue, privacy: .public) automatic=\(first, privacy: .public) compatibility=\(second, privacy: .public)")
+                        throw failure
                     }
                 }
                 try cancellation.check()

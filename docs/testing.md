@@ -20,7 +20,6 @@
 ## OCR、捕获与外部数据
 
 - `sh scripts/check-hover.sh`：包含生成图片及实际 Vision OCR、分词和坐标检查；系统可能按需初始化识别模型。
-- OCR 进程隔离：取词包新增 `OCRWorkerTests` 覆盖图像行/通道、消息大小、断开连接、结构化错误、子进程启动失败及截止；不读取屏幕或运行真实 Vision。`check-hover.sh` 则通过支持 `--odict-ocr-worker` 的独立检查程序，让生成图片经过正式的隔离进程通道，不以进程内 OCR 代替集成验证。上述入口均须先获测试批准，尚未代表本次变更已通过。
 - `sh scripts/check-capture.sh`：捕获协调、取消、权限替身和坐标等独立检查；不代表已对真实屏幕和系统授权验证。
 - `sh scripts/check-candidate-redirects.sh /path/to/dictionaries`：依赖检查源码约定的具体真实词典和词条，必须显式传入词库根目录；该目录下需有 `LDOCE6++.En-Cn.V3-0` 子目录及对应 MDX。缺少参数时直接提示用法，不读取任何默认本机目录。这不是任意机器可运行的通用检查，不纳入默认公共检查集合。
 - `sh scripts/check-ai-ollama.sh`：真实请求本机 `localhost:11434` 的 `qwen3.5:9b`，不使用已保存密钥；需要本机服务及模型，会占用推理资源，须单独选择执行。
