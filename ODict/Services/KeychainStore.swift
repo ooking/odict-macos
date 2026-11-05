@@ -14,16 +14,37 @@ enum KeychainStore {
     static func loadAISettings() async throws -> AISavedSettings {
         try await worker.perform {
             // Read the endpoint/model and matching credential on the same serial queue as saves.
-            AISavedSettings(configuration: AISettingsStore.configuration,
-                            key: try readSynchronously(account: "ai-service-key"))
+            let profile = AISettingsStore.library.selected
+            return AISavedSettings(configuration: profile.configuration,
+                                   key: try readSynchronously(account: profile.keyAccount))
         }
     }
 
-    static func saveAIKey(_ key: String, configuration: Data, preferenceKey: String) async throws {
+    static func saveAILibrary(_ library: AIServiceLibrary, keys: [UUID: String]) async throws {
+        let data = try JSONEncoder().encode(library)
         try await worker.perform {
-            try saveSynchronously(key, account: "ai-service-key")
-            UserDefaults.standard.set(configuration, forKey: preferenceKey)
-            // Publish committed changes even if the caller closed its window during Keychain work.
+            let previous = AISettingsStore.library
+            // Read rollback values first; a denied Keychain prompt must not publish half a library.
+            var originalKeys: [String: String] = [:]
+            for profile in library.profiles where keys[profile.id] != nil {
+                originalKeys[profile.keyAccount] = try readSynchronously(account: profile.keyAccount)
+            }
+            var written: [String] = []
+            do {
+                for profile in library.profiles {
+                    if let key = keys[profile.id] {
+                        try saveSynchronously(key, account: profile.keyAccount)
+                        written.append(profile.keyAccount)
+                    }
+                }
+            } catch {
+                for account in written.reversed() { try? saveSynchronously(originalKeys[account] ?? "", account: account) }
+                throw error
+            }
+            UserDefaults.standard.set(data, forKey: AISettingsStore.libraryKey)
+            for profile in previous.profiles where !library.profiles.contains(where: { $0.id == profile.id }) {
+                try? saveSynchronously("", account: profile.keyAccount)
+            }
             DispatchQueue.main.async { NotificationCenter.default.post(name: AISettingsStore.changed, object: nil) }
         }
     }

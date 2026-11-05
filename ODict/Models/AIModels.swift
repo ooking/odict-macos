@@ -123,9 +123,26 @@ struct AIAnswer: Sendable {
 }
 
 enum AIError: LocalizedError {
+    case validation(String), service(Int, String)
     case configuration, unsupportedThinking, invalidResponse, truncated, responseTooLarge, http(Int)
+    static func response(status: Int, data: Data, key: String = "") -> AIError {
+        struct Envelope: Decodable {
+            struct Detail: Decodable { let message: String? }
+            let error: Detail?
+            let message: String?
+        }
+        guard let body = try? JSONDecoder().decode(Envelope.self, from: data),
+              let raw = body.error?.message ?? body.message else { return .http(status) }
+        var detail = raw
+        if !key.isEmpty { detail = detail.replacingOccurrences(of: key, with: "[密钥已隐藏]") }
+        // Server text is untrusted, bounded plain text; never display response bodies or headers.
+        detail = String(detail.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }.prefix(500))
+        return .service(status, detail)
+    }
     var errorDescription: String? {
         switch self {
+        case .validation(let reason): return reason
+        case .service(let status, let detail): return "\(AIError.http(status).localizedDescription)\n\(detail)"
         case .configuration: return "请先在「AI」设置中填写有效的服务地址和模型名称。"
         case .unsupportedThinking: return "未识别此服务的思考参数。请在 AI 设置中选择服务支持的思考接口，或关闭思考。"
         case .invalidResponse: return "AI 未返回有效内容，请重试或调整提示语。"
@@ -133,10 +150,11 @@ enum AIError: LocalizedError {
         case .truncated: return "AI 的回答尚未完成。请缩短原文或关闭思考后重试。"
         case .http(let status):
             switch status {
-            case 401, 403: return "AI 服务拒绝访问，请检查 API 密钥和模型权限。"
-            case 404: return "未找到 AI 接口或模型，请检查服务地址和模型名称。"
-            case 429: return "AI 服务请求过于频繁或额度不足，请稍后重试。"
-            case 400, 422: return "AI 服务不接受当前请求，请检查模型名称和思考接口设置。"
+            case 301...399: return "AI 接口发生重定向（HTTP \(status)），请填写最终接口地址。"
+            case 401, 403: return "AI 服务拒绝访问，请检查 API 密钥和模型权限（HTTP \(status)）。"
+            case 404: return "未找到 AI 接口或模型，请检查服务地址和模型名称（HTTP \(status)）。"
+            case 429: return "AI 服务请求过于频繁或额度不足，请稍后重试（HTTP \(status)）。"
+            case 400, 422: return "AI 服务不接受当前请求，请检查模型名称和思考接口设置（HTTP \(status)）。"
             default: return "AI 服务暂时不可用（HTTP \(status)），请稍后重试。"
             }
         }

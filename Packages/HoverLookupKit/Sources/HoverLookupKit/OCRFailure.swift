@@ -1,13 +1,13 @@
 import Foundation
 import Vision
 
-public struct OCRFailure: Error, Sendable {
-    public enum Kind: String, Sendable {
+public struct OCRFailure: Error, Sendable, Codable {
+    public enum Kind: String, Sendable, Codable {
         case modelResourcesUnavailable, engineUnavailable, invalidImage, unsupportedConfiguration, insufficientMemory
     }
-    public enum CacheState: String, Sendable { case notInspected, emptyModelDirectory, unknown }
-    public enum RecoveryState: Sendable { case notAttempted, inProgress, failed }
-    public struct SystemError: Sendable {
+    public enum CacheState: String, Sendable, Codable { case notInspected, emptyModelDirectory, unknown }
+    public enum RecoveryState: String, Sendable, Codable { case notAttempted, inProgress, failed }
+    public struct SystemError: Sendable, Codable {
         public let domain: String
         public let code: Int
     }

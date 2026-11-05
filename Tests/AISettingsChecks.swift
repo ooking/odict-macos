@@ -11,6 +11,7 @@ private actor SettingsFixtureClient: AIQueryServing {
         default: return AIAnswer(markdown: "你好")
         }
     }
+    func models(address: String, key: String) async throws -> [String] { ["model-a", "model-b"] }
     func finish() {
         pending?.resume(returning: AIAnswer(markdown: "迟到结果"))
         pending = nil
@@ -83,6 +84,21 @@ private actor SettingsFixtureClient: AIQueryServing {
         model.save()
         try await settle { !model.isSaving }
         precondition(model.succeeded && model.message?.contains("保存") == true && model.verificationState == .idle)
+        model.fetchModels()
+        try await settle { !model.isFetchingModels }
+        precondition(model.availableModels == ["model-a", "model-b"])
+        let originalID = model.selectedID
+        model.updateKey("fixture-original")
+        model.addProfile()
+        let addedID = model.selectedID
+        precondition(addedID != originalID && model.key.isEmpty && model.configuration.address.isEmpty)
+        model.updateKey("fixture-added")
+        model.select(originalID)
+        precondition(model.key == "fixture-original" && model.configuration.model == "success")
+        model.select(addedID)
+        precondition(model.key == "fixture-added")
+        model.removeProfile()
+        precondition(model.selectedID == originalID && model.key == "fixture-original")
         model.close()
         precondition(model.key.isEmpty && !model.loaded && !model.isVerifying)
         print("PASS: visible verification states; independent save feedback; auth/timeout/config errors; cancellation; edits; stale response rejection; close cleanup. No real network, Keychain, or saved preferences modified.")

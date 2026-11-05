@@ -56,7 +56,17 @@ private final class FixtureDictionary: DictionaryLookupServing {
         let localURL = try AIEndpoint("http://localhost:11434/v1/chat/completions").url
         precondition(cloudURL.absoluteString == "https://fixture.invalid/v1/chat/completions")
         precondition(localURL.path == "/v1/chat/completions")
-        for invalid in ["http://remote.invalid/v1", "https://user:secret@fixture.invalid", "https://fixture.invalid?key=secret", "file:///tmp/query"] {
+        for address in ["http://192.168.1.90:9000/v1", "http://10.0.0.1/v1", "http://172.16.0.1/v1", "http://server.local/v1"] {
+            let endpoint = try AIEndpoint(address)
+            precondition(endpoint.url.path == "/v1/chat/completions")
+            precondition(endpoint.modelsURL.path == "/v1/models")
+        }
+        let fullEndpoint = try AIEndpoint("https://fixture.invalid/custom/v1/chat/completions/")
+        precondition(fullEndpoint.modelsURL.path == "/custom/v1/models")
+        let serviceError = AIError.response(status: 400,
+            data: Data(#"{"error":{"message":"unknown model; fixture-secret"}}"#.utf8), key: "fixture-secret").localizedDescription
+        precondition(serviceError.contains("unknown model") && serviceError.contains("400") && !serviceError.contains("fixture-secret"))
+        for invalid in ["http://remote.invalid/v1", "http://172.32.0.1/v1", "http://192.168.999.1/v1", "https://user:secret@fixture.invalid", "https://fixture.invalid?key=secret", "file:///tmp/query"] {
             rejects { _ = try AIEndpoint(invalid) }
         }
         var configuration = AIConfiguration()

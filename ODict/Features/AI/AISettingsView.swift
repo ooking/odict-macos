@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AISettingsView: View {
     @ObservedObject var model: AISettingsModel
+    @State private var showsKey = false
     var body: some View {
         SettingsPage {
             settingsContent
@@ -11,19 +12,66 @@ struct AISettingsView: View {
         .textFieldStyle(.roundedBorder)
         .disabled(model.isSaving || model.isLoading)
         .onAppear { model.load() }
-        .onDisappear { model.cancelVerification() }
+        .onDisappear { showsKey = false; model.cancelVerification(); model.cancelModels() }
+        .onChange(of: model.selectedID) { _ in showsKey = false }
     }
 
     private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             group {
+                Text("AI 配置").font(AppTypography.section)
+                Picker("当前配置", selection: Binding(get: { model.selectedID }, set: model.select)) {
+                    ForEach(model.profiles) { profile in
+                        Text(profile.name.isEmpty ? "未命名配置" : profile.name).tag(profile.id)
+                    }
+                }.disabled(!model.loaded)
+                field("配置名称", hint: "例如：本地模型、云端翻译", text: Binding(
+                    get: { model.profiles.first(where: { $0.id == model.selectedID })?.name ?? "" }, set: model.rename))
+                HStack {
+                    Button("添加配置", action: model.addProfile)
+                        .disabled(!model.loaded || model.profiles.count >= AISettingsStore.maximumProfiles)
+                    Button("删除当前配置", action: model.removeProfile)
+                        .disabled(!model.loaded || model.profiles.count <= 1)
+                }
+                help("最多 10 个配置，各自保存地址、密钥、模型和输出偏好。保存后，查询使用当前选中的配置。")
+            }
+            group {
                 Text("服务连接").font(AppTypography.section)
                 field("API 地址", hint: "https://服务地址/v1", text: setting(\.address))
-                help("填写兼容 Chat Completions 的基础地址或完整接口地址。本机服务可使用 http://localhost。")
+                help("填写兼容 Chat Completions 的基础地址或完整接口地址。本机或局域网服务可使用 HTTP（如 http://192.168.1.90:9000/v1）；HTTP 不加密，请仅用于可信网络。")
                 field("模型名称", hint: "填写服务提供的模型名称", text: setting(\.model))
+                HStack {
+                    Button(model.isFetchingModels ? "正在获取…" : "获取模型列表", action: model.fetchModels)
+                        .disabled(!model.loaded || model.isFetchingModels)
+                    if model.isFetchingModels {
+                        ProgressView().controlSize(.small)
+                        Button("取消", action: model.cancelModels)
+                    }
+                    if !model.availableModels.isEmpty {
+                        Menu("选择模型") {
+                            ForEach(model.availableModels, id: \.self) { name in
+                                Button(name) { model.update(\.model, value: name) }
+                            }
+                        }
+                    }
+                }
+                if let message = model.modelsMessage { help(message) }
                 Text("API 密钥").font(AppTypography.secondary)
-                SecureField("仅保存在本机钥匙串；本机无鉴权服务可留空", text: Binding(get: { model.key }, set: model.updateKey))
+                HStack {
+                    Group {
+                        if showsKey {
+                            TextField("仅保存在本机钥匙串；无鉴权服务可留空", text: Binding(get: { model.key }, set: model.updateKey))
+                        } else {
+                            SecureField("仅保存在本机钥匙串；无鉴权服务可留空", text: Binding(get: { model.key }, set: model.updateKey))
+                        }
+                    }.disabled(!model.loaded)
+                    Button { showsKey.toggle() } label: {
+                        Image(systemName: showsKey ? "eye.slash" : "eye")
+                    }
+                    .accessibilityLabel(showsKey ? "隐藏密钥" : "显示密钥原文")
+                    .help(showsKey ? "隐藏密钥" : "显示密钥原文")
                     .disabled(!model.loaded)
+                }
                 if model.isLoading {
                     HStack { ProgressView().controlSize(.small); help("正在读取钥匙串，请留意系统授权提示…") }
                 } else if !model.loaded {

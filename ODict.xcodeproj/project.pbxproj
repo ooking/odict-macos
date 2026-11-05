@@ -393,7 +393,7 @@
 			outputPaths = ("$(DERIVED_FILE_DIR)/ODict-Info.plist",);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n/bin/cp \"$SRCROOT/ODict/Info.plist\" \"$SCRIPT_OUTPUT_FILE_0\"\nif [ \"$CONFIGURATION\" = Debug ]; then\n    /usr/bin/plutil -insert NSAppTransportSecurity -xml \"<dict><key>NSAllowsLocalNetworking</key><true/></dict>\" \"$SCRIPT_OUTPUT_FILE_0\"\nfi\n/usr/bin/plutil -replace CFBundleVersion -string \"$(TZ=Asia/Shanghai /bin/date +%Y%m%d%H%M)\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
+			shellScript = "set -eu\n/bin/cp \"$SRCROOT/ODict/Info.plist\" \"$SCRIPT_OUTPUT_FILE_0\"\n/usr/bin/plutil -replace CFBundleVersion -string \"$(TZ=Asia/Shanghai /bin/date +%Y%m%d%H%M)\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

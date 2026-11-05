@@ -1,11 +1,15 @@
 import Foundation
 
 protocol AIQueryServing {
+    func models(address: String, key: String) async throws -> [String]
     func answer(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?) async throws -> AIAnswer
     func streamAnswer(text: String, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer
 }
 
 extension AIQueryServing {
+    func models(address: String, key: String) async throws -> [String] {
+        throw AIError.validation("此服务不支持获取模型列表，请手动填写。")
+    }
     func streamAnswer(text: String, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer {
         let result = try await answer(text: text, kind: .automatic, target: nil, settings: nil)
         await onUpdate(.text(result.markdown))
@@ -32,8 +36,36 @@ actor AIClient: AIQueryServing {
         catch DictionaryError.responseTooLarge { throw AIError.responseTooLarge }
         catch DictionaryError.invalidResponse { throw AIError.invalidResponse }
         try Task.checkCancellation()
-        guard (200...299).contains(response.statusCode) else { throw AIError.http(response.statusCode) }
+        guard (200...299).contains(response.statusCode) else { throw AIError.response(status: response.statusCode, data: data, key: Self.requestKey(request)) }
         return try Self.parse(data)
+    }
+
+    private static func requestKey(_ request: URLRequest) -> String {
+        String((request.value(forHTTPHeaderField: "Authorization") ?? "").dropFirst(7))
+    }
+
+    func models(address: String, key: String) async throws -> [String] {
+        try AISettingsStore.validateKey(key)
+        var request = URLRequest(url: try AIEndpoint(address).modelsURL)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if !key.isEmpty { request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
+        request.timeoutInterval = 20
+        let transport = transportFactory(20)
+        let (data, response) = try await transport.data(for: request)
+        try Task.checkCancellation()
+        guard (200...299).contains(response.statusCode) else {
+            throw AIError.response(status: response.statusCode, data: data, key: key)
+        }
+        struct Envelope: Decodable {
+            struct Model: Decodable { let id: String }
+            let data: [Model]
+        }
+        guard let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else {
+            throw AIError.validation("模型列表格式不兼容，请手动填写模型名称。")
+        }
+        let models = Set(envelope.data.lazy.map(\.id).filter { !$0.isEmpty && $0.count <= 200 }.prefix(500)).sorted()
+        guard !models.isEmpty else { throw AIError.validation("服务未返回可用模型，请手动填写模型名称。") }
+        return models
     }
 
     private func makeRequest(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?,
@@ -85,6 +117,7 @@ actor AIClient: AIQueryServing {
         var decoder = AIStreamDecoder()
         var isSSE = false
         var receivedResponse = false
+        var errorStatus: Int?
         var fallback = Data()
         var lastPublication = -Double.infinity
         var lastText = ""
@@ -94,12 +127,14 @@ actor AIClient: AIQueryServing {
                 try Task.checkCancellation()
                 switch event {
                 case .response(let response):
-                    guard (200...299).contains(response.statusCode) else { throw AIError.http(response.statusCode) }
+                    if !(200...299).contains(response.statusCode) { errorStatus = response.statusCode }
                     receivedResponse = true
                     isSSE = response.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("text/event-stream") == true
                 case .data(let data):
                     guard receivedResponse else { throw AIError.invalidResponse }
-                    if isSSE {
+                    if errorStatus != nil {
+                        fallback.append(data.prefix(max(0, 16 * 1024 - fallback.count)))
+                    } else if isSSE {
                         try decoder.append(data)
                         if !publishedThinking && (decoder.hasReasoning || decoder.thinkingInContent) {
                             publishedThinking = true; await onUpdate(.thinking)
@@ -126,6 +161,7 @@ actor AIClient: AIQueryServing {
             throw error
         }
         try Task.checkCancellation()
+        if let status = errorStatus { throw AIError.response(status: status, data: fallback, key: Self.requestKey(request)) }
         if isSSE, let text = decoder.visibleText, !text.isEmpty, text != lastText {
             await onUpdate(.text(text))
         }

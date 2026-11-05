@@ -12,10 +12,14 @@ extension KeyboardShortcuts.Name {
 @main
 enum ODictEntry {
     @MainActor static func main() async {
+        if HoverLookupKit.ScreenTextService.isOCRWorker {
+            exit(await HoverLookupKit.ScreenTextService.runOCRWorker())
+        }
         if HoverLookupKit.ScreenTextService.isRecoveryWorker {
             let success = await HoverLookupKit.ScreenTextService.runRecoveryWorker()
             exit(success ? 0 : 1)
         }
+        HoverLookupKit.ScreenTextService.enableProcessIsolation()
         HoverLookupKit.ScreenTextService.enableAutomaticRecovery()
         ODictApp.main()
     }
@@ -67,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationWillTerminate(_ notification: Notification) {
         HoverLookupKit.ScreenTextService.stopAutomaticRecovery()
+        HoverLookupKit.ScreenTextService.stopProcessIsolation()
         coordinator?.stop()
         coordinator = nil
     }
