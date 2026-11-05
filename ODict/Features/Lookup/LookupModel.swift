@@ -18,13 +18,15 @@ final class LookupModel: ObservableObject {
     private var manualQuery = ""
     private var submittedSource: String?
     private var aiHistoryMethod: TranslationMethod = .automatic
+    private var aiHistoryTitle: String?
     private let onlineAvailability: () async -> Bool
     private var methodRefresh: Task<Void, Never>?
     private var methodRevision = UUID()
 
     var methodTitle: String {
-        methodOptions.first { $0.method == selectedMethod }?.title
-            ?? selectedMethod.title(in: LocalDictionaryStore(defaults: preferences).load())
+        if let title = methodOptions.first(where: { $0.method == selectedMethod })?.title { return title }
+        if selectedMethod.aiProfileID != nil { return "已移除的 AI 接口" }
+        return selectedMethod.title(in: LocalDictionaryStore(defaults: preferences).load())
     }
 
     func refreshMethods() {
@@ -33,7 +35,8 @@ final class LookupModel: ObservableObject {
         let sources = LookupSourceSettings(defaults: preferences)
         let dictionaries = LocalDictionaryStore(defaults: preferences).load()
         func reason(_ source: LookupSource) -> String? { sources.isEnabled(source) ? nil : "已在设置中停用" }
-        let aiReady = ai.isConfigured
+        let aiLibrary = AISettingsStore.library
+        let aiReady = (try? AISettingsStore.validate(aiLibrary.effectiveConfiguration, key: "")) != nil
         func options(onlineReady: Bool) -> [TranslationMethodOption] {
             var values = [TranslationMethodOption(method: .automatic, title: TranslationMethod.automatic.title(in: dictionaries), unavailableReason: nil),
                 TranslationMethodOption(method: .online, title: "ODict 在线词典", unavailableReason: onlineReady ? reason(.online) : "请先登录在线词典"),
@@ -42,8 +45,17 @@ final class LookupModel: ObservableObject {
                 TranslationMethodOption(method: .mdx(item.id), title: item.name,
                     unavailableReason: !item.enabled ? "词典已停用" : reason(.local))
             }
-            values.append(TranslationMethodOption(method: .ai, title: "AI 翻译",
+            values.append(TranslationMethodOption(method: .ai, title: "默认 AI 接口",
                 unavailableReason: !aiReady ? "请先配置 AI 服务" : reason(.ai)))
+            values += aiLibrary.profiles.map { profile in
+                let configuration = aiLibrary.preferences.applying(to: profile.configuration)
+                let configured = (try? AISettingsStore.validate(configuration, key: "")) != nil
+                let name = profile.name.isEmpty ? "未命名接口" : profile.name
+                let title = name + (configuration.model.isEmpty ? "" : " · " + configuration.model)
+                    + (profile.id == aiLibrary.selectedID ? "（默认）" : "")
+                return TranslationMethodOption(method: .aiProfile(profile.id), title: title,
+                    unavailableReason: configured ? reason(.ai) : "请先完成接口配置")
+            }
             return values
         }
         methodOptions = options(onlineReady: false)
@@ -65,10 +77,11 @@ final class LookupModel: ObservableObject {
         ai.reset()
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
         selectedMethod = value; sessionMethod = value
-        mode = value == .ai ? .ai : .dictionary
+        ai.selectProfile(value.aiProfileID)
+        mode = value.isAI ? .ai : .dictionary
         contentVisible = true
         focusRequest = UUID()
-        if value == .ai { releaseDictionaryResources() }
+        if value.isAI { releaseDictionaryResources() }
         if let source {
             query = source
             if !captureContext { manualQuery = source }
@@ -86,7 +99,8 @@ final class LookupModel: ObservableObject {
         cancelRequests(); ai.reset()
         captureContext = false
         selectedMethod = sessionMethod
-        mode = selectedMethod == .ai ? .ai : .dictionary
+        ai.selectProfile(selectedMethod.aiProfileID)
+        mode = selectedMethod.isAI ? .ai : .dictionary
         query = manualQuery
         submittedSource = nil
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
@@ -102,6 +116,7 @@ final class LookupModel: ObservableObject {
         contentVisible = true; mode = .ai
         isUsingAIForCurrentQuery = selectedMethod == .automatic
         releaseDictionaryResources()
+        ai.selectProfile(selectedMethod.aiProfileID)
         ai.submit(text)
     }
 
@@ -133,7 +148,8 @@ final class LookupModel: ObservableObject {
         captureContext = true
         cancelRequests(); ai.reset()
         selectedMethod = sessionMethod
-        mode = selectedMethod == .ai ? .ai : .dictionary
+        ai.selectProfile(selectedMethod.aiProfileID)
+        mode = selectedMethod.isAI ? .ai : .dictionary
         submittedSource = nil
         lookup(text)
     }
@@ -228,13 +244,14 @@ final class LookupModel: ObservableObject {
             self.isUsingAIForCurrentQuery = self.selectedMethod == .automatic
             self.submittedSource = source
             self.aiHistoryMethod = self.selectedMethod
+            self.aiHistoryTitle = self.selectedMethod.aiProfileID == nil ? nil : self.methodTitle
             if !self.captureContext { self.manualQuery = source }
         }
         self.ai.onArchive = { [weak self] record in
             guard let self else { return }
             self.translationHistory.remember(TranslationHistoryRecord(id: record.id, date: record.date,
                 source: record.source, method: self.aiHistoryMethod,
-                title: String(("AI 翻译 · " + record.model).prefix(120)),
+                title: String(("AI 翻译 · " + (self.aiHistoryTitle ?? record.model)).prefix(120)),
                 payload: .ai(markdown: record.markdown, model: record.model, partial: record.isPartial)))
         }
         refreshMethods()
@@ -547,7 +564,8 @@ final class LookupModel: ObservableObject {
         query = group.source
         if !captureContext { manualQuery = group.source }
         submittedSource = group.source
-        mode = selectedMethod == .ai ? .ai : .dictionary
+        ai.selectProfile(selectedMethod.aiProfileID)
+        mode = selectedMethod.isAI ? .ai : .dictionary
         contentVisible = true
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
         restoreOrLookup(group.source, generateAI: false)
@@ -584,7 +602,7 @@ final class LookupModel: ObservableObject {
                             markdown: markdown, model: model, isPartial: partial))
                         self.releaseDictionaryResources()
                     }
-                } else if generateAI || (method != .ai && method != .automatic) {
+                } else if generateAI || (!method.isAI && method != .automatic) {
                     // Detach this restore task before lookup cancels/replaces its revision.
                     self.task = nil
                     self.lookup(source, allowAI: generateAI)

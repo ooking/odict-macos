@@ -73,7 +73,7 @@ final class DictionaryRouter: DictionaryLookupServing {
             let item = try selectedDictionary(id)
             guard let article = try await local.article(word, in: item) else { throw DictionaryError.notFound }
             return LookupResult(remote: nil, local: article, notice: nil)
-        case .ai: throw LookupRoutingError.useAI
+        case .ai, .aiProfile: throw LookupRoutingError.useAI
         }
     }
 
@@ -92,7 +92,7 @@ final class DictionaryRouter: DictionaryLookupServing {
             let item = try selectedDictionary(id)
             let exact = try await local.words(query, in: item, exact: true)
             return exact.isEmpty ? try await local.words(query, in: item, exact: false) : exact
-        case .ai: return []
+        case .ai, .aiProfile: return []
         }
     }
 

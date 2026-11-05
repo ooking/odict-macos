@@ -15,10 +15,15 @@ struct TranslationMethodPicker: View {
                     model.selectMethod(method)
                 }
             )) {
-                options(model.methodOptions.filter { !$0.isMDX })
+                options(model.methodOptions.filter { !$0.isMDX && !$0.isAI })
                 if model.methodOptions.contains(where: \.isMDX) {
                     Section(header: Text("MDX 词典")) {
                         options(model.methodOptions.filter(\.isMDX))
+                    }
+                }
+                if model.methodOptions.contains(where: \.isAI) {
+                    Section(header: Text("AI 翻译")) {
+                        options(model.methodOptions.filter(\.isAI))
                     }
                 }
             }

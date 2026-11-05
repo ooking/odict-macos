@@ -22,6 +22,30 @@ private actor DeferredAI: AIQueryServing {
         pending.removeValue(forKey: text)?.resume(returning: AIAnswer(markdown: text))
     }
 }
+private actor ProfileRecordingAI: AIQueryServing {
+    private(set) var requestedID: UUID?
+    func answer(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?) async throws -> AIAnswer {
+        throw AIError.invalidResponse
+    }
+    func streamAnswer(text: String, profileID: UUID?, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer {
+        requestedID = profileID
+        let answer = AIAnswer(markdown: "指定接口的回答")
+        await onUpdate(.text(answer.markdown))
+        return answer
+    }
+}
+private final class ProfileStreamTransport: AIStreamingTransporting {
+    var request: URLRequest?
+    func events(for request: URLRequest) -> AsyncThrowingStream<AIHTTPStreamEvent, Error> {
+        self.request = request
+        return AsyncThrowingStream { continuation in
+            continuation.yield(.response(HTTPURLResponse(url: request.url!, statusCode: 200,
+                httpVersion: nil, headerFields: ["Content-Type": "application/json"])!))
+            do { continuation.yield(.data(try envelope("指定接口的回答"))); continuation.finish() }
+            catch { continuation.finish(throwing: error) }
+        }
+    }
+}
 private final class FixtureDictionary: DictionaryLookupServing {
     var calls = 0
     func entry(_ word: String) async throws -> LookupResult { calls += 1; throw DictionaryError.notFound }
@@ -162,6 +186,53 @@ private final class FixtureDictionary: DictionaryLookupServing {
         precondition(lookup.mode == .ai && lookup.query == "manual", "capture preserves manual input")
         lookup.suspend()
         precondition(!model.isLoading && model.answer == nil)
+        let profileID = UUID()
+        let otherID = UUID()
+        let selectedMethod = TranslationMethod.aiProfile(profileID)
+        precondition(selectedMethod.isAI && selectedMethod.aiProfileID == profileID)
+        precondition(selectedMethod.id != TranslationMethod.aiProfile(otherID).id)
+        let decodedMethod = try JSONDecoder().decode(TranslationMethod.self, from: JSONEncoder().encode(selectedMethod))
+        precondition(decodedMethod == selectedMethod)
+        let profileClient = ProfileRecordingAI()
+        var profileConfiguration = configuration
+        profileConfiguration.model = "chosen-model"
+        profileConfiguration.thinking = true
+        profileConfiguration.thinkingFormat = .enableThinking
+        let chosenConfiguration = profileConfiguration
+        let profileModel = AIQueryModel(client: profileClient, configuration: { configuration },
+            profileConfiguration: { $0 == profileID ? chosenConfiguration : nil })
+        let profileLookup = LookupModel(router: dictionary, preferences: defaults, ai: profileModel,
+            translationHistory: history, onlineAvailability: { false })
+        profileLookup.selectMethod(selectedMethod)
+        precondition(profileLookup.mode == .ai && profileModel.savedConfiguration.model == "chosen-model")
+        profileLookup.lookup("profile query")
+        for _ in 0..<200 {
+            if !profileModel.isLoading { break }
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
+        let requestedID = await profileClient.requestedID
+        precondition(requestedID == profileID && profileModel.answerModel == "chosen-model")
+        profileLookup.lookupCaptured("captured profile query")
+        precondition(profileLookup.selectedMethod == selectedMethod && profileModel.savedConfiguration.thinking)
+        profileLookup.suspend()
+        profileModel.selectProfile(otherID)
+        precondition(!profileModel.isConfigured, "missing profile cannot silently use the default")
+        profileModel.selectProfile(nil)
+        precondition(profileModel.savedConfiguration == configuration)
+
+        let stream = ProfileStreamTransport()
+        let routedClient = AIClient(streamFactory: { _ in stream }, settingsLoader: { id in
+            precondition(id == profileID)
+            return AISavedSettings(configuration: chosenConfiguration, key: "fixture-profile-key")
+        })
+        _ = try await routedClient.streamAnswer(text: "Hello", profileID: profileID) { _ in }
+        let routedRequest = stream.request!
+        let routedURL = try AIEndpoint(chosenConfiguration.address).url
+        precondition(routedRequest.url == routedURL)
+        precondition(routedRequest.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-profile-key")
+        let routedBody = try JSONSerialization.jsonObject(with: routedRequest.httpBody!) as! [String: Any]
+        precondition(routedBody["model"] as? String == "chosen-model" && routedBody["enable_thinking"] as? Bool == true)
+
         let historySaved = await history.flush()
         precondition(historySaved)
         print("PASS: bounded Markdown; reasoning separation; endpoint safety; fixed Markdown instruction; thinking adapters; auth errors; stale responses; cancellation; shared session method. No live network or UI used.")

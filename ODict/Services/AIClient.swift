@@ -4,9 +4,17 @@ protocol AIQueryServing {
     func models(address: String, key: String) async throws -> [String]
     func answer(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?) async throws -> AIAnswer
     func streamAnswer(text: String, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer
+    func streamAnswer(text: String, profileID: UUID?, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer
 }
 
 extension AIQueryServing {
+    func streamAnswer(text: String, profileID: UUID?, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer {
+        guard let profileID else { return try await streamAnswer(text: text, onUpdate: onUpdate) }
+        let settings = try await AISettingsStore.load(profileID: profileID)
+        let answer = try await answer(text: text, kind: .automatic, target: nil, settings: settings)
+        await onUpdate(.text(answer.markdown))
+        return answer
+    }
     func models(address: String, key: String) async throws -> [String] {
         throw AIError.validation("此服务不支持获取模型列表，请手动填写。")
     }
@@ -19,11 +27,14 @@ extension AIQueryServing {
 
 /// No persistent session or response cache: each cancelled/finished query releases its transport.
 actor AIClient: AIQueryServing {
+    private let settingsLoader: (UUID?) async throws -> AISavedSettings
     private let transportFactory: (TimeInterval) -> HTTPTransporting
     private let streamFactory: (TimeInterval) -> AIStreamingTransporting
     init(transportFactory: @escaping (TimeInterval) -> HTTPTransporting = { timeout in
         HTTPTransport(maximumResponseBytes: 1024 * 1024, requestTimeout: timeout, resourceTimeout: timeout + 10)
-    }, streamFactory: @escaping (TimeInterval) -> AIStreamingTransporting = { AIStreamTransport(timeout: $0) }) {
+    }, streamFactory: @escaping (TimeInterval) -> AIStreamingTransporting = { AIStreamTransport(timeout: $0) },
+         settingsLoader: @escaping (UUID?) async throws -> AISavedSettings = { try await AISettingsStore.load(profileID: $0) }) {
+        self.settingsLoader = settingsLoader
         self.transportFactory = transportFactory; self.streamFactory = streamFactory
     }
 
@@ -71,7 +82,7 @@ actor AIClient: AIQueryServing {
     private func makeRequest(text: String, kind: AITaskKind, target: AITargetLanguage?, settings: AISavedSettings?,
                              stream: Bool) async throws -> (URLRequest, TimeInterval) {
         let saved: AISavedSettings
-        if let settings { saved = settings } else { saved = try await AISettingsStore.load() }
+        if let settings { saved = settings } else { saved = try await settingsLoader(nil) }
         try Task.checkCancellation()
         let configuration = saved.configuration
         try AISettingsStore.validate(configuration, key: saved.key)
@@ -111,7 +122,14 @@ actor AIClient: AIQueryServing {
     }
 
     func streamAnswer(text: String, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer {
-        let (request, timeout) = try await makeRequest(text: text, kind: .automatic, target: nil, settings: nil, stream: true)
+        return try await streamAnswer(text: text, profileID: nil, onUpdate: onUpdate)
+    }
+
+    func streamAnswer(text: String, profileID: UUID?, onUpdate: @escaping @Sendable (AIStreamUpdate) async -> Void) async throws -> AIAnswer {
+        let settings: AISavedSettings?
+        if let profileID { settings = try await settingsLoader(profileID) } else { settings = nil }
+        try Task.checkCancellation()
+        let (request, timeout) = try await makeRequest(text: text, kind: .automatic, target: nil, settings: settings, stream: true)
         let transport = streamFactory(timeout)
         defer { withExtendedLifetime(transport) {} }
         var decoder = AIStreamDecoder()

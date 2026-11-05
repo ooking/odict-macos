@@ -88,17 +88,51 @@ private actor SettingsFixtureClient: AIQueryServing {
         try await settle { !model.isFetchingModels }
         precondition(model.availableModels == ["model-a", "model-b"])
         let originalID = model.selectedID
+        model.updateShared(\.target, value: .japanese)
+        model.updateShared(\.translationPrompt, value: "公共翻译偏好")
+        let commonPreferences = model.shared
         model.updateKey("fixture-original")
         model.addProfile()
         let addedID = model.selectedID
         precondition(addedID != originalID && model.key.isEmpty && model.configuration.address.isEmpty)
+        precondition(model.activeID == originalID && model.shared == commonPreferences)
+        model.useSelectedProfile()
+        precondition(model.activeID == addedID && model.savedActiveID == originalID)
         model.updateKey("fixture-added")
         model.select(originalID)
         precondition(model.key == "fixture-original" && model.configuration.model == "success")
+        precondition(model.activeID == addedID && model.shared == commonPreferences)
         model.select(addedID)
         precondition(model.key == "fixture-added")
-        model.removeProfile()
+        model.setDefaultProfile(originalID)
+        precondition(model.activeID == originalID && model.selectedID == addedID)
+        model.removeProfile(addedID)
         precondition(model.selectedID == originalID && model.key == "fixture-original")
+        precondition(model.activeID == originalID && model.shared == commonPreferences)
+        let profileCount = model.profiles.count
+        model.beginAddingProfile()
+        model.updateKey("cancelled-secret")
+        model.cancelEditingProfile()
+        precondition(model.profiles.count == profileCount && model.selectedID == originalID && model.key == "fixture-original")
+        model.beginEditingProfile(originalID)
+        model.rename("取消的修改")
+        model.update(\.model, value: "cancelled-model")
+        model.updateKey("cancelled-secret")
+        model.cancelEditingProfile()
+        precondition(model.configuration.model == "success" && model.key == "fixture-original")
+        precondition(!model.profiles.contains(where: { $0.name == "取消的修改" }))
+        // Old libraries inherit the previously active profile's output settings.
+        var oldConfiguration = configuration
+        oldConfiguration.target = .french
+        oldConfiguration.translationPrompt = "旧提示语"
+        let oldProfile = AIServiceProfile(id: UUID(), name: "旧配置", configuration: oldConfiguration)
+        let otherProfile = AIServiceProfile(id: UUID(), name: "其他配置", configuration: configuration)
+        let oldLibrary = AIServiceLibrary(profiles: [oldProfile, otherProfile], selectedID: oldProfile.id)
+        var migrated = try JSONDecoder().decode(AIServiceLibrary.self, from: JSONEncoder().encode(oldLibrary))
+        precondition(migrated.effectiveConfiguration.target == .french)
+        migrated.shared = migrated.preferences
+        migrated.selectedID = otherProfile.id
+        precondition(migrated.effectiveConfiguration.target == .french && migrated.effectiveConfiguration.translationPrompt == "旧提示语")
         model.close()
         precondition(model.key.isEmpty && !model.loaded && !model.isVerifying)
         print("PASS: visible verification states; independent save feedback; auth/timeout/config errors; cancellation; edits; stale response rejection; close cleanup. No real network, Keychain, or saved preferences modified.")

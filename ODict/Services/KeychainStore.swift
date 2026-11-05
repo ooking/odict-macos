@@ -11,11 +11,18 @@ enum KeychainStore {
         try await worker.perform { try saveSynchronously(value, account: account) }
     }
 
-    static func loadAISettings() async throws -> AISavedSettings {
+    static func loadAISettings(profileID: UUID? = nil) async throws -> AISavedSettings {
         try await worker.perform {
             // Read the endpoint/model and matching credential on the same serial queue as saves.
-            let profile = AISettingsStore.library.selected
-            return AISavedSettings(configuration: profile.configuration,
+            let library = AISettingsStore.library
+            let profile: AIServiceProfile
+            if let profileID {
+                guard let selected = library.profiles.first(where: { $0.id == profileID }) else {
+                    throw AIError.validation("此 AI 接口已删除，请选择其他翻译方式。")
+                }
+                profile = selected
+            } else { profile = library.selected }
+            return AISavedSettings(configuration: library.preferences.applying(to: profile.configuration),
                                    key: try readSynchronously(account: profile.keyAccount))
         }
     }

@@ -6,13 +6,34 @@ enum AIConnectionVerificationState: Equatable {
 
 @MainActor
 final class AISettingsModel: ObservableObject {
-    @Published var configuration = AISettingsStore.configuration
+    @Published var configuration: AIConfiguration
     @Published var key = ""
-    @Published var profiles = AISettingsStore.library.profiles
-    @Published var selectedID = AISettingsStore.library.selectedID
+    @Published var profiles: [AIServiceProfile]
+    @Published var selectedID: UUID
+    @Published private(set) var activeID: UUID
+    @Published private(set) var savedActiveID: UUID
+    @Published private(set) var savedActiveName: String
+    @Published private(set) var hasChanges = false
+    @Published private(set) var shared: AISharedPreferences
+    var selectedName: String { profileName(selectedID) }
+    var activeName: String { profileName(activeID) }
+    private func profileName(_ id: UUID) -> String {
+        let name = profiles.first(where: { $0.id == id })?.name ?? ""
+        return name.isEmpty ? "未命名配置" : name
+    }
     @Published private(set) var availableModels: [String] = []
     @Published private(set) var isFetchingModels = false
     @Published private(set) var modelsMessage: String?
+    private struct EditorSnapshot {
+        let profiles: [AIServiceProfile]
+        let selectedID: UUID
+        let configuration: AIConfiguration
+        let key: String
+        let keys: [UUID: String]
+        let loaded: Bool
+        let hasChanges: Bool
+    }
+    private var editorSnapshot: EditorSnapshot?
     private var draftKeys: [UUID: String] = [:]
     private var modelsTask: Task<Void, Never>?
     private var modelsRevision = UUID()
@@ -34,6 +55,14 @@ final class AISettingsModel: ObservableObject {
     init(client: AIQueryServing = AIClient(),
          loadSettings: @escaping () async throws -> AISavedSettings = { try await AISettingsStore.load() },
          saveSettings: ((AIConfiguration, String) async throws -> Void)? = nil) {
+        let library = AISettingsStore.library
+        configuration = library.effectiveConfiguration
+        profiles = library.profiles
+        selectedID = library.selectedID
+        activeID = library.selectedID
+        savedActiveID = library.selectedID
+        savedActiveName = library.selected.name
+        shared = library.preferences
         self.client = client
         self.loadSettings = loadSettings
         self.saveSettings = saveSettings
@@ -68,7 +97,7 @@ final class AISettingsModel: ObservableObject {
     }
 
     private func draft() throws -> AISavedSettings {
-        var value = configuration
+        var value = shared.applying(to: configuration)
         value.address = value.address.trimmingCharacters(in: .whitespacesAndNewlines)
         value.model = value.model.trimmingCharacters(in: .whitespacesAndNewlines)
         let secret = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -81,10 +110,11 @@ final class AISettingsModel: ObservableObject {
         cancelModels(); cancelVerification(clearFeedback: true)
         succeeded = false; message = nil
         let saved: AISavedSettings
-        do { saved = try draft() } catch { message = error.localizedDescription; return }
+        do { saved = try draft() } catch { message = "「\(selectedName)」：" + error.localizedDescription; return }
         isSaving = true
         syncDraft()
-        let library = AIServiceLibrary(profiles: profiles, selectedID: selectedID)
+        let editingID = selectedID
+        let library = AIServiceLibrary(profiles: profiles, selectedID: activeID, shared: shared)
         let keys = draftKeys
         let saveSettings = saveSettings
         let token = revision
@@ -93,17 +123,19 @@ final class AISettingsModel: ObservableObject {
                 if let saveSettings { try await saveSettings(saved.configuration, saved.key) }
                 else {
                     var normalized = library
-                    if let index = normalized.profiles.firstIndex(where: { $0.id == normalized.selectedID }) {
+                    if let index = normalized.profiles.firstIndex(where: { $0.id == editingID }) {
                         normalized.profiles[index].configuration = saved.configuration
                     }
                     var normalizedKeys = keys
-                    normalizedKeys[normalized.selectedID] = saved.key
+                    normalizedKeys[editingID] = saved.key
                     try await AISettingsStore.saveLibrary(normalized, keys: normalizedKeys)
                 }
                 guard !Task.isCancelled, let self, self.revision == token else { return }
                 self.configuration = saved.configuration
+                self.savedActiveID = self.activeID; self.savedActiveName = self.activeName
+                self.hasChanges = false
                 self.isSaving = false; self.task = nil; self.succeeded = true
-                self.message = "AI 设置已保存，下次查询生效。"
+                self.message = "已保存全部更改，查询使用「\(self.activeName)」。"
             } catch {
                 guard !Task.isCancelled, let self, self.revision == token else { return }
                 self.isSaving = false; self.task = nil; self.message = error.localizedDescription
@@ -139,13 +171,80 @@ final class AISettingsModel: ObservableObject {
         }
     }
 
+    private func snapshotEditor() {
+        editorSnapshot = EditorSnapshot(profiles: profiles, selectedID: selectedID,
+            configuration: configuration, key: key, keys: draftKeys, loaded: loaded, hasChanges: hasChanges)
+    }
+    func beginEditingProfile(_ id: UUID) {
+        guard !isSaving, !isLoading, editorSnapshot == nil,
+              profiles.contains(where: { $0.id == id }) else { return }
+        snapshotEditor()
+        cancelModels(); cancelVerification(clearFeedback: true); message = nil; succeeded = false
+        if loaded { select(id) } else { activate(id) }
+    }
+    func beginAddingProfile() {
+        guard loaded, !isSaving, profiles.count < AISettingsStore.maximumProfiles, editorSnapshot == nil else { return }
+        snapshotEditor()
+        addProfile()
+    }
+    func finishEditingProfile() -> Bool {
+        guard loaded, !isSaving else { return false }
+        do {
+            let saved = try draft()
+            configuration = saved.configuration; key = saved.key
+            syncDraft()
+            editorSnapshot = nil
+            cancelModels(); cancelVerification(clearFeedback: true)
+            message = nil; succeeded = false
+            return true
+        } catch {
+            message = error.localizedDescription; succeeded = false
+            return false
+        }
+    }
+    func cancelEditingProfile() {
+        guard let snapshot = editorSnapshot else { return }
+        cancelModels(); cancelVerification(clearFeedback: true)
+        task?.cancel(); task = nil; revision = UUID()
+        profiles = snapshot.profiles; selectedID = snapshot.selectedID
+        configuration = snapshot.configuration; key = snapshot.key; draftKeys = snapshot.keys
+        loaded = snapshot.loaded; hasChanges = snapshot.hasChanges; isLoading = false
+        editorSnapshot = nil; message = nil; succeeded = false
+    }
+    func setDefaultProfile(_ id: UUID) {
+        guard !isSaving, !isLoading, editorSnapshot == nil,
+              profiles.contains(where: { $0.id == id }), activeID != id else { return }
+        activeID = id; hasChanges = true; message = nil; succeeded = false
+    }
+    func removeProfile(_ id: UUID) {
+        guard !isSaving, !isLoading, editorSnapshot == nil, profiles.count > 1,
+              profiles.contains(where: { $0.id == id }) else { return }
+        if id == selectedID { removeProfile(); return }
+        profiles.removeAll { $0.id == id }; draftKeys.removeValue(forKey: id)
+        if activeID == id { activeID = profiles[0].id }
+        hasChanges = true; message = nil; succeeded = false
+    }
+
     private func syncDraft() {
         if let index = profiles.firstIndex(where: { $0.id == selectedID }) { profiles[index].configuration = configuration }
         draftKeys[selectedID] = key
     }
     func rename(_ name: String) {
         guard let index = profiles.firstIndex(where: { $0.id == selectedID }) else { return }
-        profiles[index].name = String(name.prefix(60))
+        let bounded = String(name.prefix(60))
+        guard profiles[index].name != bounded else { return }
+        profiles[index].name = bounded
+        hasChanges = true
+        message = nil; succeeded = false
+    }
+    func updateShared<Value: Equatable>(_ path: WritableKeyPath<AISharedPreferences, Value>, value: Value) {
+        guard shared[keyPath: path] != value else { return }
+        edited()
+        shared[keyPath: path] = value
+    }
+    func useSelectedProfile() {
+        guard loaded, !isSaving, activeID != selectedID else { return }
+        activeID = selectedID; hasChanges = true
         message = nil; succeeded = false
     }
     func select(_ id: UUID) {
@@ -155,7 +254,7 @@ final class AISettingsModel: ObservableObject {
     }
     private func activate(_ id: UUID) {
         guard let profile = profiles.first(where: { $0.id == id }) else { return }
-        cancelModels(); edited()
+        cancelModels(); edited(markChanges: false)
         selectedID = id; configuration = profile.configuration; key = ""
         revision = UUID()
         if let secret = draftKeys[id] { key = secret; return }
@@ -175,14 +274,18 @@ final class AISettingsModel: ObservableObject {
     func addProfile() {
         guard loaded, !isSaving, profiles.count < AISettingsStore.maximumProfiles else { return }
         syncDraft()
-        let profile = AIServiceProfile(id: UUID(), name: "新配置", configuration: AIConfiguration())
-        profiles.append(profile); draftKeys[profile.id] = ""
+        var number = profiles.count + 1
+        while profiles.contains(where: { $0.name == "配置 \(number)" }) { number += 1 }
+        let profile = AIServiceProfile(id: UUID(), name: "配置 \(number)", configuration: AIConfiguration())
+        profiles.append(profile); draftKeys[profile.id] = ""; hasChanges = true
         activate(profile.id)
     }
     func removeProfile() {
         guard loaded, !isSaving, profiles.count > 1 else { return }
+        hasChanges = true
         draftKeys.removeValue(forKey: selectedID)
         profiles.removeAll { $0.id == selectedID }
+        if activeID == selectedID { activeID = profiles[0].id }
         activate(profiles[0].id)
     }
     func fetchModels() {
@@ -223,7 +326,8 @@ final class AISettingsModel: ObservableObject {
         cancelModels(); edited()
         key = value
     }
-    private func edited() {
+    private func edited(markChanges: Bool = true) {
+        if markChanges { hasChanges = true }
         cancelVerification(clearFeedback: true)
         message = nil; succeeded = false
     }
@@ -236,8 +340,11 @@ final class AISettingsModel: ObservableObject {
     }
     func close() {
         cancelVerification(clearFeedback: true); task?.cancel(); task = nil; revision = UUID()
-        cancelModels(); draftKeys.removeAll()
-        profiles = AISettingsStore.library.profiles; selectedID = AISettingsStore.library.selectedID
+        cancelModels(); draftKeys.removeAll(); editorSnapshot = nil
+        let library = AISettingsStore.library
+        profiles = library.profiles; selectedID = library.selectedID; activeID = library.selectedID
+        shared = library.preferences
+        savedActiveID = library.selectedID; savedActiveName = library.selected.name; hasChanges = false
         key = ""; loaded = false; isLoading = false; isSaving = false
     }
     deinit { task?.cancel(); verification?.cancel(); modelsTask?.cancel() }

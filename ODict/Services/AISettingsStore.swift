@@ -13,9 +13,36 @@ struct AIServiceProfile: Codable, Equatable, Identifiable, Sendable {
     var keyAccount: String { id == Self.legacyID ? "ai-service-key" : "ai-service-key-" + id.uuidString }
 }
 
+/// Output preferences belong to the translation feature, independent of the selected service.
+struct AISharedPreferences: Codable, Equatable, Sendable {
+    var target: AITargetLanguage
+    var explanationLanguage: AITargetLanguage
+    var wordPrompt: String
+    var translationPrompt: String
+
+    init(configuration: AIConfiguration) {
+        target = configuration.target
+        explanationLanguage = configuration.explanationLanguage
+        wordPrompt = configuration.wordPrompt
+        translationPrompt = configuration.translationPrompt
+    }
+    func applying(to configuration: AIConfiguration) -> AIConfiguration {
+        var value = configuration
+        value.target = target
+        value.explanationLanguage = explanationLanguage
+        value.wordPrompt = wordPrompt
+        value.translationPrompt = translationPrompt
+        return value
+    }
+}
+
 struct AIServiceLibrary: Codable, Sendable {
     var profiles: [AIServiceProfile]
     var selectedID: UUID
+    // Absent in v2 libraries: migrate from the previously active profile without writing on read.
+    var shared: AISharedPreferences? = nil
+    var preferences: AISharedPreferences { shared ?? AISharedPreferences(configuration: selected.configuration) }
+    var effectiveConfiguration: AIConfiguration { preferences.applying(to: selected.configuration) }
     var selected: AIServiceProfile { profiles.first(where: { $0.id == selectedID }) ?? profiles[0] }
 }
 
@@ -41,7 +68,7 @@ enum AISettingsStore {
             throw AIError.validation("配置内容过长，请检查配置名称、地址、模型和提示语。")
         }
         for key in keys.values { try validateKey(key) }
-        try validate(library.selected.configuration, key: keys[library.selectedID] ?? "")
+        try validate(library.effectiveConfiguration, key: keys[library.selectedID] ?? "")
         try await KeychainStore.saveAILibrary(library, keys: keys)
     }
     private static let preferenceKey = "ai.configuration.v1"
@@ -59,7 +86,7 @@ enum AISettingsStore {
         }
     }
     static let changed = Notification.Name("ODictAISettingsChanged")
-    static var configuration: AIConfiguration { library.selected.configuration }
+    static var configuration: AIConfiguration { library.effectiveConfiguration }
     private static var legacyConfiguration: AIConfiguration {
         guard let data = UserDefaults.standard.data(forKey: preferenceKey),
               var value = try? JSONDecoder().decode(AIConfiguration.self, from: data) else { return AIConfiguration() }
@@ -69,12 +96,18 @@ enum AISettingsStore {
         }
         return value
     }
-    static func load() async throws -> AISavedSettings {
-        try await KeychainStore.loadAISettings()
+    static func configuration(profileID: UUID) -> AIConfiguration? {
+        let library = library
+        guard let profile = library.profiles.first(where: { $0.id == profileID }) else { return nil }
+        return library.preferences.applying(to: profile.configuration)
+    }
+    static func load(profileID: UUID? = nil) async throws -> AISavedSettings {
+        try await KeychainStore.loadAISettings(profileID: profileID)
     }
     static func save(_ configuration: AIConfiguration, key: String) async throws {
         try validate(configuration, key: key)
         var library = library
+        library.shared = AISharedPreferences(configuration: configuration)
         let id = library.selected.id
         if let index = library.profiles.firstIndex(where: { $0.id == id }) { library.profiles[index].configuration = configuration }
         try await saveLibrary(library, keys: [id: key])

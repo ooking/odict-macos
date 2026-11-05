@@ -19,6 +19,8 @@ final class AIQueryModel: ObservableObject {
     var onArchive: ((AIHistoryRecord) -> Void)?
     private let client: AIQueryServing
     private let configuration: () -> AIConfiguration
+    private let profileConfiguration: (UUID) -> AIConfiguration?
+    private var profileID: UUID?
     private var task: Task<Void, Never>?
     private var revision = UUID()
     private var requestID = UUID()
@@ -30,8 +32,9 @@ final class AIQueryModel: ObservableObject {
     private var preparingToQuit = false
     var historyDate: Date? { isViewingHistory ? answerDate : nil }
 
-    init(client: AIQueryServing = AIClient(), configuration: @escaping () -> AIConfiguration = { AISettingsStore.configuration }) {
-        self.client = client; self.configuration = configuration
+    init(client: AIQueryServing = AIClient(), configuration: @escaping () -> AIConfiguration = { AISettingsStore.configuration },
+         profileConfiguration: @escaping (UUID) -> AIConfiguration? = { AISettingsStore.configuration(profileID: $0) }) {
+        self.client = client; self.configuration = configuration; self.profileConfiguration = profileConfiguration
         savedConfiguration = configuration()
     }
     var isConfigured: Bool { !savedConfiguration.address.isEmpty && !savedConfiguration.model.isEmpty }
@@ -60,9 +63,10 @@ final class AIQueryModel: ObservableObject {
         isEditingInput = false
         let token = revision
         let client = client
+        let profileID = profileID
         task = Task { [weak self] in
             do {
-                let answer = try await client.streamAnswer(text: text) { [weak self] update in
+                let answer = try await client.streamAnswer(text: text, profileID: profileID) { [weak self] update in
                     await self?.receive(update, token: token)
                 }
                 guard !Task.isCancelled, let self, token == self.revision else { return }
@@ -150,7 +154,16 @@ final class AIQueryModel: ObservableObject {
     }
     func prepareForTermination() { preparingToQuit = true; cancel() }
     func cancelTerminationPreparation() { preparingToQuit = false }
-    func settingsChanged() { reset(); savedConfiguration = configuration() }
+    func selectProfile(_ id: UUID?) {
+        guard profileID != id else { return }
+        reset(); profileID = id
+        refreshConfiguration()
+    }
+    private func refreshConfiguration() {
+        if let profileID { savedConfiguration = profileConfiguration(profileID) ?? AIConfiguration() }
+        else { savedConfiguration = configuration() }
+    }
+    func settingsChanged() { reset(); refreshConfiguration() }
     func rejectOversizedPaste() { message = "粘贴内容过长，请分段粘贴，每次最多 4000 字。" }
     deinit { task?.cancel() }
 }

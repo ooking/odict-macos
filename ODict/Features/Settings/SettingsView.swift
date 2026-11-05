@@ -37,7 +37,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .pronunciation: return "管理发音来源、启用状态和图标颜色。"
         case .history: return "统一管理词典和 AI 查询历史。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
-        case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
+        case .ai: return "管理 AI 服务，设置所有服务共用的翻译偏好。"
         case .appearance: return "设置阅读内容的字体与排版。"
         case .privacy: return "管理取词所需的系统权限，了解数据如何使用。"
         case .about: return "了解 ODict、开发者与开源许可。"
