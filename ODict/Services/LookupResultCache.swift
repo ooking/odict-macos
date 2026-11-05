@@ -28,7 +28,7 @@ final class LookupResultCache {
     func insert(_ result: LookupResult, for word: String) {
         trim()
         guard LookupCacheSettings.capacity(in: preferences) > 0,
-              result.notice == nil, result.remote != nil || result.local != nil else { return }
+              result.notice == nil, result.remote != nil || result.local != nil || result.system != nil else { return }
         let cost = payloadCost(result) + word.utf8.count + 256
         guard cost <= byteLimit else { return }
         if let index = items.firstIndex(where: { $0.word == word }) {
@@ -56,6 +56,7 @@ final class LookupResultCache {
                 + size(article.dictionary.name) + size(article.dictionary.mdxPath)
                 + article.dictionary.resources.reduce(0) { $0 + size($1) }
         }
+        if let article = result.system { return size(article.word) + size(article.text) + size(article.readingText) }
         guard let entry = result.remote else { return 0 }
         return size(entry.word) + size(entry.phonetic) + size(entry.definition) + size(entry.translation)
             + entry.tags.reduce(0) { $0 + size($1.code) + size($1.name) + 64 }

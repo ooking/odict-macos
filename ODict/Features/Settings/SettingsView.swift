@@ -3,6 +3,7 @@ import KeyboardShortcuts
 import AppKit
 
 enum SettingsCategory: String, CaseIterable, Identifiable {
+    case general = "一般设置"
     case capture = "取词方式"
     case dictionaries = "本地词典"
     case pronunciation = "发音"
@@ -16,6 +17,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var id: Self { self }
     var icon: String {
         switch self {
+        case .general: return "slider.horizontal.3"
         case .capture: return "text.cursor"
         case .dictionaries: return "books.vertical"
         case .pronunciation: return "speaker.wave.2"
@@ -29,8 +31,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
+        case .general: return "管理查询来源的顺序和启用状态。"
         case .capture: return "选择一种方式，了解用法并按需开启。"
-        case .dictionaries: return "管理本地词典、查询顺序和词典资源。"
+        case .dictionaries: return "管理系统词典、本地 MDX 词典和词典资源。"
         case .pronunciation: return "管理发音来源、启用状态和图标颜色。"
         case .history: return "设置词典和 AI 的历史保留数量。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
@@ -106,10 +109,14 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("设置").font(AppTypography.section).foregroundColor(.secondary)
                 .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 14)
-            ForEach(SettingsCategory.allCases.filter { $0 != .about }) { item in
-                categoryButton(item)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(SettingsCategory.allCases.filter { $0 != .about }) { item in
+                        categoryButton(item)
+                    }
+                }
             }
-            Spacer()
+            Spacer(minLength: 0)
             categoryButton(.about)
         }
         .padding(12)
@@ -137,6 +144,7 @@ struct SettingsView: View {
 
     @ViewBuilder private var categoryContent: some View {
         switch model.category {
+        case .general: GeneralSettingsView()
         case .capture: SettingsPage { captureSettings }
         case .dictionaries:
             LocalDictionarySettingsView(model: dictionaryModel)

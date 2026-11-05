@@ -44,6 +44,9 @@ struct LookupResultView: View {
         .onChange(of: model.isUsingAIForCurrentQuery) { active in
             if active { localRenderer.release() }
         }
+        .onChange(of: model.result?.system != nil) { system in
+            if system { localRenderer.release() }
+        }
         .onChange(of: model.entry != nil) { online in
             if online { localRenderer.release() }
         }
@@ -64,6 +67,12 @@ struct LookupResultView: View {
                         LookupNotice(title: "本次取词未完成",
                             message: status, icon: "text.viewfinder",
                             footnote: "关闭窗口后，可重新使用取词快捷键。") { EmptyView() }
+                    } else if let article = model.result?.system {
+                        ReadingText(article.word, bold: true, fixedSize: 30).textSelection(.enabled)
+                        ReadingText(article.readingText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        Text("来源：macOS 系统词典").font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
                     } else if let entry = model.entry {
                         entryContent(entry)
                         if let source = model.source {

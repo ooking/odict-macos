@@ -38,7 +38,8 @@ private final class UnusedOnline: DictionaryServing {
         let defaults = UserDefaults(suiteName:suite)!
         defer { defaults.removePersistentDomain(forName:suite) }
         let store = LocalDictionaryStore(defaults:defaults)
-        try store.save([dictionary],mode:.localFirst)
+        store.sourceSettings.save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .local || $0 == .online) })
+        try store.save([dictionary])
         let online = UnusedOnline(), library = LocalDictionaryLibrary()
         let model = LookupModel(router:DictionaryRouter(remote:online,local:library,store:store),history:RecentWordsStore(defaults:defaults),preferences:defaults)
         model.editQuery("reco",composing:false)

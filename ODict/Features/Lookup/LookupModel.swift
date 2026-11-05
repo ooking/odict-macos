@@ -76,15 +76,16 @@ final class LookupModel: ObservableObject {
 
     var offersAITranslation: Bool {
         mode == .dictionary && !isUsingAIForCurrentQuery && !isLoading && !isSuggesting
+            && LookupSourceSettings(defaults: preferences).isEnabled(.ai)
             && (sentenceDetected || dictionaryMiss)
     }
 
-    private func routeSentence(_ text: String) -> Bool {
+    private func routeSentence(_ text: String, allowAI: Bool) -> Bool {
         guard !QueryTextClassifier.isWordOrPhrase(text) else { return false }
         sentenceDetected = true
         if text.count > AIConfiguration.maximumInput {
             message = "内容过长，请分段查询，每次最多 \(AIConfiguration.maximumInput) 字。"
-        } else if ai.savedConfiguration.autoTranslateSentences && ai.isConfigured {
+        } else if allowAI && LookupSourceSettings(defaults: preferences).isEnabled(.ai) && ai.savedConfiguration.autoTranslateSentences && ai.isConfigured {
             useAIForCurrentQuery()
         } else {
             message = "这段内容可能是句子，建议使用 AI 翻译。"
@@ -166,7 +167,7 @@ final class LookupModel: ObservableObject {
 
     convenience init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore(),
                      preferences: UserDefaults = .standard) {
-        self.init(router: DictionaryRouter(remote: dictionary), history: history, preferences: preferences)
+        self.init(router: DictionaryRouter(remote: dictionary, store: LocalDictionaryStore(defaults: preferences)), history: history, preferences: preferences)
     }
 
     init(router: DictionaryLookupServing, history: RecentWordsStore = RecentWordsStore(),
@@ -282,7 +283,8 @@ final class LookupModel: ObservableObject {
                 acceptSuggestions(results)
                 if results.isEmpty {
                     dictionaryMiss = true
-                    message = "没有找到候选词，可按回车查询，或用 AI 翻译。"
+                    message = LookupSourceSettings(defaults: preferences).isEnabled(.ai)
+                        ? "没有找到候选词，可按回车查询，或用 AI 翻译。" : "没有找到候选词，可按回车查询。"
                 }
             } catch {
                 guard !Task.isCancelled, token == revision else { return }
@@ -310,6 +312,7 @@ final class LookupModel: ObservableObject {
     }
 
     private func preview(_ word: String, delay: Bool = false, remember: Bool = false) {
+        if isUsingAIForCurrentQuery { ai.reset(); isUsingAIForCurrentQuery = false }
         if detailTask != nil, previewWord == word {
             rememberPreview = rememberPreview || remember
             return
@@ -347,15 +350,25 @@ final class LookupModel: ObservableObject {
                 self.result = result
                 message = result.notice
                 if rememberPreview { rememberEntry(result) }
+            } catch LookupRoutingError.useAI {
+                guard !Task.isCancelled, token == detailRevision else { return }
+                if rememberPreview {
+                    query = word
+                    useAIForCurrentQuery()
+                } else {
+                    message = "按回车使用 AI 查询。"
+                }
             } catch {
                 guard !Task.isCancelled, token == detailRevision else { return }
                 if case DictionaryError.notFound = error { dictionaryMiss = true }
-                message = dictionaryMiss ? "词典未收录，可以试试 AI 翻译。" : error.localizedDescription
+                message = dictionaryMiss
+                    ? (LookupSourceSettings(defaults: preferences).isEnabled(.ai) ? "词典未收录，可以试试 AI 翻译。" : "已启用的词典未收录这个词。")
+                    : error.localizedDescription
             }
         }
     }
 
-    func lookup(_ word: String? = nil) {
+    func lookup(_ word: String? = nil, allowAI: Bool = true) {
         if mode == .ai {
             if let word { query = word }
             contentVisible = true
@@ -372,7 +385,7 @@ final class LookupModel: ObservableObject {
         selectedSuggestionIndex = nil
         message = nil
         guard !text.isEmpty else { return }
-        if routeSentence(text) { return }
+        if routeSentence(text, allowAI: allowAI) { return }
         let token = revision
         isLoading = true
         task = Task {
@@ -383,29 +396,24 @@ final class LookupModel: ObservableObject {
             // acceptSuggestions may start a detail request; don't clear its spinner.
             defer { if token == revision { if detailTask == nil { isLoading = false }; task = nil } }
             do {
-                if isChinese(text) {
-                    let results = try await dictionary.search(text, translation: true)
+                do {
+                    let result = try await cachedEntry(text)
+                    guard !Task.isCancelled, token == revision else { return }
+                    self.result = result
+                    message = result.notice
+                    rememberEntry(result)
+                } catch LookupRoutingError.useAI {
+                    guard !Task.isCancelled, token == revision else { return }
+                    if allowAI { useAIForCurrentQuery() }
+                    else { message = "按回车使用 AI 查询。" }
+                } catch DictionaryError.notFound {
+                    let results = try await dictionary.search(text, translation: isChinese(text))
                     guard !Task.isCancelled, token == revision else { return }
                     acceptSuggestions(results)
                     if results.isEmpty {
                         dictionaryMiss = true
-                        message = "没有找到相关词条，可以试试 AI 翻译。"
-                    }
-                } else {
-                    do {
-                        let result = try await cachedEntry(text)
-                        guard !Task.isCancelled, token == revision else { return }
-                        self.result = result
-                        message = result.notice
-                        rememberEntry(result)
-                    } catch DictionaryError.notFound {
-                        let results = try await dictionary.search(text, translation: false)
-                        guard !Task.isCancelled, token == revision else { return }
-                        acceptSuggestions(results)
-                        if results.isEmpty {
-                            dictionaryMiss = true
-                            message = "词典未收录，可以试试 AI 翻译。"
-                        }
+                        message = LookupSourceSettings(defaults: preferences).isEnabled(.ai)
+                            ? "词典未收录，可以试试 AI 翻译。" : "已启用的词典未收录这个词。"
                     }
                 }
             } catch {
@@ -483,7 +491,7 @@ final class LookupModel: ObservableObject {
         if mode == .ai { contentVisible = true; return }
         let reload = !contentVisible && result == nil && !query.isEmpty && !isLoading && !isSuggesting && captureStatus == nil
         contentVisible = true
-        if reload { lookup() }
+        if reload { lookup(allowAI: false) }
     }
 
     func sourcesChanged() {

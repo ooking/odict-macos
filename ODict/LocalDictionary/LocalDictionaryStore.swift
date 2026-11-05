@@ -20,31 +20,21 @@ struct LocalDictionaryConfiguration: Codable, Identifiable, Equatable, Sendable 
     var folder: URL { URL(fileURLWithPath: mdxPath).deletingLastPathComponent() }
 }
 
-enum DictionaryMode: String, CaseIterable, Identifiable {
-    case localFirst, onlineOnly
-    var id: String { rawValue }
-    var title: String { self == .localFirst ? "本地优先，在线兜底" : "仅使用在线词典" }
-}
-
 struct LocalDictionaryStore {
     static let configurationKey = "localDictionaries.v1"
-    static let modeKey = "dictionaryMode.v1"
     static let changed = Notification.Name("ODictDictionarySourcesChanged")
     static let maximumCount = 32
     private let defaults: UserDefaults
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
-    var mode: DictionaryMode {
-        DictionaryMode(rawValue: defaults.string(forKey: Self.modeKey) ?? "") ?? .localFirst
-    }
+    var sourceSettings: LookupSourceSettings { LookupSourceSettings(defaults: defaults) }
     func load() -> [LocalDictionaryConfiguration] {
         guard let data = defaults.data(forKey: Self.configurationKey),
               let items = try? JSONDecoder().decode([LocalDictionaryConfiguration].self, from: data) else { return [] }
         return Array(items.prefix(Self.maximumCount))
     }
-    func save(_ items: [LocalDictionaryConfiguration], mode: DictionaryMode) throws {
+    func save(_ items: [LocalDictionaryConfiguration]) throws {
         guard items.count <= Self.maximumCount else { throw LocalDictionaryError.invalid("最多添加 32 本词典") }
         defaults.set(try JSONEncoder().encode(items), forKey: Self.configurationKey)
-        defaults.set(mode.rawValue, forKey: Self.modeKey)
         NotificationCenter.default.post(name: Self.changed, object: nil)
     }
 }

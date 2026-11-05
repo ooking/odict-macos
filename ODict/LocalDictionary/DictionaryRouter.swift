@@ -6,9 +6,10 @@ struct LookupResult {
     let remote: Entry?
     let local: LocalArticle?
     let notice: String?
-    var word: String { remote?.word ?? local?.word ?? "" }
-    var translation: String? { remote?.translation ?? local?.summary }
-    var source: String { local.map { "\($0.dictionary.name) · 本地" } ?? "ODict · 在线" }
+    var system: SystemDictionaryArticle? = nil
+    var word: String { remote?.word ?? local?.word ?? system?.word ?? "" }
+    var translation: String? { remote?.translation ?? local?.summary ?? system.map { String($0.text.prefix(240)) } }
+    var source: String { system != nil ? "macOS 系统词典" : (local.map { "\($0.dictionary.name) · 本地" } ?? "ODict · 在线") }
 }
 
 protocol DictionaryLookupServing {
@@ -22,51 +23,91 @@ final class DictionaryRouter: DictionaryLookupServing {
     private let remote: DictionaryServing
     private let store: LocalDictionaryStore
     private let local: LocalDictionaryLibrary
-    init(remote: DictionaryServing, local: LocalDictionaryLibrary = .shared, store: LocalDictionaryStore = LocalDictionaryStore()) {
+    init(remote: DictionaryServing, local: LocalDictionaryLibrary = .shared, store: LocalDictionaryStore = LocalDictionaryStore(),
+         system: SystemDictionaryServing = SystemDictionaryService()) {
         self.remote = remote; self.local = local; self.store = store
+        self.sources = store.sourceSettings; self.system = system
     }
+    private let sources: LookupSourceSettings
+    private let system: SystemDictionaryServing
     private var dictionaries: [LocalDictionaryConfiguration] {
-        store.mode == .onlineOnly ? [] : store.load().filter(\.enabled)
+        sources.isEnabled(.local) ? store.load().filter(\.enabled) : []
     }
     func entry(_ word: String) async throws -> LookupResult {
-        let active = dictionaries
-        #if DEBUG
-        LocalDictionaryDebug.trace("route.begin", "word=\(String(reflecting: word)) localDictionaries=\(active.count)")
-        #endif
         var unavailable: [String] = []
-        for dictionary in active {
+        for source in sources.active {
             try Task.checkCancellation()
-            do {
-                if let article = try await local.article(word, in: dictionary) {
-                    #if DEBUG
-                    LocalDictionaryDebug.trace("route.local", articleID: article.id)
-                    #endif
-                    return LookupResult(remote: nil, local: article, notice: notice(unavailable))
+            switch source {
+            case .system:
+                do {
+                    if let article = try await system.article(word) {
+                        return LookupResult(remote: nil, local: nil, notice: notice(unavailable), system: article)
+                    }
+                } catch is CancellationError { throw CancellationError() }
+                catch { unavailable.append("系统词典：" + error.localizedDescription) }
+            case .local:
+                for dictionary in dictionaries {
+                    try Task.checkCancellation()
+                    do {
+                        if let article = try await local.article(word, in: dictionary) {
+                            return LookupResult(remote: nil, local: article, notice: notice(unavailable))
+                        }
+                    } catch is CancellationError { throw CancellationError() }
+                    catch { unavailable.append("\(dictionary.name)：\(error.localizedDescription)") }
                 }
-            } catch is CancellationError { throw CancellationError() }
-            catch {
-                #if DEBUG
-                LocalDictionaryDebug.trace("lookup.failed", "dictionary=\(String(reflecting: dictionary.name)) domain=\((error as NSError).domain) code=\((error as NSError).code)")
-                #endif
-                unavailable.append("\(dictionary.name)：\(error.localizedDescription)")
+            case .online:
+                do { return LookupResult(remote: try await remote.entry(word), local: nil, notice: notice(unavailable)) }
+                catch is CancellationError { throw CancellationError() }
+                catch DictionaryError.notFound { continue }
+                catch { unavailable.append("在线词典：" + error.localizedDescription) }
+            case .ai:
+                throw LookupRoutingError.useAI
             }
         }
-        try Task.checkCancellation()
-        #if DEBUG
-        LocalDictionaryDebug.trace("route.online", "localUnavailable=\(unavailable.count)")
-        #endif
-        do { return LookupResult(remote: try await remote.entry(word), local: nil, notice: notice(unavailable)) }
-        catch is CancellationError { throw CancellationError() }
-        catch {
-            guard let warning = notice(unavailable) else { throw error }
+        if let warning = notice(unavailable) {
             throw NSError(domain: "ODict.DictionaryRouter", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: warning + "\n在线词典：" + error.localizedDescription])
+                          userInfo: [NSLocalizedDescriptionKey: warning])
         }
+        throw DictionaryError.notFound
     }
     func suggestions(_ query: String) async throws -> [Suggestion] {
-        let candidates = try await localCandidates(query)
-        if !candidates.isEmpty { return candidates }
-        return try await remote.suggestions(query)
+        try await candidates(query, translation: false, search: false)
+    }
+    func search(_ query: String, translation: Bool) async throws -> [Suggestion] {
+        try await candidates(query, translation: translation, search: true)
+    }
+    private func candidates(_ query: String, translation: Bool, search: Bool) async throws -> [Suggestion] {
+        var lastError: Error?
+        // Respect the same source boundary as detail routing; AI is only a
+        // confirmation candidate here, never a network request.
+        for source in sources.active {
+            try Task.checkCancellation()
+            switch source {
+            case .system:
+                do {
+                    if let article = try await system.article(query) {
+                        return [Suggestion(word: query, phonetic: nil,
+                                           translationPreview: String(article.text.prefix(160)), translation: nil)]
+                    }
+                } catch is CancellationError { throw CancellationError() }
+                catch { continue }
+            case .local:
+                let words = try await localCandidates(query)
+                if !words.isEmpty { return words }
+            case .online:
+                do {
+                    let words = search ? try await remote.search(query, translation: translation)
+                        : try await remote.suggestions(query)
+                    if !words.isEmpty { return words }
+                } catch is CancellationError { throw CancellationError() }
+                catch { lastError = error; continue }
+            case .ai:
+                // A confirmation candidate keeps typing/preview free of AI calls.
+                return [Suggestion(word: query, phonetic: nil, translationPreview: "按回车使用 AI 查询", translation: nil)]
+            }
+        }
+        if let lastError { throw lastError }
+        return []
     }
     private func localCandidates(_ query: String) async throws -> [Suggestion] {
         let active = dictionaries
@@ -84,16 +125,8 @@ final class DictionaryRouter: DictionaryLookupServing {
         }
         return []
     }
-    func search(_ query: String, translation: Bool) async throws -> [Suggestion] {
-        if !translation {
-            let candidates = try await localCandidates(query)
-            if !candidates.isEmpty { return candidates }
-        }
-        // MDX headword indexes do not provide Chinese full-text reverse lookup.
-        return try await remote.search(query, translation: translation)
-    }
     private func notice(_ failures: [String]) -> String? {
-        failures.isEmpty ? nil : "已跳过无法读取的本地词典：\n" + failures.joined(separator: "\n")
+        failures.isEmpty ? nil : "已跳过暂不可用的词典来源：\n" + failures.joined(separator: "\n")
     }
     func releaseLocalResources() async { await local.release() }
 }

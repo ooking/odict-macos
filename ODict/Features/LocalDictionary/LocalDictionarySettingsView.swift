@@ -5,20 +5,18 @@ import UniformTypeIdentifiers
 @MainActor
 final class LocalDictionarySettingsModel: ObservableObject {
     @Published private(set) var dictionaries: [LocalDictionaryConfiguration]
-    @Published var mode: DictionaryMode
     @Published private(set) var busy = false
     @Published private(set) var message: String?
     private let store = LocalDictionaryStore()
     private let queue = BlockingWorkQueue(label: "com.touchany.odict.dictionary-discovery")
     private var task: Task<Void, Never>?
 
-    init() { dictionaries = store.load(); mode = store.mode }
+    init() { dictionaries = store.load() }
     @discardableResult
     private func save() -> Bool {
-        do { try store.save(dictionaries, mode: mode); return true }
+        do { try store.save(dictionaries); return true }
         catch { message = error.localizedDescription; return false }
     }
-    func changeMode() { save() }
     func reload() {
         guard save() else { return }
         message = "已重新加载词典配置；下次查询使用最新样式与摘要规则。"
@@ -96,34 +94,40 @@ final class LocalDictionarySettingsModel: ObservableObject {
 
 struct LocalDictionarySettingsView: View {
     @ObservedObject var model: LocalDictionarySettingsModel
+    @State private var systemEnabled = LookupSourceSettings().isEnabled(.system)
     var body: some View {
         SettingsPage {
-            settingsContent
-        } actions: {
-            VStack(alignment: .leading, spacing: 8) {
-                if let message = model.message {
-                    Text(message).font(AppTypography.secondary).foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                HStack {
-                    Button("添加词典…", action: model.add).disabled(model.busy)
-                    Button("重新加载样式与摘要规则", action: model.reload).disabled(model.busy)
-                    if model.busy { ProgressView().controlSize(.small) }
-                }
-            }
+            systemSettings
+            mdxSettings
         }
         .font(AppTypography.body).onDisappear { model.close() }
+        .onReceive(NotificationCenter.default.publisher(for: LocalDictionaryStore.changed)) { _ in
+            systemEnabled = LookupSourceSettings().isEnabled(.system)
+        }
     }
 
-    private var settingsContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("本地词典").font(AppTypography.section)
+    private var systemSettings: some View {
+        settingsCard {
+            Text("系统词典").font(AppTypography.section)
+            Toggle("使用系统词典", isOn: $systemEnabled)
+                .onChange(of: systemEnabled) { enabled in
+                    guard LookupSourceSettings().isEnabled(.system) != enabled else { return }
+                    LookupSourceSettings().setEnabled(.system, enabled)
+                }
+            Text("系统词典在本机查询，显示纯文本释义。使用哪些词典由 macOS「词典」App 管理：打开「词典 → 设置」（旧版为「偏好设置」），勾选需要的词典，并拖动调整顺序；新增词典请等待下载完成。英汉查询可启用《牛津英汉汉英词典》。")
+                .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+            Button("打开 macOS 词典") {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Dictionary.app"))
+            }
+        }
+    }
+
+    private var mdxSettings: some View {
+        settingsCard {
+            Text("MDX 词典").font(AppTypography.section)
             Text("支持 MDX 2.0 词典，可搭配 MDD 图片、音频资源包。")
                 .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
-            Picker("查询方式", selection: $model.mode) {
-                ForEach(DictionaryMode.allCases) { mode in Text(mode.title).tag(mode) }
-            }.onChange(of: model.mode) { _ in model.changeMode() }
-            Text("设置自动保存。本地词典按从上到下的顺序查询，命中后停止；全部未命中时使用在线词典。中文释义反查使用在线服务。")
+            Text("设置自动保存。整体查询顺序与来源开关请前往「一般设置」。下面的 MDX 按从上到下的顺序查询，命中后停止；未命中继续使用一般设置中的下一个来源。")
                 .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             ForEach(Array(model.dictionaries.enumerated()), id: \.element.id) { index, dictionary in
                 VStack(alignment: .leading, spacing: 6) {
@@ -156,8 +160,24 @@ struct LocalDictionarySettingsView: View {
             }
             Text("每本词典建议使用独立文件夹。可独立开关每本词典的覆盖样式。展示样式可编辑目录中的 odict-overrides.css，也可自行添加 odict-overrides.js；重新查询后生效。移除配置不会删除词典文件。")
                 .font(AppTypography.secondary).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                if let message = model.message {
+                    Text(message).font(AppTypography.secondary).foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                HStack {
+                    Button("添加 MDX 词典…", action: model.add).disabled(model.busy)
+                    Button("重新加载样式与摘要规则", action: model.reload).disabled(model.busy)
+                    if model.busy { ProgressView().controlSize(.small) }
+                }
+            }
         }
-        .padding(20).background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
+    }
+
+    private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12, content: content)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20).background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
     }
 }

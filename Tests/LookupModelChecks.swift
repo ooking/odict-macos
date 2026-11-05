@@ -42,6 +42,7 @@ private struct LookupModelChecks {
         let suite = "odict.lookup.fixture.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
+        LookupSourceSettings(defaults: defaults).save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .online) })
         let model = LookupModel(dictionary: fixture, history: RecentWordsStore(defaults: defaults), preferences: defaults)
         let localRouter = FixtureLocalRouter()
         let history = RecentWordsStore(defaults: defaults)

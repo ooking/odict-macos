@@ -11,7 +11,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     func show(category: SettingsCategory? = nil) {
         if window == nil {
             let model = SettingsModel()
-            model.category = category ?? .capture
+            model.category = category ?? .general
             model.didSave = { [weak self] in self?.didSave?() }
             let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 860, height: min(680, (NSScreen.main?.visibleFrame.height ?? 760) - 80)),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)

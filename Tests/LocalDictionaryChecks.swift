@@ -61,6 +61,14 @@ private enum Fixture {
     }
 }
 
+private final class FixtureSystemDictionary: SystemDictionaryServing {
+    var requests = 0
+    func article(_ word: String) async throws -> SystemDictionaryArticle? {
+        requests += 1
+        return word == "apple" ? SystemDictionaryArticle(word: word, text: "系统苹果") : nil
+    }
+}
+
 @main private struct LocalDictionaryChecks {
     static func main() async {
         do { try await run(); print("PASS: local dictionary checks") }
@@ -151,6 +159,7 @@ private enum Fixture {
         let defaults = UserDefaults(suiteName:defaultsName)!
         defer { defaults.removePersistentDomain(forName:defaultsName) }
         let store = LocalDictionaryStore(defaults:defaults)
+        store.sourceSettings.save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .local || $0 == .online) })
         let first = LocalDictionaryConfiguration(id:UUID(),name:"first",mdxPath:firstPath.path,resources:[],enabled:true)
         let second = LocalDictionaryConfiguration(id:UUID(),name:"second",mdxPath:secondPath.path,resources:[],enabled:true)
         var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(first)) as! [String: Any]
@@ -159,32 +168,57 @@ private enum Fixture {
         try require(migrated.usesOverrideStyle, "legacy configuration defaults to enabled override")
         var unstyled = first
         unstyled.usesOverrideStyle = false
-        try store.save([unstyled, second], mode: .localFirst)
+        try store.save([unstyled, second])
         try require(store.load().map(\.usesOverrideStyle) == [false, true], "independent persistent override switches")
         let fake = FakeOnline(), library = LocalDictionaryLibrary()
-        let router = DictionaryRouter(remote:fake,local:library,store:store)
-        try store.save([first,second],mode:.localFirst)
+        let system = FixtureSystemDictionary()
+        let router = DictionaryRouter(remote:fake,local:library,store:store,system:system)
+        let sourceSettings = store.sourceSettings
+        // System routing is deterministic: these checks never query the host's dictionaries.
+        defaults.removeObject(forKey: LookupSourceSettings.key)
+        try require(sourceSettings.active == [.system, .local, .online, .ai], "default source order")
+        let systemValue = try await router.entry("apple")
+        try require(systemValue.system?.text == "系统苹果" && fake.entries == 0, "system hit stops routing")
+        sourceSettings.save([.init(source: .ai, enabled: true), .init(source: .system, enabled: true),
+                             .init(source: .local, enabled: true), .init(source: .online, enabled: false)])
+        let requestsBeforeAI = system.requests
+        do {
+            _ = try await router.entry("apple")
+            try require(false, "AI first must request handoff")
+        } catch LookupRoutingError.useAI { }
+        let aiCandidates = try await router.suggestions("apple")
+        try require(aiCandidates.first?.word == "apple" && system.requests == requestsBeforeAI,
+                    "AI candidate is confirmation only and skips later sources")
+        sourceSettings.save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: false) })
+        do {
+            _ = try await router.entry("apple")
+            try require(false, "all sources disabled must miss")
+        } catch DictionaryError.notFound { }
+        try require(system.requests == requestsBeforeAI, "disabled system source must not run")
+        sourceSettings.save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .local || $0 == .online) })
+        try store.save([first,second])
         var value = try await router.entry("apple")
         try require(value.local?.dictionary.id == first.id && fake.entries == 0,"first hit stops before online")
         let redirected = try await router.entry("redirect")
         try require(redirected.word == "redirect" && redirected.local?.headwords == ["apple"],
                     "redirect retains selected word separately from terminal headword")
-        try store.save([second,first],mode:.localFirst)
+        try store.save([second,first])
         value = try await router.entry("apple")
         try require(value.local?.dictionary.id == second.id,"order changes source")
-        try store.save([first,second],mode:.localFirst)
+        try store.save([first,second])
         let exact = try await router.suggestions("app")
         try require(exact.first?.word == "app" && fake.candidates == 0,"later exact before earlier prefix")
         value = try await router.entry("zzzz-missing")
         try require(value.remote != nil && fake.entries == 1,"online fallback")
         var broken = first; broken = LocalDictionaryConfiguration(id:broken.id,name:broken.name,mdxPath:folder.appendingPathComponent("absent.mdx").path,resources:[],enabled:true)
-        try store.save([second,broken],mode:.localFirst)
+        try store.save([second,broken])
         value = try await router.entry("apple")
         try require(value.notice == nil,"does not access lower broken dictionary after hit")
-        try store.save([broken,second],mode:.localFirst)
+        try store.save([broken,second])
         value = try await router.entry("apple")
         try require(value.local?.dictionary.id == second.id && value.notice != nil,"unavailable source reported")
-        try store.save([broken],mode:.onlineOnly)
+        try store.save([broken])
+        store.sourceSettings.setEnabled(.local, false)
         value = try await router.entry("apple")
         try require(value.remote != nil && value.notice == nil,"online-only skips local reader")
         let before = fake.searches

@@ -19,6 +19,7 @@ xcrun swiftc -swift-version 5 -sdk "$sdk_path" -parse-as-library \
     ODict/LocalDictionary/LocalDictionaryStore.swift ODict/LocalDictionary/LocalDictionaryLibrary.swift \
     ODict/LocalDictionary/LocalArticleSummary.swift ODict/LocalDictionary/LocalArticleDocument.swift \
     ODict/LocalDictionary/LocalDictionaryDebug.swift \
+    ODict/LocalDictionary/LookupSourceSettings.swift ODict/LocalDictionary/SystemDictionaryService.swift \
     ODict/LocalDictionary/DictionaryRouter.swift -lz \
     Tests/LookupModelChecks.swift -o build/Checks/LookupModelChecks
 build/Checks/LookupModelChecks

@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CE505000000000000000000D /* ODict/Features/Settings/GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */; };
+		CE505000000000000000000C /* ODict/LocalDictionary/SystemDictionaryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */; };
+		CE505000000000000000000B /* ODict/LocalDictionary/LookupSourceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */; };
 		A83000000000000000000001 /* LookupSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83000000000000000000002; };
 		AC0400000000000000000003 = {isa = PBXBuildFile; fileRef = AC0300000000000000000003; };
 		AC0400000000000000000002 = {isa = PBXBuildFile; fileRef = AC0300000000000000000002; };
@@ -93,6 +96,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Settings/GeneralSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/SystemDictionaryService.swift; sourceTree = SOURCE_ROOT; };
+		CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LookupSourceSettings.swift; sourceTree = SOURCE_ROOT; };
 		A83000000000000000000002 /* LookupSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/LookupSkeletonView.swift; sourceTree = SOURCE_ROOT; };
 		AC0300000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/LocalReadingAppearance.swift; sourceTree = SOURCE_ROOT; };
 		AC0300000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Appearance/AppearanceSettingsView.swift; sourceTree = SOURCE_ROOT; };
@@ -230,6 +236,9 @@
 				000000000000000000000D00 /* ODict/Models/AIModels.swift */,
 				000000000000000000000906 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift */,
 				000000000000000000000905 /* ODict/Features/LocalDictionary/LocalArticleView.swift */,
+				CE5050000000000000000001 /* ODict/LocalDictionary/LookupSourceSettings.swift */,
+				CE5050000000000000000002 /* ODict/LocalDictionary/SystemDictionaryService.swift */,
+				CE5050000000000000000003 /* ODict/Features/Settings/GeneralSettingsView.swift */,
 				000000000000000000000904 /* ODict/LocalDictionary/DictionaryRouter.swift */,
 				000000000000000000000903 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift */,
 				000000000000000000000909 /* ODict/LocalDictionary/LocalArticleLink.swift */,
@@ -414,6 +423,9 @@
 				000000000000000000000E00 /* ODict/Models/AIModels.swift in Sources */,
 				000000000000000000000A06 /* ODict/Features/LocalDictionary/LocalDictionarySettingsView.swift in Sources */,
 				000000000000000000000A05 /* ODict/Features/LocalDictionary/LocalArticleView.swift in Sources */,
+				CE505000000000000000000B /* ODict/LocalDictionary/LookupSourceSettings.swift in Sources */,
+				CE505000000000000000000C /* ODict/LocalDictionary/SystemDictionaryService.swift in Sources */,
+				CE505000000000000000000D /* ODict/Features/Settings/GeneralSettingsView.swift in Sources */,
 				000000000000000000000A04 /* ODict/LocalDictionary/DictionaryRouter.swift in Sources */,
 				000000000000000000000A03 /* ODict/LocalDictionary/LocalDictionaryLibrary.swift in Sources */,
 				000000000000000000000A09 /* ODict/LocalDictionary/LocalArticleLink.swift in Sources */,
