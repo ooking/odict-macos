@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct GeneralSettingsView: View {
+    @AppStorage(CaptureWindowSettings.closesOnOutsideClickKey) private var closesOnOutsideClick = false
+    @AppStorage(CaptureWindowSettings.fitsContentHeightKey) private var fitsContentHeight = false
+    @AppStorage(CaptureWindowSettings.maximumHeightKey) private var maximumHeight = CaptureWindowSettings.defaultMaximumHeight
     @State private var options = LookupSourceSettings().load()
     @State private var available: Set<LookupSource> = [.system]
     @State private var refreshID = UUID()
@@ -9,6 +12,7 @@ struct GeneralSettingsView: View {
         SettingsPage {
             orderSettings
             fallbackSettings
+            captureWindowSettings
         }
         .task(id: refreshID) { await refreshAvailability() }
         .onReceive(NotificationCenter.default.publisher(for: LocalDictionaryStore.changed)) { _ in
@@ -64,6 +68,48 @@ struct GeneralSettingsView: View {
         .padding(20).frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
+    }
+
+    private var captureWindowSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("取词窗口").font(AppTypography.section)
+            Toggle("点击窗口外部时关闭", isOn: $closesOnOutsideClick)
+                .onChange(of: closesOnOutsideClick) { _ in
+                    NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
+                }
+            Text("开启后，点击取词窗口以外的区域会关闭窗口；关闭后，窗口会保留，直到手动关闭。固定窗口位置不影响此设置。")
+                .font(AppTypography.secondary).foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Toggle("根据内容自动调整高度", isOn: $fitsContentHeight)
+                .onChange(of: fitsContentHeight) { _ in
+                    NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
+                }
+            if fitsContentHeight {
+                HStack {
+                    Text("最大高度")
+                    Spacer()
+                    Text("\(CaptureWindowSettings.boundedMaximumHeight(maximumHeight)) 点")
+                        .monospacedDigit().foregroundColor(.secondary)
+                    Stepper("最大高度", value: Binding(
+                        get: { CaptureWindowSettings.boundedMaximumHeight(maximumHeight) },
+                        set: { maximumHeight = CaptureWindowSettings.boundedMaximumHeight($0) }),
+                        in: CaptureWindowSettings.maximumHeightRange, step: 40)
+                        .labelsHidden().fixedSize()
+                }
+                Text("默认 720 点，可调整为 240–1200 点；实际高度不超过屏幕可用空间。")
+                    .font(AppTypography.secondary).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text("根据取词结果调整窗口高度，宽度保持不变；内容超过最大高度时可滚动查看。关闭后使用手动调整的窗口大小。这两项设置仅影响取词窗口。")
+                .font(AppTypography.secondary).foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
+        .onChange(of: maximumHeight) { _ in
+            NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
+        }
     }
 
     @MainActor private func refreshAvailability() async {

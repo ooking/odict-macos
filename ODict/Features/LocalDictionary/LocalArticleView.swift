@@ -15,13 +15,14 @@ private final class ProfiledArticleWebView: WKWebView {
 /// Local presentation has its own lifecycle. It never consumes or mutates Entry,
 /// and preserves dictionary-specific tags, classes, and definition content.
 struct LocalArticleView: View {
+    @Environment(\.measuresLookupContent) private var measuresContent
     @ObservedObject private var appearance = ReadingAppearanceStore.shared
     let article: LocalArticle
     @ObservedObject var renderer: LocalArticleRenderer
     let lookup: (String) -> Void
     var body: some View {
         ZStack(alignment: .topLeading) {
-            LocalArticleWebView(article: article, renderer: renderer, appearance: appearance.value, lookup: lookup)
+            LocalArticleWebView(article: article, renderer: renderer, appearance: appearance.value, lookup: lookup, measuresContent: measuresContent)
                 .opacity(renderer.isReady(article.id) ? 1 : 0)
                 .allowsHitTesting(renderer.isReady(article.id))
                 .accessibilityHidden(!renderer.isReady(article.id))
@@ -33,12 +34,15 @@ struct LocalArticleView: View {
                 DictionaryLoadingView()
             }
         }
+        .preference(key: CaptureContentHeights.self,
+            value: measuresContent ? [.result: renderer.contentHeight] : [:])
     }
 }
 
 /// One renderer per lookup window, retained across the temporary empty/loading view.
 /// The window releases it when hidden; there is no global WebView pool.
 final class LocalArticleRenderer: ObservableObject {
+    @Published fileprivate(set) var contentHeight: CGFloat = 320
     fileprivate var view: WKWebView?
     fileprivate var coordinator: LocalWebCoordinator?
     fileprivate enum Presentation {
@@ -69,6 +73,7 @@ final class LocalArticleRenderer: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.coordinator?.articleID == articleID,
                   self.coordinator?.presentationRevision == revision else { return }
+            if case .loading = state { self.contentHeight = 320 }
             self.presentation = state
         }
     }
@@ -79,9 +84,9 @@ final class LocalArticleRenderer: ObservableObject {
         coordinator?.retry(view)
     }
 
-    fileprivate func acquire(article: LocalArticle, appearance: ReadingAppearance, lookup: @escaping (String) -> Void) -> WKWebView {
+    fileprivate func acquire(article: LocalArticle, appearance: ReadingAppearance, lookup: @escaping (String) -> Void, measuresContent: Bool) -> WKWebView {
         if let view, let coordinator {
-            coordinator.update(view, article: article, appearance: appearance, lookup: lookup)
+            coordinator.update(view, article: article, appearance: appearance, lookup: lookup, measuresContent: measuresContent)
             return view
         }
         #if DEBUG
@@ -91,6 +96,8 @@ final class LocalArticleRenderer: ObservableObject {
         let coordinator = LocalWebCoordinator()
         coordinator.renderer = self
         let configuration = WKWebViewConfiguration()
+        configuration.userContentController.add(ArticleHeightMessageHandler(coordinator),
+            contentWorld: .defaultClient, name: LocalWebCoordinator.heightMessageName)
         configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(coordinator, forURLScheme: LocalWebCoordinator.scheme)
         let view: WKWebView
@@ -106,7 +113,7 @@ final class LocalArticleRenderer: ObservableObject {
         view.setValue(false, forKey: "drawsBackground")
         self.view = view
         self.coordinator = coordinator
-        coordinator.update(view, article: article, appearance: appearance, lookup: lookup)
+        coordinator.update(view, article: article, appearance: appearance, lookup: lookup, measuresContent: measuresContent)
         return view
     }
 
@@ -119,6 +126,8 @@ final class LocalArticleRenderer: ObservableObject {
         #endif
         coordinator?.clear(view, unloadDocument: false)
         view.navigationDelegate = nil
+        view.configuration.userContentController.removeScriptMessageHandler(
+            forName: LocalWebCoordinator.heightMessageName, contentWorld: .defaultClient)
         view.configuration.userContentController.removeAllUserScripts()
         self.view = nil
         coordinator = nil
@@ -130,12 +139,13 @@ private struct LocalArticleWebView: NSViewRepresentable {
     let renderer: LocalArticleRenderer
     let appearance: ReadingAppearance
     let lookup: (String) -> Void
+    let measuresContent: Bool
     func makeCoordinator() -> LocalArticleRenderer { renderer }
     func makeNSView(context: Context) -> WKWebView {
-        renderer.acquire(article: article, appearance: appearance, lookup: lookup)
+        renderer.acquire(article: article, appearance: appearance, lookup: lookup, measuresContent: measuresContent)
     }
     func updateNSView(_ view: WKWebView, context: Context) {
-        _ = renderer.acquire(article: article, appearance: appearance, lookup: lookup)
+        _ = renderer.acquire(article: article, appearance: appearance, lookup: lookup, measuresContent: measuresContent)
     }
     static func dismantleNSView(_ view: WKWebView, coordinator: LocalArticleRenderer) {
         // Drop the document and audio during loading, but keep the engine reusable.
@@ -144,8 +154,20 @@ private struct LocalArticleWebView: NSViewRepresentable {
     }
 }
 
+/// WebKit retains its message handler; the proxy keeps renderer ownership acyclic.
+private final class ArticleHeightMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var coordinator: LocalWebCoordinator?
+    init(_ coordinator: LocalWebCoordinator) { self.coordinator = coordinator }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        coordinator?.receiveHeight(message)
+    }
+}
+
 fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNavigationDelegate {
     static let scheme = LocalArticleDocument.scheme
+    static let heightMessageName = "odictArticleHeight"
+    private var measuresContent = false
+    private var observesHeight = false
     private static let log = Logger(subsystem: "com.touchany.odict.mac", category: "LocalArticle")
     private var article: LocalArticle?
     var articleID: UUID? { article?.id }
@@ -164,8 +186,11 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     private var renderingMemory: MemoryPhaseDiagnostics.Span?
     #endif
 
-    func update(_ view: WKWebView, article: LocalArticle, appearance: ReadingAppearance, lookup: @escaping (String) -> Void) {
+    func update(_ view: WKWebView, article: LocalArticle, appearance: ReadingAppearance,
+                lookup: @escaping (String) -> Void, measuresContent: Bool) {
         self.lookup = lookup
+        let measurementChanged = self.measuresContent != measuresContent
+        self.measuresContent = measuresContent
         let css: String
         if lastAppearance == appearance {
             css = appearanceCSS
@@ -176,6 +201,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         let styleChanged = appearanceCSS != css
         appearanceCSS = css
         guard self.article?.id != article.id else {
+            if measurementChanged { updateHeightObservation(view) }
             if styleChanged, let pageURL,
                LocalArticleLink.isSameDocument(view.url, as: pageURL) {
                 view.evaluateJavaScript(appearanceScript) { _, error in
@@ -194,6 +220,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         LocalDictionaryDebug.trace("page.hidden.switch", articleID: article.id,
                                    "previous=\(self.article?.id.uuidString.lowercased() ?? "-")")
         #endif
+        stopHeightObservation(view)
         activeNavigation = nil
         view.stopLoading()
         cancelAll()
@@ -219,6 +246,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
         #endif
         // Hide the previous surface synchronously before starting another navigation.
         view.isHidden = true
+        stopHeightObservation(view)
         activeNavigation = nil
         view.stopLoading()
         cancelAll()
@@ -336,6 +364,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             }
             self.activeNavigation = nil
             webView.isHidden = false
+            self.updateHeightObservation(webView)
             if let id = self.article?.id { self.renderer?.present(.ready(id), articleID: id) }
             #if DEBUG
             self.renderingMemory?.mark("visible")
@@ -343,6 +372,63 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
             LocalDictionaryDebug.trace("page.visible", articleID: self.article?.id, "finalStylesReady=true")
             #endif
         }
+    }
+
+    fileprivate func receiveHeight(_ message: WKScriptMessage) {
+        guard measuresContent, let pageURL, message.frameInfo.isMainFrame,
+              LocalArticleLink.isSameDocument(message.frameInfo.request.url, as: pageURL),
+              let height = message.body as? Double, height.isFinite, height > 0,
+              let id = articleID else { return }
+        let revision = presentationRevision
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.measuresContent, self.articleID == id,
+                  self.presentationRevision == revision, self.renderer?.view?.isHidden == false else { return }
+            let bounded = CGFloat(min(100_000, ceil(height)))
+            if let renderer = self.renderer, abs(renderer.contentHeight - bounded) >= 1 {
+                renderer.contentHeight = bounded
+            }
+        }
+    }
+
+    private func stopHeightObservation(_ view: WKWebView) {
+        guard observesHeight else { return }
+        observesHeight = false
+        view.evaluateJavaScript("window.__odictHeightObservation?.stop(); delete window.__odictHeightObservation;",
+            in: nil, in: .defaultClient, completionHandler: nil)
+    }
+
+    private func updateHeightObservation(_ view: WKWebView) {
+        guard measuresContent else { stopHeightObservation(view); return }
+        guard let pageURL, LocalArticleLink.isSameDocument(view.url, as: pageURL),
+              let data = try? JSONSerialization.data(withJSONObject: [pageURL.absoluteString]) else { return }
+        let literal = String(decoding: data, as: UTF8.self)
+        // Isolated JS world: dictionary scripts cannot call the height bridge.
+        // Observe content changes without polling; one bounded timer per document.
+        let script = """
+        (() => {
+          if (location.href.split('#')[0] !== \(literal)[0] || !document.body) return;
+          window.__odictHeightObservation?.stop();
+          let timer = null, previous = 0;
+          const report = () => {
+            timer = null;
+            const body = document.body, style = getComputedStyle(body);
+            const height = Math.ceil(body.getBoundingClientRect().height
+              + (parseFloat(style.marginTop) || 0) + (parseFloat(style.marginBottom) || 0));
+            if (height > 0 && height !== previous) {
+              previous = height;
+              window.webkit.messageHandlers.odictArticleHeight.postMessage(height);
+            }
+          };
+          const observer = new ResizeObserver(() => {
+            if (timer === null) timer = setTimeout(report, 80);
+          });
+          observer.observe(document.body);
+          window.__odictHeightObservation = { stop() { observer.disconnect(); clearTimeout(timer); } };
+          report();
+        })()
+        """
+        observesHeight = true
+        view.evaluateJavaScript(script, in: nil, in: .defaultClient, completionHandler: nil)
     }
 
     private var appearanceScript: String {
@@ -377,7 +463,7 @@ fileprivate final class LocalWebCoordinator: NSObject, WKURLSchemeHandler, WKNav
     func retry(_ view: WKWebView) {
         guard let article, let appearance = lastAppearance, let lookup else { return }
         self.article = nil
-        update(view, article: article, appearance: appearance, lookup: lookup)
+        update(view, article: article, appearance: appearance, lookup: lookup, measuresContent: measuresContent)
     }
 
     private static func report(_ error: Error, event: String, kind: String) {

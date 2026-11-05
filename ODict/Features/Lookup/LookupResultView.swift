@@ -10,6 +10,7 @@ struct LookupResultView: View {
     let openAISettings: () -> Void
     var isCapture = false
     var scrollsAIContent = true
+    @Environment(\.measuresLookupContent) private var measuresContent
     @StateObject private var localRenderer = LocalArticleRenderer()
 
     var body: some View {
@@ -28,6 +29,7 @@ struct LookupResultView: View {
                     } else {
                         if let message = model.message {
                             Text(message).font(AppTypography.secondary).foregroundColor(.secondary).padding(16)
+                                .reportCaptureHeight(measuresContent, part: .notice)
                         }
                         AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
                             isPresentation: isCapture,
@@ -42,6 +44,7 @@ struct LookupResultView: View {
                     LocalArticleView(article: article, renderer: localRenderer, lookup: { model.lookup($0) })
                     if let notice = model.message {
                         Text(notice).font(AppTypography.secondary).foregroundColor(.secondary).padding(12)
+                            .reportCaptureHeight(measuresContent, part: .notice)
                     }
                 }
             } else {
@@ -113,6 +116,7 @@ struct LookupResultView: View {
                 .id("entry-top")
                 .padding(22)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .reportCaptureHeight(measuresContent)
             }
             // New entry starts at its heading instead of inheriting a long previous word's scroll position.
             .onChange(of: model.entry?.word) { _ in proxy.scrollTo("entry-top", anchor: .top) }

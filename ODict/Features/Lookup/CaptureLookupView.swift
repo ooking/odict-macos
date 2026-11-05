@@ -12,6 +12,7 @@ struct CaptureLookupView: View {
     let dragWindow: (NSEvent) -> Void
     @ObservedObject var presentation: LookupPresentation
     let togglePin: () -> Void
+    var contentHeightChanged: (CGFloat) -> Void = { _ in }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +35,13 @@ struct CaptureLookupView: View {
                 .accessibilityValue(presentation.isPinned ? "已固定" : "未固定")
                 LookupIconButton("关闭", icon: "xmark", action: close)
             }
+            .reportCaptureHeight(presentation.fitsContentHeight, part: .footer)
+        }
+        .environment(\.measuresLookupContent, presentation.fitsContentHeight)
+        .onPreferenceChange(CaptureContentHeights.self) { heights in
+            guard presentation.fitsContentHeight, let result = heights[.result], result > 0,
+                  let footer = heights[.footer] else { return }
+            contentHeightChanged(result + footer + (heights[.notice] ?? 0) + 1)
         }
         .background(Color.white)
         .environment(\.colorScheme, .light)

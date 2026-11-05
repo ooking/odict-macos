@@ -10,6 +10,7 @@ struct AIResultView: View {
     var showsSourceBeforeAnswer = false
     var showsSource = true
     var scrollsContent = true
+    @Environment(\.measuresLookupContent) private var measuresContent
     @State private var copied = false
     var body: some View {
         Group {
@@ -115,6 +116,7 @@ struct AIResultView: View {
                 }
             }
         }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
+            .reportCaptureHeight(measuresContent)
     }
 
     private func regenerate(_ source: String) {

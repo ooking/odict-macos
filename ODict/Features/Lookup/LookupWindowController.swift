@@ -7,12 +7,12 @@ struct LookupWindowActions {
     var captureScreenshot: () -> Void
     var editQuery: () -> Void
     var interacted: () -> Void
-    var dismissed: () -> Void
+    var dismissed: (_ restoresSourceFocus: Bool) -> Void
     var openAISettings: () -> Void = {}
     var openSetup: (SettingsCategory) -> Void = { _ in }
 }
 
-/// Owns the native lookup window and its placement. Dismissal is always explicit.
+/// Owns window placement, bounded content sizing and visible-session event monitors.
 @MainActor
 final class LookupWindowController: NSObject, NSWindowDelegate {
     private let panel = LookupPanel(contentRect: CGRect(origin: .zero, size: LookupWindowLayout.defaultSize),
@@ -23,6 +23,11 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     private let presentation = LookupPresentation()
     private let preferences: UserDefaults
     private static let sizeKey = "lookup.windowSize.v1"
+    private var normalSize = LookupWindowLayout.defaultSize
+    private var measuredContentHeight: CGFloat?
+    private var pendingHeightUpdate: DispatchWorkItem?
+    private var localClickMonitor: Any?
+    private var globalClickMonitor: Any?
     private var userPositioned = false
     private var anchor: CGRect?
     private var pinnedCaptureOrigin: CGPoint?
@@ -34,6 +39,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         self.preferences = preferences
         super.init()
         configure()
+        NotificationCenter.default.addObserver(self, selector: #selector(captureSettingsChanged),
+            name: CaptureWindowSettings.changed, object: nil)
     }
 
     private(set) var isHover = false
@@ -87,6 +94,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             panel.setContentSize(NSSize(width: max(saved[0], LookupWindowLayout.minimumSize.width),
                                        height: max(saved[1], LookupWindowLayout.minimumSize.height)))
         }
+        normalSize = panel.frame.size
         panel.isReleasedWhenClosed = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -105,7 +113,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
             captureSelection: actions.captureSelection, captureScreenshot: actions.captureScreenshot,
             editQuery: actions.editQuery, openAISettings: actions.openAISettings, presentation: presentation,
             dragWindow: { [weak self] event in self?.dragWindow(event) },
-            togglePin: { [weak self] in self?.togglePin() }, openSetup: actions.openSetup))
+            togglePin: { [weak self] in self?.togglePin() }, openSetup: actions.openSetup,
+            contentHeightChanged: { [weak self] height in self?.contentHeightChanged(height) }))
         hostingView.autoresizingMask = [.width, .height]
         if #available(macOS 13.0, *) { hostingView.sizingOptions = [] }
         if #available(macOS 26.0, *) {
@@ -164,7 +173,11 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         if !panel.isVisible || presentation.mode != mode {
             userPositioned = false
         }
-        if presentation.mode != mode { presentation.mode = mode }
+        if presentation.mode != mode {
+            measuredContentHeight = nil
+            presentation.mode = mode
+        }
+        updateHeightPolicy()
         if mode == .manual { model.beginManual() }
         // Match native controls and WebKit's prefers-color-scheme to the white card.
         panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
@@ -201,6 +214,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         } else {
             panel.makeKeyAndOrderFront(nil)
         }
+        updateClickMonitors()
+        if presentation.fitsContentHeight { scheduleHeightUpdate() }
         status.highlight(true)
         LifecycleDiagnostics.record(updatingHover ? "lookup.hoverUpdated" : "lookup.show.end", panel: panel)
     }
@@ -214,8 +229,12 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         panel.makeKey()
     }
 
-    func hide() {
+    func hide(restoringSourceFocus: Bool = true) {
         LifecycleDiagnostics.record("lookup.hide.requested", panel: panel)
+        stopClickMonitors()
+        pendingHeightUpdate?.cancel()
+        pendingHeightUpdate = nil
+        measuredContentHeight = nil
         model.acceptsSearchFocus = false
         panel.endEditing(for: nil)
         panel.makeFirstResponder(nil)
@@ -223,7 +242,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         isHover = false
         userPositioned = false
         status.highlight(false)
-        actions.dismissed()
+        actions.dismissed(restoringSourceFocus)
     }
 
     private func togglePin() {
@@ -250,6 +269,7 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     func screenChanged() {
         guard panel.isVisible else { return }
         if let screen = panel.screen { fitToScreen(screen) }
+        if presentation.fitsContentHeight { scheduleHeightUpdate() }
         if userPositioned || (isCapture && presentation.isPinned) {
             constrainToScreen()
             if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
@@ -264,13 +284,117 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     func windowDidEndLiveResize(_ notification: Notification) {
         constrainToScreen()
         if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
-        preferences.set([panel.frame.width, panel.frame.height], forKey: Self.sizeKey)
+        normalSize = NSSize(width: panel.frame.width,
+            height: presentation.fitsContentHeight ? normalSize.height : panel.frame.height)
+        preferences.set([normalSize.width, normalSize.height], forKey: Self.sizeKey)
+        if presentation.fitsContentHeight { scheduleHeightUpdate() }
+    }
+
+    @objc private func captureSettingsChanged() {
+        updateHeightPolicy()
+        updateClickMonitors()
+        if presentation.fitsContentHeight { scheduleHeightUpdate() }
+    }
+
+    private func updateHeightPolicy() {
+        let enabled = isCapture && preferences.bool(forKey: CaptureWindowSettings.fitsContentHeightKey)
+        let changed = presentation.fitsContentHeight != enabled
+        if changed { presentation.fitsContentHeight = enabled }
+        panel.contentMinSize = NSSize(width: LookupWindowLayout.minimumSize.width,
+            height: enabled ? LookupWindowLayout.minimumCaptureHeight : LookupWindowLayout.minimumSize.height)
+        if !enabled {
+            pendingHeightUpdate?.cancel()
+            pendingHeightUpdate = nil
+            if changed || panel.frame.size != normalSize {
+                let top = panel.frame.maxY
+                panel.setContentSize(normalSize)
+                panel.setFrameOrigin(NSPoint(x: panel.frame.minX, y: top - panel.frame.height))
+                if let screen = panel.screen { fitToScreen(screen) }
+                constrainToScreen()
+            }
+        }
+    }
+
+    private func contentHeightChanged(_ height: CGFloat) {
+        guard height.isFinite, height > 0, presentation.fitsContentHeight else { return }
+        measuredContentHeight = min(height, 100_000)
+        scheduleHeightUpdate()
+    }
+
+    private func scheduleHeightUpdate() {
+        guard panel.isVisible, presentation.fitsContentHeight, pendingHeightUpdate == nil else { return }
+        // Coalesce streaming/layout updates; retain at most one small pending item.
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingHeightUpdate = nil
+            self.resizeToContent()
+        }
+        pendingHeightUpdate = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
+    }
+
+    private func resizeToContent() {
+        guard panel.isVisible, presentation.fitsContentHeight, !panel.inLiveResize,
+              let height = measuredContentHeight, let screen = panel.screen ?? NSScreen.main else { return }
+        let available = screen.visibleFrame.insetBy(dx: 8, dy: 8)
+        let maximumHeight = min(CaptureWindowSettings.maximumHeight(in: preferences), available.height)
+        let target = min(max(ceil(height), LookupWindowLayout.minimumCaptureHeight), maximumHeight)
+        guard abs(panel.frame.height - target) >= 1 else { return }
+        var frame = panel.frame
+        frame.origin.y = frame.maxY - target
+        frame.size.height = target
+        frame.origin.y = max(available.minY, min(frame.minY, available.maxY - target))
+        panel.setFrame(frame, display: true)
+        if presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
+    }
+
+    private func updateClickMonitors() {
+        let enabled = panel.isVisible && isCapture
+            && preferences.bool(forKey: CaptureWindowSettings.closesOnOutsideClickKey)
+        guard enabled else { stopClickMonitors(); return }
+        guard localClickMonitor == nil, globalClickMonitor == nil else { return }
+        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            self?.handleOutsideClick(event)
+            return event
+        }
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
+            self?.handleOutsideClick(event)
+        }
+    }
+
+    private func handleOutsideClick(_ event: NSEvent) {
+        guard panel.isVisible, isCapture, !panel.frame.contains(NSEvent.mouseLocation) else { return }
+        // Native menus and child windows belong to the current interaction.
+        if let window = event.window {
+            if window.level >= .popUpMenu { return }
+            var parent: NSWindow? = window
+            while let current = parent {
+                if current === panel { return }
+                parent = current.parent
+            }
+        }
+        hide(restoringSourceFocus: false)
+    }
+
+    private func stopClickMonitors() {
+        if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
+        if let globalClickMonitor { NSEvent.removeMonitor(globalClickMonitor) }
+        localClickMonitor = nil
+        globalClickMonitor = nil
+    }
+
+    deinit {
+        pendingHeightUpdate?.cancel()
+        if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
+        if let globalClickMonitor { NSEvent.removeMonitor(globalClickMonitor) }
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func fitToScreen(_ screen: NSScreen) {
         let available = screen.visibleFrame.insetBy(dx: 8, dy: 8).size
         panel.contentMaxSize = NSSize(width: max(LookupWindowLayout.minimumSize.width, available.width),
-                                     height: max(LookupWindowLayout.minimumSize.height, available.height))
+                                     height: max(panel.contentMinSize.height, available.height))
         let size = NSSize(width: min(panel.frame.width, panel.contentMaxSize.width),
                           height: min(panel.frame.height, panel.contentMaxSize.height))
         if size != panel.frame.size { panel.setContentSize(size) }

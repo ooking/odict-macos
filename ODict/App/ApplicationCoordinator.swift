@@ -18,8 +18,8 @@ final class ApplicationCoordinator: NSObject {
         captureScreenshot: { [weak self] in self?.startScreenshot() },
         editQuery: { [weak self] in self?.capture.cancel() },
         interacted: { [weak self] in self?.hover.cancel(dismiss: false) },
-        dismissed: { [weak self] in
-            self?.lookupDismissed()
+        dismissed: { [weak self] restoresSourceFocus in
+            self?.lookupDismissed(restoringSourceFocus: restoresSourceFocus)
         }, openAISettings: { [weak self] in self?.showSettings(ai: true) },
         openSetup: { [weak self] category in self?.showSettings(category: category) }))
     private lazy var hover: HoverLookupController = {
@@ -141,13 +141,13 @@ final class ApplicationCoordinator: NSObject {
         lookup.showManual()
     }
 
-    private func lookupDismissed() {
+    private func lookupDismissed(restoringSourceFocus: Bool) {
         hover.resetInteraction()
         capture.cancel()
         model.suspend()
         // Hiding a key accessory panel does not itself reactivate the source.
         // Restore focus only when ODict still owns it and no settings are open.
-        guard !isStopping, NSApp.isActive, !settings.isVisible,
+        guard restoringSourceFocus, !isStopping, NSApp.isActive, !settings.isVisible,
               let pid = lastExternalPID,
               let source = NSRunningApplication(processIdentifier: pid), !source.isTerminated else { return }
         let restored = source.activate(options: .activateIgnoringOtherApps)
@@ -216,7 +216,8 @@ final class ApplicationCoordinator: NSObject {
     func becameActive() { if !isStopping { hover.updateEnabled() } }
 
     func resignedActive() {
-        // Lookup windows stay visible when focus moves to another app.
+        // Activation alone does not dismiss lookup; capture dismissal follows
+        // the outside-click preference in LookupWindowController.
     }
 
     func screenChanged() {

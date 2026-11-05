@@ -39,6 +39,7 @@ struct LookupSkeletonView: View {
 }
 
 struct DictionaryLoadingView: View {
+    @Environment(\.measuresLookupContent) private var measuresContent
     var status = "正在查询词典…"
 
     var body: some View {
@@ -47,6 +48,8 @@ struct DictionaryLoadingView: View {
             Text(status).font(AppTypography.secondary).foregroundColor(.secondary)
         }
         .padding(22)
+        .fixedSize(horizontal: false, vertical: measuresContent)
+        .reportCaptureHeight(measuresContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
