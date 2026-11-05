@@ -23,6 +23,8 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     private let presentation = LookupPresentation()
     private let preferences: UserDefaults
     private static let sizeKey = "lookup.windowSize.v1"
+    private static let captureHeightKey = "lookup.capture.manualHeight"
+    private var captureManualHeight = LookupWindowLayout.defaultSize.height
     private var normalSize = LookupWindowLayout.defaultSize
     private var measuredContentHeight: CGFloat?
     private var pendingHeightUpdate: DispatchWorkItem?
@@ -41,6 +43,10 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         configure()
         NotificationCenter.default.addObserver(self, selector: #selector(captureSettingsChanged),
             name: CaptureWindowSettings.changed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(captureWidthChanged),
+            name: CaptureWindowSettings.widthChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(captureAppearanceChanged),
+            name: CaptureWindowSettings.appearanceChanged, object: nil)
     }
 
     private(set) var isHover = false
@@ -95,6 +101,10 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
                                        height: max(saved[1], LookupWindowLayout.minimumSize.height)))
         }
         normalSize = panel.frame.size
+        let savedCaptureHeight = preferences.object(forKey: Self.captureHeightKey) as? Double ?? Double(normalSize.height)
+        if savedCaptureHeight.isFinite {
+            captureManualHeight = CGFloat(min(max(savedCaptureHeight, Double(LookupWindowLayout.minimumSize.height)), 4096))
+        }
         panel.isReleasedWhenClosed = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -170,14 +180,16 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     func show(anchor: CGRect?, hover: Bool = false, mode: LookupPresentationMode = .manual) {
         let mode: LookupPresentationMode = hover ? .capture : mode
         let updatingHover = hover && panel.isVisible && presentation.mode == .capture
-        if !panel.isVisible || presentation.mode != mode {
+        let startsSession = !panel.isVisible || presentation.mode != mode
+        if startsSession {
             userPositioned = false
         }
         if presentation.mode != mode {
             measuredContentHeight = nil
             presentation.mode = mode
         }
-        updateHeightPolicy()
+        updateHeightPolicy(restoresSize: startsSession)
+        captureAppearanceChanged()
         if mode == .manual { model.beginManual() }
         // Match native controls and WebKit's prefers-color-scheme to the white card.
         panel.appearance = mode == .capture ? NSAppearance(named: .aqua) : nil
@@ -284,9 +296,15 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
     func windowDidEndLiveResize(_ notification: Notification) {
         constrainToScreen()
         if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
-        normalSize = NSSize(width: panel.frame.width,
-            height: presentation.fitsContentHeight ? normalSize.height : panel.frame.height)
-        preferences.set([normalSize.width, normalSize.height], forKey: Self.sizeKey)
+        if isCapture {
+            if !presentation.fitsContentHeight {
+                captureManualHeight = panel.frame.height
+                preferences.set(captureManualHeight, forKey: Self.captureHeightKey)
+            }
+        } else {
+            normalSize = panel.frame.size
+            preferences.set([normalSize.width, normalSize.height], forKey: Self.sizeKey)
+        }
         if presentation.fitsContentHeight { scheduleHeightUpdate() }
     }
 
@@ -296,7 +314,26 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         if presentation.fitsContentHeight { scheduleHeightUpdate() }
     }
 
-    private func updateHeightPolicy() {
+    @objc private func captureAppearanceChanged() {
+        panel.alphaValue = isCapture ? CaptureWindowSettings.alpha(in: preferences) : 1
+    }
+
+    @objc private func captureWidthChanged() {
+        guard isCapture, panel.isVisible else { return }
+        setSizePreservingTop(NSSize(width: CaptureWindowSettings.width(in: preferences), height: panel.frame.height))
+        if presentation.fitsContentHeight { scheduleHeightUpdate() }
+    }
+
+    private func setSizePreservingTop(_ size: NSSize) {
+        let top = panel.frame.maxY
+        panel.setContentSize(size)
+        panel.setFrameOrigin(NSPoint(x: panel.frame.minX, y: top - panel.frame.height))
+        if let screen = panel.screen { fitToScreen(screen) }
+        constrainToScreen()
+        if isCapture && presentation.isPinned { pinnedCaptureOrigin = panel.frame.origin }
+    }
+
+    private func updateHeightPolicy(restoresSize: Bool = false) {
         let enabled = isCapture && preferences.bool(forKey: CaptureWindowSettings.fitsContentHeightKey)
         let changed = presentation.fitsContentHeight != enabled
         if changed { presentation.fitsContentHeight = enabled }
@@ -305,13 +342,15 @@ final class LookupWindowController: NSObject, NSWindowDelegate {
         if !enabled {
             pendingHeightUpdate?.cancel()
             pendingHeightUpdate = nil
-            if changed || panel.frame.size != normalSize {
-                let top = panel.frame.maxY
-                panel.setContentSize(normalSize)
-                panel.setFrameOrigin(NSPoint(x: panel.frame.minX, y: top - panel.frame.height))
-                if let screen = panel.screen { fitToScreen(screen) }
-                constrainToScreen()
+            if changed || restoresSize {
+                let size = isCapture
+                    ? NSSize(width: restoresSize ? CaptureWindowSettings.width(in: preferences) : panel.frame.width,
+                             height: captureManualHeight)
+                    : normalSize
+                setSizePreservingTop(size)
             }
+        } else if restoresSize {
+            setSizePreservingTop(NSSize(width: CaptureWindowSettings.width(in: preferences), height: panel.frame.height))
         }
     }
 
