@@ -40,8 +40,11 @@ private final class UnusedOnline: DictionaryServing {
         let store = LocalDictionaryStore(defaults:defaults)
         store.sourceSettings.save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .local || $0 == .online) })
         try store.save([dictionary])
+        let historyFolder = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        let history = TranslationHistoryModel(store: TranslationHistoryStore(folder: historyFolder, preferences: defaults))
+        defer { try? FileManager.default.removeItem(at: historyFolder) }
         let online = UnusedOnline(), library = LocalDictionaryLibrary()
-        let model = LookupModel(router:DictionaryRouter(remote:online,local:library,store:store),history:RecentWordsStore(defaults:defaults),preferences:defaults)
+        let model = LookupModel(router:DictionaryRouter(remote:online,local:library,store:store),preferences:defaults,translationHistory:history, onlineAvailability: { false })
         model.editQuery("reco",composing:false)
         try await settled(model)
         precondition(model.suggestions.contains { $0.word == "recoated" })
@@ -52,7 +55,8 @@ private final class UnusedOnline: DictionaryServing {
         precondition(model.selectedSuggestion?.word == "recoated")
         precondition(model.result?.word == "recoated" && model.localArticle?.headwords == ["coat"])
         precondition(model.localArticle?.correspondingHeadwords == ["coat"])
-        precondition(model.recent.first == "recoated" && !model.recent.contains("coat"))
+        let archived = await history.flush()
+        precondition(archived && history.groups.first?.source == "recoated" && !history.groups.contains { $0.source == "coat" })
         let identity = model.localArticle?.id
         model.submit()
         try await settled(model)

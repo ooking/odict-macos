@@ -17,6 +17,16 @@ protocol DictionaryLookupServing {
     func suggestions(_ query: String) async throws -> [Suggestion]
     func search(_ query: String, translation: Bool) async throws -> [Suggestion]
     func releaseLocalResources() async
+    func entry(_ word: String, method: TranslationMethod) async throws -> LookupResult
+    func candidates(_ query: String, translation: Bool, search: Bool, method: TranslationMethod) async throws -> [Suggestion]
+}
+
+extension DictionaryLookupServing {
+    func entry(_ word: String, method: TranslationMethod) async throws -> LookupResult { try await entry(word) }
+    func candidates(_ query: String, translation: Bool, search: Bool, method: TranslationMethod) async throws -> [Suggestion] {
+        if search { return try await self.search(query, translation: translation) }
+        return try await suggestions(query)
+    }
 }
 
 final class DictionaryRouter: DictionaryLookupServing {
@@ -33,6 +43,59 @@ final class DictionaryRouter: DictionaryLookupServing {
     private var dictionaries: [LocalDictionaryConfiguration] {
         sources.isEnabled(.local) ? store.load().filter(\.enabled) : []
     }
+    private func selectedDictionary(_ id: UUID) throws -> LocalDictionaryConfiguration {
+        guard sources.isEnabled(.local), let item = store.load().first(where: { $0.id == id && $0.enabled }) else {
+            throw NSError(domain: "ODict.TranslationMethod", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "这本 MDX 词典已移除或停用，请选择其他翻译方式。"])
+        }
+        return item
+    }
+
+    private func requireEnabled(_ source: LookupSource) throws {
+        guard sources.isEnabled(source) else {
+            throw NSError(domain: "ODict.TranslationMethod", code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "该翻译方式已停用，请在设置中启用，或选择其他方式。"])
+        }
+    }
+
+    func entry(_ word: String, method: TranslationMethod) async throws -> LookupResult {
+        try Task.checkCancellation()
+        switch method {
+        case .automatic: return try await entry(word)
+        case .online:
+            try requireEnabled(.online)
+            return LookupResult(remote: try await remote.entry(word), local: nil, notice: nil)
+        case .system:
+            try requireEnabled(.system)
+            guard let article = try await system.article(word) else { throw DictionaryError.notFound }
+            return LookupResult(remote: nil, local: nil, notice: nil, system: article)
+        case .mdx(let id):
+            let item = try selectedDictionary(id)
+            guard let article = try await local.article(word, in: item) else { throw DictionaryError.notFound }
+            return LookupResult(remote: nil, local: article, notice: nil)
+        case .ai: throw LookupRoutingError.useAI
+        }
+    }
+
+    func candidates(_ query: String, translation: Bool, search: Bool, method: TranslationMethod) async throws -> [Suggestion] {
+        try Task.checkCancellation()
+        switch method {
+        case .automatic: return try await candidates(query, translation: translation, search: search)
+        case .online:
+            try requireEnabled(.online)
+            return search ? try await remote.search(query, translation: translation) : try await remote.suggestions(query)
+        case .system:
+            try requireEnabled(.system)
+            guard let article = try await system.article(query) else { return [] }
+            return [Suggestion(word: query, phonetic: nil, translationPreview: String(article.text.prefix(160)), translation: nil)]
+        case .mdx(let id):
+            let item = try selectedDictionary(id)
+            let exact = try await local.words(query, in: item, exact: true)
+            return exact.isEmpty ? try await local.words(query, in: item, exact: false) : exact
+        case .ai: return []
+        }
+    }
+
     func entry(_ word: String) async throws -> LookupResult {
         var unavailable: [String] = []
         for source in sources.active {

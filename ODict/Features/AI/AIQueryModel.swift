@@ -15,7 +15,8 @@ final class AIQueryModel: ObservableObject {
     @Published private(set) var isRestoringHistory = false
     @Published private(set) var isViewingHistory = false
     @Published private(set) var isEditingInput = true
-    let history: AIHistoryModel
+    var onSubmit: ((String) -> Void)?
+    var onArchive: ((AIHistoryRecord) -> Void)?
     private let client: AIQueryServing
     private let configuration: () -> AIConfiguration
     private var task: Task<Void, Never>?
@@ -26,14 +27,11 @@ final class AIQueryModel: ObservableObject {
     private var answerID: UUID?
     private var answerDate = Date()
     private var archivedAnswerID: UUID?
-    private var restoreTask: Task<Void, Never>?
     private var preparingToQuit = false
     var historyDate: Date? { isViewingHistory ? answerDate : nil }
 
-    init(client: AIQueryServing = AIClient(), configuration: @escaping () -> AIConfiguration = { AISettingsStore.configuration },
-         history: AIHistoryModel? = nil) {
+    init(client: AIQueryServing = AIClient(), configuration: @escaping () -> AIConfiguration = { AISettingsStore.configuration }) {
         self.client = client; self.configuration = configuration
-        self.history = history ?? AIHistoryModel()
         savedConfiguration = configuration()
     }
     var isConfigured: Bool { !savedConfiguration.address.isEmpty && !savedConfiguration.model.isEmpty }
@@ -51,6 +49,7 @@ final class AIQueryModel: ObservableObject {
         guard isConfigured else { message = AIError.configuration.localizedDescription; return }
         archivePartialAnswer()
         invalidateRequest()
+        onSubmit?(text)
         requestID = UUID(); requestDate = Date(); requestModel = savedConfiguration.model
         isViewingHistory = false
         submittedText = text
@@ -99,7 +98,7 @@ final class AIQueryModel: ObservableObject {
     private func finish() { isLoading = false; isThinking = false; task = nil }
     private func invalidateRequest() {
         task?.cancel(); task = nil; revision = UUID()
-        restoreTask?.cancel(); restoreTask = nil; isRestoringHistory = false
+        isRestoringHistory = false
         isLoading = false; isThinking = false
     }
     func cancel() {
@@ -125,30 +124,16 @@ final class AIQueryModel: ObservableObject {
     // The history writer owns any pending disk write independently of this view.
     func suspend() { reset() }
 
-    func restoreHistory(_ id: UUID, restoredInput: @escaping (String) -> Void) {
-        guard !preparingToQuit else { return }
-        archivePartialAnswer()
-        invalidateRequest()
-        let token = revision
-        isRestoringHistory = true
-        restoreTask = Task { [weak self, history] in
-            defer { if self?.revision == token { self?.isRestoringHistory = false; self?.restoreTask = nil } }
-            do {
-                let record = try await history.record(id)
-                guard !Task.isCancelled, let self, self.revision == token else { return }
-                self.answerID = record.id; self.archivedAnswerID = record.id
-                self.answerDate = record.date; self.answerModel = record.model
-                self.sourceText = record.source; self.submittedText = record.source
-                self.answer = AIAnswer(markdown: record.markdown)
-                self.isCancelled = record.isPartial; self.hasStreamContent = true; self.message = nil
-                self.isViewingHistory = true
-                self.isEditingInput = false
-                restoredInput(record.source)
-            } catch {
-                guard !Task.isCancelled, self?.revision == token else { return }
-                self?.message = "无法打开这条 AI 历史记录，原文件未作修改。"
-            }
-        }
+    func beginHistoryRestore() { reset(); isRestoringHistory = true }
+    func finishHistoryRestore() { isRestoringHistory = false }
+
+    /// Restore already-decoded unified history without generating or archiving again.
+    func restoreAnswer(_ record: AIHistoryRecord) {
+        reset()
+        answerID = record.id; archivedAnswerID = record.id; answerDate = record.date
+        sourceText = record.source; submittedText = record.source
+        answer = AIAnswer(markdown: record.markdown); answerModel = record.model
+        isCancelled = record.isPartial; hasStreamContent = true; isViewingHistory = true; isEditingInput = false
     }
 
     private func archivePartialAnswer() {
@@ -158,13 +143,14 @@ final class AIQueryModel: ObservableObject {
 
     private func archiveAnswer(isPartial: Bool) {
         guard let id = answerID, archivedAnswerID != id, let answer, !answer.markdown.isEmpty else { return }
-        history.remember(AIHistoryRecord(id: id, date: answerDate, source: sourceText,
-            markdown: answer.markdown, model: answerModel, isPartial: isPartial))
+        let record = AIHistoryRecord(id: id, date: answerDate, source: sourceText,
+            markdown: answer.markdown, model: answerModel, isPartial: isPartial)
+        onArchive?(record)
         archivedAnswerID = id
     }
     func prepareForTermination() { preparingToQuit = true; cancel() }
     func cancelTerminationPreparation() { preparingToQuit = false }
     func settingsChanged() { reset(); savedConfiguration = configuration() }
     func rejectOversizedPaste() { message = "粘贴内容过长，请分段粘贴，每次最多 4000 字。" }
-    deinit { task?.cancel(); restoreTask?.cancel() }
+    deinit { task?.cancel() }
 }

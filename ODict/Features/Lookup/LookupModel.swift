@@ -11,67 +11,103 @@ final class LookupModel: ObservableObject {
     let ai: AIQueryModel
     private let preferences: UserDefaults
     private var captureContext = false
-    // Keep one session-only input per mode. Captures and result/history
-    // navigation share query, but never overwrite these manual drafts.
-    private var dictionaryManualQuery = ""
-    private var aiManualQuery = ""
-    private var manualQuery: String {
-        get { mode == .dictionary ? dictionaryManualQuery : aiManualQuery }
-        set {
-            if mode == .dictionary { dictionaryManualQuery = newValue }
-            else { aiManualQuery = newValue }
+    @Published private(set) var selectedMethod: TranslationMethod = .automatic
+    @Published private(set) var methodOptions: [TranslationMethodOption] = []
+    let translationHistory: TranslationHistoryModel
+    private var sessionMethod: TranslationMethod = .automatic
+    private var manualQuery = ""
+    private var submittedSource: String?
+    private var aiHistoryMethod: TranslationMethod = .automatic
+    private let onlineAvailability: () async -> Bool
+    private var methodRefresh: Task<Void, Never>?
+    private var methodRevision = UUID()
+
+    var methodTitle: String {
+        methodOptions.first { $0.method == selectedMethod }?.title
+            ?? selectedMethod.title(in: LocalDictionaryStore(defaults: preferences).load())
+    }
+
+    func refreshMethods() {
+        methodRefresh?.cancel()
+        let token = UUID(); methodRevision = token
+        let sources = LookupSourceSettings(defaults: preferences)
+        let dictionaries = LocalDictionaryStore(defaults: preferences).load()
+        func reason(_ source: LookupSource) -> String? { sources.isEnabled(source) ? nil : "已在设置中停用" }
+        let aiReady = ai.isConfigured
+        func options(onlineReady: Bool) -> [TranslationMethodOption] {
+            var values = [TranslationMethodOption(method: .automatic, title: TranslationMethod.automatic.title(in: dictionaries), unavailableReason: nil),
+                TranslationMethodOption(method: .online, title: "ODict 在线词典", unavailableReason: onlineReady ? reason(.online) : "请先登录在线词典"),
+                TranslationMethodOption(method: .system, title: "macOS 系统词典", unavailableReason: reason(.system))]
+            values += dictionaries.map { item in
+                TranslationMethodOption(method: .mdx(item.id), title: item.name,
+                    unavailableReason: !item.enabled ? "词典已停用" : reason(.local))
+            }
+            values.append(TranslationMethodOption(method: .ai, title: "AI 翻译",
+                unavailableReason: !aiReady ? "请先配置 AI 服务" : reason(.ai)))
+            return values
+        }
+        methodOptions = options(onlineReady: false)
+        let availability = onlineAvailability
+        methodRefresh = Task { [weak self] in
+            let onlineReady = await availability()
+            guard !Task.isCancelled, let self, self.methodRevision == token else { return }
+            self.methodOptions = options(onlineReady: onlineReady)
+            self.methodRefresh = nil
         }
     }
 
-    func setMode(_ value: QueryMode) {
-        guard value != mode || isUsingAIForCurrentQuery else { return }
+    /// Explicit selection is session-wide; opening history does not change this default.
+    func selectMethod(_ value: TranslationMethod) {
+        guard value != selectedMethod else { sessionMethod = value; return }
+        let source = submittedSource
+        pronunciation.stop(owner: pronunciationOwner)
         cancelRequests()
         ai.reset()
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
-        mode = value
-        if !captureContext {
-            query = manualQuery
-            contentVisible = true
-        }
-        pronunciation.stop(owner: pronunciationOwner)
-        if value == .ai {
-            let router = dictionary
-            Task { await router.releaseLocalResources() }
-        }
-        if !captureContext { preferences.set(value.rawValue, forKey: QueryMode.manualKey) }
+        selectedMethod = value; sessionMethod = value
+        mode = value == .ai ? .ai : .dictionary
+        contentVisible = true
         focusRequest = UUID()
+        if value == .ai { releaseDictionaryResources() }
+        if let source {
+            query = source
+            if !captureContext { manualQuery = source }
+            translationHistory.select(source: source, method: value)
+            restoreOrLookup(source, generateAI: true)
+        } else {
+            submittedSource = nil
+            if mode == .dictionary { queryChanged() }
+        }
     }
 
     func beginManual() {
-        let manualMode = QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary
-        let restoreDraft = captureContext || mode != manualMode || query != manualQuery || isUsingAIForCurrentQuery
+        refreshMethods()
+        guard captureContext else { return }
+        cancelRequests(); ai.reset()
         captureContext = false
-        setMode(manualMode)
-        guard restoreDraft else { return }
-        cancelRequests()
-        ai.reset()
-        pronunciation.stop(owner: pronunciationOwner)
-        result = nil
-        suggestions = []
-        selectedSuggestionIndex = nil
-        message = nil
+        selectedMethod = sessionMethod
+        mode = selectedMethod == .ai ? .ai : .dictionary
         query = manualQuery
-        // The window's resume restores results only for the manual draft.
+        submittedSource = nil
+        result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
         contentVisible = false
     }
 
-    /// One-query override: never changes either persisted mode or manual drafts.
+    /// Automatic routing may choose AI without changing the session selection.
     func useAIForCurrentQuery() {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, text.count <= AIConfiguration.maximumInput else { return }
-        cancelRequests()
-        ai.reset()
+        cancelRequests(); ai.reset()
         result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
-        contentVisible = true
-        isUsingAIForCurrentQuery = true
+        contentVisible = true; mode = .ai
+        isUsingAIForCurrentQuery = selectedMethod == .automatic
+        releaseDictionaryResources()
+        ai.submit(text)
+    }
+
+    private func releaseDictionaryResources() {
         let router = dictionary
         Task { await router.releaseLocalResources() }
-        ai.submit(text)
     }
 
     var offersAITranslation: Bool {
@@ -85,7 +121,7 @@ final class LookupModel: ObservableObject {
         sentenceDetected = true
         if text.count > AIConfiguration.maximumInput {
             message = "内容过长，请分段查询，每次最多 \(AIConfiguration.maximumInput) 字。"
-        } else if allowAI && LookupSourceSettings(defaults: preferences).isEnabled(.ai) && ai.savedConfiguration.autoTranslateSentences && ai.isConfigured {
+        } else if selectedMethod == .automatic && allowAI && LookupSourceSettings(defaults: preferences).isEnabled(.ai) && AISettingsStore.autoTranslateSentences && ai.isConfigured {
             useAIForCurrentQuery()
         } else {
             message = "这段内容可能是句子，建议使用 AI 翻译。"
@@ -95,7 +131,10 @@ final class LookupModel: ObservableObject {
 
     func lookupCaptured(_ text: String) {
         captureContext = true
-        setMode(QueryMode(rawValue: preferences.string(forKey: QueryMode.captureKey) ?? "") ?? .dictionary)
+        cancelRequests(); ai.reset()
+        selectedMethod = sessionMethod
+        mode = selectedMethod == .ai ? .ai : .dictionary
+        submittedSource = nil
         lookup(text)
     }
 
@@ -111,8 +150,7 @@ final class LookupModel: ObservableObject {
     /// case folding or failed-answer reuse. Completed lookups use the bounded cache.
     func lookupHovered(_ text: String) {
         let word = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let captureMode = QueryMode(rawValue: preferences.string(forKey: QueryMode.captureKey) ?? "") ?? .dictionary
-        if captureContext, mode == .dictionary, captureMode == .dictionary,
+        if captureContext, selectedMethod == sessionMethod, mode == .dictionary,
            contentVisible, captureStatus == nil, query == word,
            (result != nil && message == result?.notice) || (isLoading && message == nil) {
             #if DEBUG
@@ -126,10 +164,10 @@ final class LookupModel: ObservableObject {
         lookupCaptured(word)
     }
 
-    func aiSettingsChanged() { ai.settingsChanged() }
+    func aiSettingsChanged() { ai.settingsChanged(); refreshMethods() }
 
     func restoreAIInput(_ text: String) {
-        aiManualQuery = text
+        if !captureContext { manualQuery = text }
         query = text
         focusRequest = UUID()
     }
@@ -149,12 +187,9 @@ final class LookupModel: ObservableObject {
     @Published private(set) var message: String?
     @Published private(set) var captureStatus: String?
     @Published private(set) var captureIsBusy = false
-    @Published private(set) var recent: [String]
-    @Published private(set) var recentTranslations: [String: String]
     @Published var focusRequest = UUID()
     @Published var acceptsSearchFocus = true
     private let dictionary: DictionaryLookupServing
-    private let history: RecentWordsStore
     private let resultCache: LookupResultCache
     private let pronunciation = PronunciationService.shared
     let pronunciationOwner = UUID()
@@ -165,31 +200,56 @@ final class LookupModel: ObservableObject {
     private var revision = UUID()
     private var detailRevision = UUID()
 
-    convenience init(dictionary: DictionaryServing = DictionaryClient(), history: RecentWordsStore = RecentWordsStore(),
-                     preferences: UserDefaults = .standard) {
-        self.init(router: DictionaryRouter(remote: dictionary, store: LocalDictionaryStore(defaults: preferences)), history: history, preferences: preferences)
+    convenience init(dictionary: DictionaryServing = DictionaryClient(), preferences: UserDefaults = .standard,
+                     translationHistory: TranslationHistoryModel? = nil,
+                     onlineAvailability: @escaping () async -> Bool = {
+                         (try? await AccountStore.shared.user(endpoint: ODictService.apiAddress)) != nil
+                     }) {
+        self.init(router: DictionaryRouter(remote: dictionary, store: LocalDictionaryStore(defaults: preferences)),
+                  preferences: preferences, translationHistory: translationHistory, onlineAvailability: onlineAvailability)
     }
 
-    init(router: DictionaryLookupServing, history: RecentWordsStore = RecentWordsStore(),
-         preferences: UserDefaults = .standard, ai: AIQueryModel? = nil) {
+    init(router: DictionaryLookupServing,
+         preferences: UserDefaults = .standard, ai: AIQueryModel? = nil,
+         translationHistory: TranslationHistoryModel? = nil,
+         onlineAvailability: @escaping () async -> Bool = {
+             (try? await AccountStore.shared.user(endpoint: ODictService.apiAddress)) != nil
+         }) {
+        self.onlineAvailability = onlineAvailability
         self.preferences = preferences
         self.resultCache = LookupResultCache(preferences: preferences)
-        self.mode = QueryMode(rawValue: preferences.string(forKey: QueryMode.manualKey) ?? "") ?? .dictionary
+        self.mode = .dictionary
         self.ai = ai ?? AIQueryModel()
         self.dictionary = router
-        self.history = history
-        let saved = history.load()
-        recent = saved
-        recentTranslations = history.loadTranslations(for: saved)
+        self.translationHistory = translationHistory ?? TranslationHistoryModel()
+        self.ai.onSubmit = { [weak self] source in
+            guard let self else { return }
+            self.cancelRequests()
+            self.isUsingAIForCurrentQuery = self.selectedMethod == .automatic
+            self.submittedSource = source
+            self.aiHistoryMethod = self.selectedMethod
+            if !self.captureContext { self.manualQuery = source }
+        }
+        self.ai.onArchive = { [weak self] record in
+            guard let self else { return }
+            self.translationHistory.remember(TranslationHistoryRecord(id: record.id, date: record.date,
+                source: record.source, method: self.aiHistoryMethod,
+                title: String(("AI 翻译 · " + record.model).prefix(120)),
+                payload: .ai(markdown: record.markdown, model: record.model, partial: record.isPartial)))
+        }
+        refreshMethods()
+        self.translationHistory.load()
     }
 
     func editQuery(_ text: String, composing: Bool) {
-        manualQuery = text
+        if !captureContext { manualQuery = text }
+        submittedSource = nil
         contentVisible = true
         query = text
         if mode == .ai {
             captureStatus = nil; captureIsBusy = false
-            return
+            if selectedMethod == .automatic && text.isEmpty { mode = .dictionary; ai.reset() }
+            else { return }
         }
         if composing {
             cancelRequests()
@@ -239,6 +299,11 @@ final class LookupModel: ObservableObject {
     }
 
     func submit() {
+        submittedSource = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if selectedMethod == .automatic && mode == .ai {
+            ai.reset(); mode = .dictionary
+            lookup(); return
+        }
         if mode == .ai { ai.submit(query); return }
         if let selected = selectedSuggestion { preview(selected.word, remember: true) }
         else { lookup() }
@@ -246,6 +311,7 @@ final class LookupModel: ObservableObject {
 
     func queryChanged() {
         if mode == .ai { return }
+        submittedSource = nil
         contentVisible = true
         cancelRequests()
         result = nil
@@ -274,8 +340,8 @@ final class LookupModel: ObservableObject {
             do {
                 try await Task.sleep(nanoseconds: 350_000_000)
                 let results: [Suggestion]
-                if isChinese(text) { results = try await dictionary.search(text, translation: true) }
-                else { results = try await dictionary.suggestions(text) }
+                if isChinese(text) { results = try await dictionary.candidates(text, translation: true, search: true, method: selectedMethod) }
+                else { results = try await dictionary.candidates(text, translation: false, search: false, method: selectedMethod) }
                 guard !Task.isCancelled, token == revision else { return }
                 #if DEBUG
                 loading.mark("candidates.ready")
@@ -312,6 +378,11 @@ final class LookupModel: ObservableObject {
     }
 
     private func preview(_ word: String, delay: Bool = false, remember: Bool = false) {
+        if remember {
+            submittedSource = word
+            query = word
+            if !captureContext { manualQuery = word }
+        }
         if isUsingAIForCurrentQuery { ai.reset(); isUsingAIForCurrentQuery = false }
         if detailTask != nil, previewWord == word {
             rememberPreview = rememberPreview || remember
@@ -369,6 +440,9 @@ final class LookupModel: ObservableObject {
     }
 
     func lookup(_ word: String? = nil, allowAI: Bool = true) {
+        let source = (word ?? query).trimmingCharacters(in: .whitespacesAndNewlines)
+        submittedSource = source.isEmpty ? nil : source
+        if !captureContext { manualQuery = source }
         if mode == .ai {
             if let word { query = word }
             contentVisible = true
@@ -407,7 +481,7 @@ final class LookupModel: ObservableObject {
                     if allowAI { useAIForCurrentQuery() }
                     else { message = "按回车使用 AI 查询。" }
                 } catch DictionaryError.notFound {
-                    let results = try await dictionary.search(text, translation: isChinese(text))
+                    let results = try await dictionary.candidates(text, translation: isChinese(text), search: true, method: selectedMethod)
                     guard !Task.isCancelled, token == revision else { return }
                     acceptSuggestions(results)
                     if results.isEmpty {
@@ -433,39 +507,99 @@ final class LookupModel: ObservableObject {
         defer { memory.mark("finished") }
         #endif
         try Task.checkCancellation()
-        if let cached = resultCache.value(for: word) {
+        let cacheKey = selectedMethod.id + "\u{0}" + word
+        if let cached = resultCache.value(for: cacheKey) {
             #if DEBUG
             memory.mark("cache.hit")
             #endif
             return cached
         }
-        let result = try await dictionary.entry(word)
+        let result = try await dictionary.entry(word, method: selectedMethod)
         try Task.checkCancellation()
-        resultCache.insert(result, for: word)
+        resultCache.insert(result, for: cacheKey)
         return result
     }
 
-    func cacheSettingsChanged() {
-        resultCache.trim()
-        recent = history.trim()
-        recentTranslations = history.loadTranslations(for: recent)
-    }
+    func cacheSettingsChanged() { resultCache.trim() }
 
     private func rememberEntry(_ entry: LookupResult) {
-        recent = history.remember(entry.word, in: recent)
-        recentTranslations = recentTranslations.filter { recent.contains($0.key) }
-        if recent.contains(entry.word) {
-            recentTranslations[entry.word] = RecentWordsStore.summary(entry.translation ?? "")
-        }
-        history.saveTranslations(recentTranslations, for: recent)
+        let source = submittedSource ?? query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { return }
+        let payload: TranslationHistoryPayload
+        if let remote = entry.remote { payload = .online(remote) }
+        else if let article = entry.system { payload = .system(word: article.word, text: article.text) }
+        else if let local = entry.local { payload = .mdx(dictionaryID: local.dictionary.id, word: local.word, summary: String((local.summary ?? "").prefix(160))) }
+        else { return }
+        translationHistory.remember(TranslationHistoryRecord(id: UUID(), date: Date(), source: source,
+            method: selectedMethod, title: String(entry.source.prefix(120)), payload: payload))
     }
 
-
     func clearHistory() {
+        // Stop generation before clearing so a late partial answer cannot reappear.
+        ai.reset(); cancelRequests()
         resultCache.clear()
-        recent = []
-        recentTranslations = [:]
-        history.clear()
+        translationHistory.clear()
+    }
+
+    func openHistory(_ group: TranslationHistoryGroup) {
+        cancelRequests(); ai.reset()
+        selectedMethod = group.selectedMethod
+        query = group.source
+        if !captureContext { manualQuery = group.source }
+        submittedSource = group.source
+        mode = selectedMethod == .ai ? .ai : .dictionary
+        contentVisible = true
+        result = nil; suggestions = []; selectedSuggestionIndex = nil; message = nil
+        restoreOrLookup(group.source, generateAI: false)
+    }
+
+    private func restoreOrLookup(_ source: String, generateAI: Bool) {
+        let token = revision
+        let method = selectedMethod
+        isLoading = true
+        if mode == .ai { ai.beginHistoryRestore() }
+        task = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if self.revision == token {
+                    self.isLoading = false; self.task = nil; self.ai.finishHistoryRestore()
+                }
+            }
+            do {
+                let saved = try await self.translationHistory.record(source: source, method: method)
+                guard !Task.isCancelled, self.revision == token else { return }
+                if let saved {
+                    switch saved.payload {
+                    case .online(let entry): self.result = LookupResult(remote: entry, local: nil, notice: nil)
+                    case .system(let word, let text):
+                        self.result = LookupResult(remote: nil, local: nil, notice: nil, system: SystemDictionaryArticle(word: word, text: text))
+                    case .mdx(let id, let word, _):
+                        let result = try await self.dictionary.entry(word, method: .mdx(id))
+                        guard !Task.isCancelled, self.revision == token else { return }
+                        self.result = result
+                    case .ai(let markdown, let model, let partial):
+                        self.mode = .ai
+                        self.isUsingAIForCurrentQuery = method == .automatic
+                        self.ai.restoreAnswer(AIHistoryRecord(id: saved.id, date: saved.date, source: saved.source,
+                            markdown: markdown, model: model, isPartial: partial))
+                        self.releaseDictionaryResources()
+                    }
+                } else if generateAI || (method != .ai && method != .automatic) {
+                    // Detach this restore task before lookup cancels/replaces its revision.
+                    self.task = nil
+                    self.lookup(source, allowAI: generateAI)
+                } else if method == .automatic && !self.ai.hasSubmitted {
+                    self.task = nil
+                    self.mode = .dictionary
+                    self.lookup(source, allowAI: false)
+                } else {
+                    self.message = "该原文在此方式下尚无已保存结果，请提交查询。"
+                }
+            } catch {
+                guard !Task.isCancelled, self.revision == token else { return }
+                self.message = error.localizedDescription
+            }
+        }
     }
 
     private func cancelRequests() {
@@ -487,22 +621,25 @@ final class LookupModel: ObservableObject {
     }
 
     func resume() {
+        refreshMethods()
+        translationHistory.load()
         guard !contentVisible else { return }
-        if mode == .ai { contentVisible = true; return }
-        let reload = !contentVisible && result == nil && !query.isEmpty && !isLoading && !isSuggesting && captureStatus == nil
         contentVisible = true
-        if reload { lookup(allowAI: false) }
+        guard !query.isEmpty, captureStatus == nil else { return }
+        restoreOrLookup(query.trimmingCharacters(in: .whitespacesAndNewlines), generateAI: false)
     }
 
     func sourcesChanged() {
         resultCache.clear()
         suspend()
+        refreshMethods()
         result = nil
         suggestions = []
         selectedSuggestionIndex = nil
     }
 
     func suspend() {
+        methodRefresh?.cancel(); methodRefresh = nil; methodRevision = UUID()
         #if DEBUG
         MemoryPhaseDiagnostics.snapshot("lookup.suspend.begin")
         #endif

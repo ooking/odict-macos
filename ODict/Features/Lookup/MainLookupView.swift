@@ -43,16 +43,9 @@ struct MainLookupView: View {
                             candidateSidebar.frame(width: min(220, geometry.size.width * 0.36))
                             Divider()
                         }
-                        if model.mode == .dictionary, model.query.isEmpty, model.recent.isEmpty,
-                           model.captureStatus == nil, model.message == nil,
-                           !model.isLoading, !model.isSuggesting, model.contentVisible {
-                            LookupWelcomeView(openSetup: openSetup)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            LookupResultView(model: model, openSettings: openSettings,
-                                openAISettings: openAISettings)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
+                        LookupResultView(model: model, openSettings: openSettings,
+                            openAISettings: openAISettings)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
@@ -71,8 +64,7 @@ struct MainLookupView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
-                LookupModePicker(selection: Binding(get: { model.mode }, set: { editQuery(); model.setMode($0) }))
-                    .frame(width: 136, height: 28)
+                TranslationMethodPicker(model: model, beforeSelection: editQuery)
                 Spacer().allowsHitTesting(false)
                 LookupIconButton("关闭（Esc）", icon: "xmark", action: close)
             }
@@ -89,7 +81,7 @@ struct MainLookupView: View {
             }, clear: {
                 model.ai.reset()
                 editQuery(); model.editQuery("", composing: false); model.focusRequest = UUID()
-            }, close: close)
+            }, close: close, submit: { editQuery(); model.submit() })
     }
 
     private var searchBar: some View {
@@ -172,30 +164,3 @@ private struct CandidateRow: View {
     }
 }
 
-/// An unlabeled native control with explicit bounds, aligned with the input's leading edge.
-private struct LookupModePicker: NSViewRepresentable {
-    @Binding var selection: QueryMode
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl(labels: QueryMode.allCases.map(\.title), trackingMode: .selectOne,
-                                         target: context.coordinator, action: #selector(Coordinator.selectMode(_:)))
-        control.segmentDistribution = .fill
-        control.segmentStyle = .rounded
-        control.controlSize = .regular
-        control.setAccessibilityLabel("查询模式")
-        control.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return control
-    }
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
-        context.coordinator.parent = self
-        control.selectedSegment = selection == .dictionary ? 0 : 1
-    }
-    final class Coordinator: NSObject {
-        var parent: LookupModePicker
-        init(_ parent: LookupModePicker) { self.parent = parent }
-        @objc func selectMode(_ sender: NSSegmentedControl) {
-            guard QueryMode.allCases.indices.contains(sender.selectedSegment) else { return }
-            parent.selection = QueryMode.allCases[sender.selectedSegment]
-        }
-    }
-}

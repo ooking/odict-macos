@@ -41,25 +41,28 @@ private struct LookupModelChecks {
         let fixture = FixtureDictionary()
         let suite = "odict.lookup.fixture.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let historyFolder = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        let history = TranslationHistoryModel(store: TranslationHistoryStore(folder: historyFolder, preferences: defaults))
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: historyFolder)
+        }
         LookupSourceSettings(defaults: defaults).save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .online) })
-        let model = LookupModel(dictionary: fixture, history: RecentWordsStore(defaults: defaults), preferences: defaults)
+        let model = LookupModel(dictionary: fixture, preferences: defaults, translationHistory: history, onlineAvailability: { false })
         let localRouter = FixtureLocalRouter()
-        let history = RecentWordsStore(defaults: defaults)
-        _ = history.remember("old-word", in: [])
-        let localModel = LookupModel(router: localRouter, history: history, preferences: defaults)
+        let localModel = LookupModel(router: localRouter, preferences: defaults, translationHistory: history, onlineAvailability: { false })
         try await Task.sleep(nanoseconds: 50_000_000)
-        precondition(localRouter.requests.isEmpty && localModel.recentTranslations["old-word"] == nil,
-                     "loading history must not backfill old records")
+        precondition(localRouter.requests.isEmpty, "loading summaries must not load dictionary contents")
         localModel.lookup("apple")
         try await settled(localModel)
-        precondition(localModel.recentTranslations["apple"] == "苹果", "save local lookup summary")
-        let restored = LookupModel(router: localRouter, history: history, preferences: defaults)
-        precondition(restored.recentTranslations["apple"] == "苹果" && localRouter.requests == ["apple"],
-                     "restore saved local summary without additional lookups")
+        let savedLocal = await history.flush()
+        precondition(savedLocal && history.groups.first?.source == "apple")
+        let localRecord = try await history.record(source: "apple", method: .automatic)
+        guard case .mdx(_, let word, _) = localRecord?.payload else { preconditionFailure("save local reference") }
+        precondition(word == "apple", "archive a local word reference rather than HTML")
         localModel.clearHistory()
-        precondition(history.load().isEmpty && history.loadTranslations(for: ["apple"]).isEmpty,
-                     "clear words and their summaries together")
+        let cleared = await history.flush()
+        precondition(cleared && history.groups.isEmpty)
         // A suspended result surface must reopen for recognition, then hand off
         // to the query without leaving stale capture status or accepting old work.
         localModel.suspend()
@@ -74,7 +77,7 @@ private struct LookupModelChecks {
         localModel.presentCaptureStatus("无法取词", busy: false)
         precondition(localModel.contentVisible && !localModel.captureIsBusy && localModel.result == nil,
                      "capture failure must replace loading with a visible notice")
-        let draftModel = LookupModel(router: localRouter, history: history, preferences: defaults)
+        let draftModel = LookupModel(router: localRouter, preferences: defaults, translationHistory: history, onlineAvailability: { false })
         draftModel.lookupHovered("hover-only")
         try await settled(draftModel)
         draftModel.suspend()
@@ -101,7 +104,7 @@ private struct LookupModelChecks {
         draftModel.lookup("history-or-link")
         try await settled(draftModel)
         draftModel.beginManual()
-        precondition(draftModel.query == "typed-draft", "result navigation must not overwrite manual input")
+        precondition(draftModel.query == "history-or-link", "manual result navigation keeps the current shared input")
         draftModel.editQuery("", composing: false)
         draftModel.lookupHovered("after-clear")
         try await settled(draftModel)
@@ -128,7 +131,7 @@ private struct LookupModelChecks {
         // capture request/result. Hiding drops the view, completed results may
         // use the bounded cache, and source changes must invalidate that cache.
         let hoverFixture = FixtureDictionary()
-        let hoverModel = LookupModel(dictionary: hoverFixture, history: history, preferences: defaults)
+        let hoverModel = LookupModel(dictionary: hoverFixture, preferences: defaults, translationHistory: history, onlineAvailability: { false })
         hoverModel.lookupHovered("echo")
         hoverModel.lookupHovered("echo")
         try await settled(hoverModel)
@@ -192,7 +195,8 @@ private struct LookupModelChecks {
         model.selectSuggestion("playing")
         try await settled(model)
         precondition(model.entry?.word == "playing" && model.suggestions.count == 4)
-        precondition(model.recent.first == "playing")
+        let savedPlaying = await history.flush()
+        precondition(savedPlaying && history.groups.first?.source == "playing")
         let uniqueRequests = fixture.entryRequests.filter { $0 == "unique" }.count
         model.query = "single"; model.queryChanged()
         while model.isSuggesting { try await Task.sleep(nanoseconds: 5_000_000) }

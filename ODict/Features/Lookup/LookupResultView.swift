@@ -11,7 +11,6 @@ struct LookupResultView: View {
     var isCapture = false
     var scrollsAIContent = true
     @StateObject private var localRenderer = LocalArticleRenderer()
-    @State private var confirmClearHistory = false
 
     var body: some View {
         Group {
@@ -19,11 +18,23 @@ struct LookupResultView: View {
                 EmptyView()
             } else if model.captureIsBusy {
                 DictionaryLoadingView(status: model.captureStatus ?? "正在取词…")
+            } else if model.query.isEmpty, model.captureStatus == nil, !isCapture {
+                if scrollsAIContent { ScrollView { historyContent } }
+                else { historyContent }
             } else if (model.mode == .ai || model.isUsingAIForCurrentQuery) && model.captureStatus == nil {
-                AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
-                    isPresentation: isCapture,
-                    restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery,
-                    showsSource: isCapture || model.mode != .ai, scrollsContent: scrollsAIContent)
+                VStack(spacing: 0) {
+                    if model.isLoading {
+                        DictionaryLoadingView(status: "正在读取历史结果…")
+                    } else {
+                        if let message = model.message {
+                            Text(message).font(AppTypography.secondary).foregroundColor(.secondary).padding(16)
+                        }
+                        AIResultView(model: model.ai, query: model.query, openSettings: openAISettings,
+                            isPresentation: isCapture,
+                            restoredInput: model.restoreAIInput, showsSourceBeforeAnswer: model.isUsingAIForCurrentQuery,
+                            showsSource: isCapture || model.mode != .ai, scrollsContent: scrollsAIContent)
+                    }
+                }
             } else if model.result == nil && (model.isLoading || model.isSuggesting) {
                 DictionaryLoadingView()
             } else if let article = model.localArticle, model.contentVisible {
@@ -36,6 +47,9 @@ struct LookupResultView: View {
             } else {
                 detailPane
             }
+        }
+        .overlay(alignment: .bottom) {
+            if !model.query.isEmpty { TranslationHistoryStatus(history: model.translationHistory).padding(12) }
         }
         .onChange(of: model.contentVisible) { visible in
             if !visible { localRenderer.release() }
@@ -51,12 +65,12 @@ struct LookupResultView: View {
             if online { localRenderer.release() }
         }
         .onDisappear { localRenderer.release() }
-        .confirmationDialog("清除所有词典查询历史？", isPresented: $confirmClearHistory, titleVisibility: .visible) {
-            Button("清除历史记录", role: .destructive) { model.clearHistory() }
-            Button("取消", role: .cancel) { }
-        } message: {
-            Text("清除后无法恢复。")
-        }
+
+    }
+
+    private var historyContent: some View {
+        TranslationHistoryView(history: model.translationHistory, select: model.openHistory,
+            openSettings: openSettings, clear: model.clearHistory).padding(16)
     }
 
     private var detailPane: some View {
@@ -79,7 +93,7 @@ struct LookupResultView: View {
                             Text("来源：" + source).font(AppTypography.caption).foregroundColor(lookupSecondaryInk)
                         }
                     } else if model.query.isEmpty {
-                        if model.recent.isEmpty { emptyState } else { recentList }
+                        emptyState
                     }
                     if model.offersAITranslation {
                         aiTranslationOffer
@@ -97,8 +111,7 @@ struct LookupResultView: View {
                     }
                 }
                 .id("entry-top")
-                .padding(.horizontal, showingHistory ? 12 : 22)
-                .padding(.vertical, showingHistory ? 16 : 22)
+                .padding(22)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             // New entry starts at its heading instead of inheriting a long previous word's scroll position.
@@ -114,12 +127,12 @@ struct LookupResultView: View {
                 : "词典中没有找到对应释义，可以尝试用 AI 翻译。",
             icon: "sparkles", source: model.query,
             footnote: model.query.count > AIConfiguration.maximumInput ? nil : model.ai.isConfigured
-                ? "原文将发送至已配置的 AI 服务，仅本次使用 AI。"
+                ? "原文将发送至已配置的 AI 服务。"
                 : "在「设置 → AI」配置服务后，再确认翻译。") {
             if model.query.trimmingCharacters(in: .whitespacesAndNewlines).count <= AIConfiguration.maximumInput {
                 if model.ai.isConfigured {
-                    Button(action: model.useAIForCurrentQuery) {
-                        Label("仅本次用 AI 翻译", systemImage: "sparkles")
+                    Button(action: { model.selectMethod(.ai) }) {
+                        Label("使用 AI 翻译", systemImage: "sparkles")
                     }.buttonStyle(LookupActionStyle(prominent: true))
                 } else {
                     Button(action: openAISettings) {
@@ -132,23 +145,6 @@ struct LookupResultView: View {
 
     private var emptyState: some View {
         LookupEmptyState(subtitle: "输入英文查释义，输入中文找单词", openSettings: openSettings)
-    }
-
-    private var showingHistory: Bool {
-        model.query.isEmpty && !model.recent.isEmpty && model.entry == nil
-            && model.captureStatus == nil && !model.isLoading && !model.isSuggesting
-    }
-
-    private var recentList: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RecentLookupHeader(clearDisabled: model.recent.isEmpty) { confirmClearHistory = true }
-                .padding(.horizontal, 10)
-            VStack(spacing: 4) {
-                ForEach(model.recent, id: \.self) { word in
-                    RecentWordRow(word: word, translation: model.recentTranslations[word]) { model.lookup(word) }
-                }
-            }
-        }
     }
 
     private func entryContent(_ entry: Entry) -> some View {
@@ -197,53 +193,6 @@ struct LookupResultView: View {
     }
 }
 
-private struct RecentWordRow: View {
-    let word: String
-    let translation: String?
-    let action: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var hovered = false
-    private var hasSummary: Bool { translation?.isEmpty == false }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .firstTextBaseline, spacing: 16) {
-                // The history panel is 440pt wide. Keep a stable word column and
-                // give the longer definitions the remaining space.
-                ReadingText(word, bold: true, fixedSize: 14)
-                    .foregroundColor(.primary)
-                    .frame(width: 132, alignment: .leading)
-                ReadingText(translation ?? "", fixedSize: 13)
-                    .foregroundColor(lookupSecondaryInk)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .multilineTextAlignment(.leading)
-                if !hasSummary {
-                    Image(systemName: "arrow.up.left")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(lookupSecondaryInk)
-                        .opacity(hovered ? 1 : 0)
-                        .accessibilityHidden(true)
-                }
-            }
-            .lineLimit(2)
-            .truncationMode(.tail)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
-            .background(hovered ? Color.accentColor.opacity(0.10) : Color.clear)
-            .cornerRadius(7)
-            .contentShape(RoundedRectangle(cornerRadius: 7))
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
-        .help([word, translation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n"))
-    }
-}
-
-
-/// Shared history controls; each mode keeps its existing record layout.
 struct RecentLookupHeader: View {
     var isSaving = false
     var clearDisabled = false

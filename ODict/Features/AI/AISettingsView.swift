@@ -38,12 +38,6 @@ struct AISettingsView: View {
                 verificationFeedback
             }
             group {
-                Text("词典查询回退").font(AppTypography.section)
-                Toggle("识别到句子时自动用 AI 翻译", isOn: setting(\.autoTranslateSentences))
-                help("在词典模式下，截图、选中取词和手动查询识别到句子时，直接发送给已配置的 AI 服务。关闭时先显示原文，由你确认。句子识别为近似判断。")
-                help("单词或短语未查到时仍需确认。AI 仅用于本次查询，不会更改默认查询模式。")
-            }
-            group {
                 Text("模型行为").font(AppTypography.section)
                 Toggle("启用思考", isOn: setting(\.thinking))
                 Picker("思考接口", selection: setting(\.thinkingFormat)) {
@@ -83,7 +77,7 @@ struct AISettingsView: View {
                 help("服务配置和提示语修改后需保存。")
                 Spacer()
                 if model.isSaving { ProgressView().controlSize(.small) }
-                Button(model.isSaving ? "正在保存…" : "保存 AI 设置", action: model.save)
+                Button(model.isSaving ? "正在保存…" : "保存 AI翻译设置", action: model.save)
                     .keyboardShortcut(.defaultAction).disabled(!model.loaded || model.isSaving)
             }
         }
@@ -98,7 +92,7 @@ struct AISettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("连接成功，模型已返回有效结果。", systemImage: "checkmark.circle.fill")
                     .foregroundColor(.green)
-                help("当前修改仍需点击「保存 AI 设置」后生效。")
+                help("当前修改仍需点击「保存 AI翻译设置」后生效。")
             }.font(AppTypography.secondary)
         case .failure(let reason):
             Label("验证失败：" + reason, systemImage: "exclamationmark.circle.fill")

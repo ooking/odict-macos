@@ -109,8 +109,8 @@ final class ApplicationCoordinator: NSObject {
             name: HoverLookupController.preferenceChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(aiSettingsChanged),
             name: AISettingsStore.changed, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(aiHistorySettingsChanged),
-            name: AIHistorySettings.changed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(historySettingsChanged),
+            name: TranslationHistorySettings.changed, object: nil)
         hover.updateEnabled()
         KeyboardShortcuts.onKeyUp(for: .toggleDictionary) { [weak self] in self?.toggleLookup() }
         KeyboardShortcuts.onKeyUp(for: .selectedTextLookup) { [weak self] in self?.startSelection() }
@@ -119,7 +119,7 @@ final class ApplicationCoordinator: NSObject {
     }
 
     @objc private func aiSettingsChanged() { model.aiSettingsChanged() }
-    @objc private func aiHistorySettingsChanged() { model.ai.history.settingsChanged() }
+    @objc private func historySettingsChanged() { model.translationHistory.settingsChanged() }
 
     @objc private func dictionarySourcesChanged() {
         model.sourcesChanged()
@@ -247,7 +247,7 @@ final class ApplicationCoordinator: NSObject {
         hover.stop()
         capture.cancel()
         model.ai.prepareForTermination()
-        return await model.ai.history.flush()
+        return await model.translationHistory.flush()
     }
 
     func cancelTerminationPreparation() {

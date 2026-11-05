@@ -13,7 +13,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             let model = SettingsModel()
             model.category = category ?? .general
             model.didSave = { [weak self] in self?.didSave?() }
-            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 860, height: min(680, (NSScreen.main?.visibleFrame.height ?? 760) - 80)),
+            // Leave room for every sidebar row, while fitting smaller displays.
+            let availableHeight = (NSScreen.main?.visibleFrame.height ?? 820) - 40
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 860, height: min(780, availableHeight)),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             window.title = "ODict 设置"
             window.minSize = NSSize(width: 760, height: 520)

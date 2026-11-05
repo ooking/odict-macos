@@ -90,9 +90,12 @@
 		000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */; };
 		000000000000000000001201 /* LookupResultCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001200 /* LookupResultCache.swift */; };
 		000000000000000000001501 /* ODict/Models/AIHistoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001500 /* ODict/Models/AIHistoryModels.swift */; };
-		000000000000000000001503 /* ODict/Services/AIHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001502 /* ODict/Services/AIHistoryStore.swift */; };
-		000000000000000000001505 /* ODict/Features/AI/AIHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001504 /* ODict/Features/AI/AIHistoryModel.swift */; };
-		000000000000000000001507 /* ODict/Features/AI/AIHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001506 /* ODict/Features/AI/AIHistoryView.swift */; };
+		000000000000000000001901 /* ODict/Models/TranslationMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001900 /* ODict/Models/TranslationMethod.swift */; };
+		000000000000000000001903 /* ODict/Models/TranslationHistoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001902 /* ODict/Models/TranslationHistoryModels.swift */; };
+		000000000000000000001905 /* ODict/Services/TranslationHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001904 /* ODict/Services/TranslationHistoryStore.swift */; };
+		000000000000000000001907 /* ODict/Features/Lookup/TranslationHistoryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001906 /* ODict/Features/Lookup/TranslationHistoryModel.swift */; };
+		000000000000000000001909 /* ODict/Features/Lookup/TranslationMethodPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000001908 /* ODict/Features/Lookup/TranslationMethodPicker.swift */; };
+		00000000000000000000190B /* ODict/Features/Lookup/TranslationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000190A /* ODict/Features/Lookup/TranslationHistoryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -182,9 +185,12 @@
 		00000000000000000000090A /* ODict/LocalDictionary/LocalDictionaryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/LocalDictionary/LocalDictionaryDebug.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001200 /* LookupResultCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/LookupResultCache.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000001500 /* ODict/Models/AIHistoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/AIHistoryModels.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001502 /* ODict/Services/AIHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/AIHistoryStore.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001504 /* ODict/Features/AI/AIHistoryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIHistoryModel.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000001506 /* ODict/Features/AI/AIHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/AI/AIHistoryView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001900 /* ODict/Models/TranslationMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/TranslationMethod.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001902 /* ODict/Models/TranslationHistoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Models/TranslationHistoryModels.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001904 /* ODict/Services/TranslationHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Services/TranslationHistoryStore.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001906 /* ODict/Features/Lookup/TranslationHistoryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/TranslationHistoryModel.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000001908 /* ODict/Features/Lookup/TranslationMethodPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/TranslationMethodPicker.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000190A /* ODict/Features/Lookup/TranslationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODict/Features/Lookup/TranslationHistoryView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -262,9 +268,12 @@
 				00000000000000000000050A /* ODict/Services/RecentWordsStore.swift */,
 				000000000000000000001200 /* LookupResultCache.swift */,
 				000000000000000000001500 /* ODict/Models/AIHistoryModels.swift */,
-				000000000000000000001502 /* ODict/Services/AIHistoryStore.swift */,
-				000000000000000000001504 /* ODict/Features/AI/AIHistoryModel.swift */,
-				000000000000000000001506 /* ODict/Features/AI/AIHistoryView.swift */,
+				00000000000000000000190A /* ODict/Features/Lookup/TranslationHistoryView.swift */,
+				000000000000000000001908 /* ODict/Features/Lookup/TranslationMethodPicker.swift */,
+				000000000000000000001906 /* ODict/Features/Lookup/TranslationHistoryModel.swift */,
+				000000000000000000001904 /* ODict/Services/TranslationHistoryStore.swift */,
+				000000000000000000001902 /* ODict/Models/TranslationHistoryModels.swift */,
+				000000000000000000001900 /* ODict/Models/TranslationMethod.swift */,
 				00000000000000000000050B /* ODict/Services/RequestRateLimit.swift */,
 				00000000000000000000050C /* ODict/Services/ODictService.swift */,
 				000000000000000000000306 /* ODict/Assets.xcassets */,
@@ -433,9 +442,12 @@
 				000000000000000000000A0A /* ODict/LocalDictionary/LocalDictionaryDebug.swift in Sources */,
 				000000000000000000001201 /* LookupResultCache.swift in Sources */,
 				000000000000000000001501 /* ODict/Models/AIHistoryModels.swift in Sources */,
-				000000000000000000001503 /* ODict/Services/AIHistoryStore.swift in Sources */,
-				000000000000000000001505 /* ODict/Features/AI/AIHistoryModel.swift in Sources */,
-				000000000000000000001507 /* ODict/Features/AI/AIHistoryView.swift in Sources */,
+				00000000000000000000190B /* ODict/Features/Lookup/TranslationHistoryView.swift in Sources */,
+				000000000000000000001909 /* ODict/Features/Lookup/TranslationMethodPicker.swift in Sources */,
+				000000000000000000001907 /* ODict/Features/Lookup/TranslationHistoryModel.swift in Sources */,
+				000000000000000000001905 /* ODict/Services/TranslationHistoryStore.swift in Sources */,
+				000000000000000000001903 /* ODict/Models/TranslationHistoryModels.swift in Sources */,
+				000000000000000000001901 /* ODict/Models/TranslationMethod.swift in Sources */,
 				000000000000000000000A07 /* ODict/LocalDictionary/LocalArticleSummary.swift in Sources */,
 				000000000000000000000A02 /* ODict/LocalDictionary/LocalDictionaryStore.swift in Sources */,
 				000000000000000000000A01 /* ODict/LocalDictionary/MDXReader.swift in Sources */,

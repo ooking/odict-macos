@@ -33,9 +33,6 @@ struct AIResultView: View {
                 LookupSourceText(text: query)
                 Divider()
             }
-            if model.answer != nil || model.hasSubmitted {
-                AIHistorySaveStatus(history: model.history)
-            }
 
             if model.isLoading {
                 HStack(spacing: 8) {
@@ -92,18 +89,14 @@ struct AIResultView: View {
                         .font(AppTypography.caption).foregroundColor(.secondary)
                 }
             } else if !model.hasSubmitted && model.message == nil && !model.isLoading {
-                if !isPresentation {
-                    AIHistoryView(history: model.history, select: { id in
-                        model.restoreHistory(id, restoredInput: restoredInput)
-                    }, emptySettings: openSettings)
-                } else if !model.isConfigured {
+                if !model.isConfigured {
                     LookupNotice(title: "配置 AI 后开始查询", message: "填写服务地址、模型和密钥，即可翻译句子或解释词语。",
                         icon: "sparkles") {
                         Button("配置 AI 服务", action: openSettings)
                             .buttonStyle(LookupActionStyle(prominent: true))
                     }
                 } else {
-                    Text("选中或截图取词后，原文与结果会显示在这里。")
+                    Text(isPresentation ? "选中或截图取词后，原文与结果会显示在这里。" : "提交原文后，译文与释义会显示在这里。")
                         .font(AppTypography.secondary).foregroundColor(.secondary)
                 }
             }

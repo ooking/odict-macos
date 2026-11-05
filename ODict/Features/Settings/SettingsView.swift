@@ -9,7 +9,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case pronunciation = "发音"
     case history = "查询历史"
     case service = "在线词典"
-    case ai = "AI"
+    case ai = "AI翻译"
     case appearance = "外观"
     case privacy = "权限与隐私"
     case about = "关于"
@@ -35,7 +35,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .capture: return "选择一种方式，了解用法并按需开启。"
         case .dictionaries: return "管理系统词典、本地 MDX 词典和词典资源。"
         case .pronunciation: return "管理发音来源、启用状态和图标颜色。"
-        case .history: return "设置词典和 AI 的历史保留数量。"
+        case .history: return "统一管理词典和 AI 查询历史。"
         case .service: return "连接在线词典，补充本地未收录的内容。"
         case .ai: return "独立配置 AI，解释单词与短语，翻译句子。"
         case .appearance: return "设置阅读内容的字体与排版。"
@@ -54,10 +54,9 @@ struct SettingsView: View {
     @AppStorage(CaptureMethod.screenshot.preferenceKey) private var screenshotEnabled = false
     @AppStorage(CaptureMethod.hover.preferenceKey) private var hoverEnabled = false
     @AppStorage(HoverTrigger.preferenceKey) private var hoverTrigger = HoverTrigger.control.rawValue
-    @AppStorage(QueryMode.captureKey) private var captureMode = QueryMode.dictionary.rawValue
     @AppStorage(LookupCacheSettings.capacityKey) private var cacheCapacity = LookupCacheSettings.defaultCapacity
     @State private var cacheCapacityDraft = String(LookupCacheSettings.capacity(in: .standard))
-    @State private var historyCapacityDraft = String(AIHistorySettings.capacity())
+    @State private var historyCapacityDraft = String(TranslationHistorySettings.capacity())
     @State private var historyCapacityMessage: String?
     @State private var selectedCaptureMethod = CaptureMethod.selection
     @State private var accessibilityAllowed = false
@@ -107,8 +106,6 @@ struct SettingsView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("设置").font(AppTypography.section).foregroundColor(.secondary)
-                .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 14)
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(SettingsCategory.allCases.filter { $0 != .about }) { item in
@@ -181,14 +178,7 @@ struct SettingsView: View {
             captureMethodSettings(selectedCaptureMethod)
             settingsGroup {
                 Text("通用设置").font(AppTypography.section)
-                HStack {
-                    Text("取词后使用")
-                    Spacer()
-                    Picker("取词后使用", selection: $captureMode) {
-                        ForEach(QueryMode.allCases) { Text($0.title).tag($0.rawValue) }
-                    }.labelsHidden().pickerStyle(.segmented).frame(width: 180)
-                }
-                helpText("三种取词方式共用此模式，不会自动切换兜底；手动查询窗口单独记住上次模式。")
+                helpText("主界面与取词窗口共用当前翻译方式，应用重启后恢复自动选择翻译方式。")
                 Divider()
                 shortcutRow("唤出 / 收起词典", name: .toggleDictionary)
                 helpText("设置自动保存。点击快捷键框后按组合键，按删除键清除。")
@@ -199,58 +189,49 @@ struct SettingsView: View {
     private var historySettings: some View {
         settingsGroup {
             HStack {
-                Text("词典")
+                Text("查询历史保留数量")
                 Spacer()
-                TextField("词典保留数量", text: Binding(get: { cacheCapacityDraft }, set: {
-                    cacheCapacityDraft = $0; historyCapacityMessage = nil
-                }))
-                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
-                    .frame(width: 64)
-                    .onSubmit(saveHistoryCapacity)
-                Text("条").foregroundColor(.secondary)
-                Stepper("词典保留数量", value: Binding(get: {
-                    Int(cacheCapacityDraft) ?? LookupCacheSettings.capacity(in: .standard)
-                }, set: { cacheCapacityDraft = String($0); historyCapacityMessage = nil }),
-                    in: LookupCacheSettings.capacityRange)
-                    .labelsHidden().fixedSize()
-            }
-            helpText("默认 20 条，可设为 0–100 条；0 表示不保留。")
-            Divider()
-            HStack {
-                Text("AI")
-                Spacer()
-                TextField("AI 保留数量", text: Binding(get: { historyCapacityDraft }, set: {
+                TextField("历史保留数量", text: Binding(get: { historyCapacityDraft }, set: {
                     historyCapacityDraft = $0; historyCapacityMessage = nil
                 }))
                     .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing).frame(width: 64)
                     .onSubmit(saveHistoryCapacity)
-                Text("条").foregroundColor(.secondary)
-                Stepper("AI 保留数量", value: Binding(get: {
-                    Int(historyCapacityDraft) ?? AIHistorySettings.capacity()
+                Text("条原文").foregroundColor(.secondary)
+                Stepper("历史保留数量", value: Binding(get: {
+                    Int(historyCapacityDraft) ?? TranslationHistorySettings.capacity()
                 }, set: { historyCapacityDraft = String($0); historyCapacityMessage = nil }),
-                    in: AIHistorySettings.capacityRange).labelsHidden().fixedSize()
+                    in: TranslationHistorySettings.capacityRange).labelsHidden().fixedSize()
             }
-            helpText("默认 20 条，可设为 1–100 条。")
+            helpText("默认 20 条，可设为 0–100 条；0 表示不保留。同一原文的不同翻译方式合为一条，列表显示最后选择的方式。")
+            helpText("在线词典、系统词典与 AI 保存完整结果，MDX 只保存词条引用。历史结果内容上限为 128 MB，超出总量上限时移除较早的原文及其全部结果；同一原文最多保留 36 种方式、32 MB 结果，超出时移除较早方式的结果。")
             Divider()
-            helpText("超出数量时移除较早记录。AI 回答保存在本机，无需重新生成。")
+            HStack {
+                Text("会话词典缓存")
+                Spacer()
+                TextField("缓存数量", text: $cacheCapacityDraft)
+                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing).frame(width: 64)
+                    .onSubmit(saveHistoryCapacity)
+                Stepper("缓存数量", value: Binding(get: {
+                    Int(cacheCapacityDraft) ?? LookupCacheSettings.capacity(in: .standard)
+                }, set: { cacheCapacityDraft = String($0) }), in: LookupCacheSettings.capacityRange)
+                    .labelsHidden().fixedSize()
+            }
+            helpText("缓存只用于加快当前会话的重复查询，范围 0–100 条，同时受 8 MB 内容上限限制，不影响历史保留数量。")
         }
     }
 
     private func saveHistoryCapacity() {
-        guard let dictionaryCount = Int(cacheCapacityDraft.trimmingCharacters(in: .whitespacesAndNewlines)),
-              LookupCacheSettings.capacityRange.contains(dictionaryCount) else {
-            historyCapacityMessage = "词典数量请输入 0–100 之间的整数。"; return
+        guard let count = Int(historyCapacityDraft.trimmingCharacters(in: .whitespacesAndNewlines)),
+              TranslationHistorySettings.capacityRange.contains(count),
+              let cache = Int(cacheCapacityDraft.trimmingCharacters(in: .whitespacesAndNewlines)),
+              LookupCacheSettings.capacityRange.contains(cache) else {
+            historyCapacityMessage = "请输入 0–100 之间的整数。"; return
         }
-        guard let value = Int(historyCapacityDraft.trimmingCharacters(in: .whitespacesAndNewlines)),
-              AIHistorySettings.capacityRange.contains(value) else {
-            historyCapacityMessage = "AI 数量请输入 1–100 之间的整数。"; return
-        }
-        cacheCapacity = dictionaryCount
-        cacheCapacityDraft = String(dictionaryCount)
-        UserDefaults.standard.set(value, forKey: AIHistorySettings.capacityKey)
-        historyCapacityDraft = String(value)
+        cacheCapacity = cache; cacheCapacityDraft = String(cache)
+        UserDefaults.standard.set(count, forKey: TranslationHistorySettings.capacityKey)
+        historyCapacityDraft = String(count)
         historyCapacityMessage = "已保存。"
-        NotificationCenter.default.post(name: AIHistorySettings.changed, object: nil)
+        NotificationCenter.default.post(name: TranslationHistorySettings.changed, object: nil)
     }
 
     private func captureMethodSettings(_ method: CaptureMethod) -> some View {

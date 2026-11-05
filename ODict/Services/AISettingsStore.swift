@@ -7,6 +7,19 @@ struct AISavedSettings: Sendable {
 
 enum AISettingsStore {
     private static let preferenceKey = "ai.configuration.v1"
+    static let sentenceTranslationKey = "lookup.autoTranslateSentences.v1"
+    static var autoTranslateSentences: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: sentenceTranslationKey) != nil {
+                return UserDefaults.standard.bool(forKey: sentenceTranslationKey)
+            }
+            return configuration.autoTranslateSentences
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: sentenceTranslationKey)
+            NotificationCenter.default.post(name: changed, object: nil)
+        }
+    }
     static let changed = Notification.Name("ODictAISettingsChanged")
     static var configuration: AIConfiguration {
         guard let data = UserDefaults.standard.data(forKey: preferenceKey),

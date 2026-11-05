@@ -35,6 +35,21 @@ final class LocalDictionarySettingsModel: ObservableObject {
         dictionaries.swapAt(i, i + delta); save()
     }
     func remove(_ id: UUID) { dictionaries.removeAll { $0.id == id }; save() }
+    func rename(_ id: UUID, to name: String) throws {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 120,
+              name.rangeOfCharacter(from: .controlCharacters) == nil else {
+            throw LocalDictionaryError.invalid("显示名称需为 1–120 个字符，且不能包含换行或控制字符")
+        }
+        guard let index = dictionaries.firstIndex(where: { $0.id == id }) else {
+            throw LocalDictionaryError.invalid("这本词典已被移除")
+        }
+        guard dictionaries[index].name != name else { return }
+        var updated = dictionaries
+        updated[index].name = name
+        try store.save(updated)
+        dictionaries = updated
+    }
     func add() {
         let panel = NSOpenPanel()
         panel.title = "添加本地词典"
@@ -95,6 +110,7 @@ final class LocalDictionarySettingsModel: ObservableObject {
 struct LocalDictionarySettingsView: View {
     @ObservedObject var model: LocalDictionarySettingsModel
     @State private var systemEnabled = LookupSourceSettings().isEnabled(.system)
+    @State private var renamingDictionary: LocalDictionaryConfiguration?
     var body: some View {
         SettingsPage {
             systemSettings
@@ -103,6 +119,11 @@ struct LocalDictionarySettingsView: View {
         .font(AppTypography.body).onDisappear { model.close() }
         .onReceive(NotificationCenter.default.publisher(for: LocalDictionaryStore.changed)) { _ in
             systemEnabled = LookupSourceSettings().isEnabled(.system)
+        }
+        .sheet(item: $renamingDictionary) { dictionary in
+            LocalDictionaryNameEditor(name: dictionary.name) { name in
+                try model.rename(dictionary.id, to: name)
+            }
         }
     }
 
@@ -141,6 +162,8 @@ struct LocalDictionarySettingsView: View {
                         Button { model.move(dictionary.id, by: 1) } label: { Image(systemName: "arrow.down") }
                             .disabled(index == model.dictionaries.count - 1).help("降低优先级").accessibilityLabel("降低优先级")
                         Menu {
+                            Button("修改显示名称…") { renamingDictionary = dictionary }
+                            Divider()
                             Button("关联资源包…") { model.associate(dictionary) }
                             Button("查看覆盖样式文件") { model.openOverrides(dictionary) }
                             Button("在访达中显示") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: dictionary.mdxPath)]) }
@@ -179,5 +202,48 @@ struct LocalDictionarySettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20).background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
+    }
+}
+
+private struct LocalDictionaryNameEditor: View {
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var nameFocused: Bool
+    @State var name: String
+    @State private var errorMessage: String?
+    let save: (String) throws -> Void
+
+    private var validName: Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed.count <= 120
+            && trimmed.rangeOfCharacter(from: .controlCharacters) == nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("修改显示名称").font(AppTypography.section)
+            TextField("显示名称", text: $name)
+                .textFieldStyle(.roundedBorder)
+                .focused($nameFocused)
+            Text("输入 1–120 个字符，用于词典列表和翻译方式菜单。")
+                .font(AppTypography.secondary).foregroundColor(.secondary)
+            if let errorMessage {
+                Text(errorMessage).font(AppTypography.secondary).foregroundColor(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("保存") {
+                    do { try save(name); dismiss() }
+                    catch { errorMessage = error.localizedDescription }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!validName)
+            }
+        }
+        .font(AppTypography.body)
+        .padding(24)
+        .frame(width: 400)
+        .onAppear { nameFocused = true }
     }
 }

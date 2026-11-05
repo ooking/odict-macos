@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var shouldQuit = saved
             if !saved {
                 let alert = NSAlert()
-                alert.messageText = "部分 AI 历史记录尚未保存"
+                alert.messageText = "部分查询历史尚未保存"
                 alert.informativeText = "退出后，尚未写入磁盘的结果可能丢失。可以返回应用，检查磁盘空间或文件权限后重试。"
                 alert.addButton(withTitle: "返回应用")
                 alert.addButton(withTitle: "仍然退出")

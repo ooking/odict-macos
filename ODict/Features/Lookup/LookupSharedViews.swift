@@ -15,7 +15,11 @@ struct LookupFooter<Trailing: View>: View {
         HStack(spacing: 8) {
             Image(systemName: "book.closed.fill").font(.system(size: 14)).foregroundColor(.accentColor)
                 .allowsHitTesting(false)
-            Text("ODict").font(.system(size: 12, weight: .semibold)).allowsHitTesting(false)
+            if showsCaptureTools {
+                Text("ODict").font(.system(size: 12, weight: .semibold)).allowsHitTesting(false)
+            } else {
+                TranslationMethodPicker(model: model, compact: true)
+            }
             Spacer().allowsHitTesting(false)
             PronunciationButton(text: model.query, owner: model.pronunciationOwner)
             if showsCaptureTools {

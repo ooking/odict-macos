@@ -7,9 +7,9 @@ enum LookupSource: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .system: return "系统词典"
-        case .local: return "本地词典"
+        case .local: return "MDX词典"
         case .online: return "在线 ODict 词典"
-        case .ai: return "AI"
+        case .ai: return "AI翻译"
         }
     }
 }
@@ -31,7 +31,21 @@ struct LookupSourceSettings {
         for source in LookupSource.allCases where seen.insert(source).inserted {
             result.append(LookupSourceOption(source: source, enabled: true))
         }
+        // A removed/disabled last MDX must not leave a checked source behind.
+        if !LocalDictionaryStore(defaults: defaults).load().contains(where: \.enabled),
+           let index = result.firstIndex(where: { $0.source == .local }) {
+            result[index].enabled = false
+        }
         return result
+    }
+    func reconcile(available: Set<LookupSource>) {
+        let options = load().map {
+            LookupSourceOption(source: $0.source, enabled: $0.enabled && available.contains($0.source))
+        }
+        if let data = try? JSONEncoder().encode(options), data != defaults.data(forKey: Self.key) {
+            defaults.set(data, forKey: Self.key)
+            NotificationCenter.default.post(name: LocalDictionaryStore.changed, object: nil)
+        }
     }
     var active: [LookupSource] { load().filter(\.enabled).map(\.source) }
     func isEnabled(_ source: LookupSource) -> Bool { active.contains(source) }

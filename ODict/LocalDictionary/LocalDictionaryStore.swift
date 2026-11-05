@@ -35,6 +35,7 @@ struct LocalDictionaryStore {
     func save(_ items: [LocalDictionaryConfiguration]) throws {
         guard items.count <= Self.maximumCount else { throw LocalDictionaryError.invalid("最多添加 32 本词典") }
         defaults.set(try JSONEncoder().encode(items), forKey: Self.configurationKey)
+        if !items.contains(where: \.enabled) { sourceSettings.setEnabled(.local, false) }
         NotificationCenter.default.post(name: Self.changed, object: nil)
     }
 }

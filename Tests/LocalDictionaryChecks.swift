@@ -197,6 +197,14 @@ private final class FixtureSystemDictionary: SystemDictionaryServing {
         try require(system.requests == requestsBeforeAI, "disabled system source must not run")
         sourceSettings.save(LookupSource.allCases.map { LookupSourceOption(source: $0, enabled: $0 == .local || $0 == .online) })
         try store.save([first,second])
+        let selectedMDX = try await router.entry("apple", method: .mdx(second.id))
+        try require(selectedMDX.local?.dictionary.id == second.id, "explicit MDX bypasses other dictionaries")
+        let onlineBeforeMissing = fake.entries
+        do {
+            _ = try await router.entry("not-in-fixture", method: .mdx(first.id))
+            try require(false, "explicit MDX must report missing entries")
+        } catch DictionaryError.notFound { }
+        try require(fake.entries == onlineBeforeMissing, "explicit MDX never falls back online")
         var value = try await router.entry("apple")
         try require(value.local?.dictionary.id == first.id && fake.entries == 0,"first hit stops before online")
         let redirected = try await router.entry("redirect")

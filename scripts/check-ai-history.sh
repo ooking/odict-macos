@@ -5,11 +5,14 @@ mkdir -p build/Checks
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macosx12.0" -parse-as-library \
-    ODict/Models/AIHistoryModels.swift ODict/Services/AIHistoryStore.swift ODict/Features/AI/AIHistoryModel.swift \
+    ODict/Models/AIHistoryModels.swift ODict/Models/TranslationMethod.swift ODict/Models/TranslationHistoryModels.swift \
+    ODict/Services/TranslationHistoryStore.swift ODict/Features/Lookup/TranslationHistoryModel.swift \
     ODict/Models/DictionaryModels.swift ODict/Models/AIModels.swift \
     ODict/Services/BlockingWorkQueue.swift ODict/Services/KeychainStore.swift \
     ODict/Services/ODictService.swift ODict/Services/HTTPTransport.swift \
     ODict/Services/AISettingsStore.swift ODict/Services/AIClient.swift ODict/Services/AIStreamTransport.swift ODict/Services/AIStreamDecoder.swift \
+    ODict/Services/AccountStore.swift ODict/Services/AccountTransport.swift \
+    ODict/Services/MacDeviceIdentity.swift ODict/Services/MacDeviceIdentifier.swift \
     ODict/Services/DictionaryClient.swift ODict/Services/RequestRateLimit.swift \
     ODict/Services/RecentWordsStore.swift ODict/Models/PronunciationSource.swift ODict/Services/PronunciationSettingsStore.swift ODict/Services/SystemSpeechVoice.swift ODict/Services/PronunciationService.swift \
     ODict/LocalDictionary/*.swift ODict/Features/AI/AIQueryModel.swift \

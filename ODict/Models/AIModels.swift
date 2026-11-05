@@ -4,8 +4,6 @@ enum QueryMode: String, CaseIterable, Identifiable {
     case dictionary, ai
     var id: Self { self }
     var title: String { self == .dictionary ? "词典" : "AI" }
-    static let manualKey = "lookup.manualMode"
-    static let captureKey = "lookup.captureMode"
 }
 
 enum AITaskKind: String, CaseIterable, Identifiable, Codable, Sendable {

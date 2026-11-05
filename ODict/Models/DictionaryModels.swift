@@ -1,6 +1,6 @@
 import Foundation
 
-struct Entry: Decodable, Identifiable {
+struct Entry: Codable, Identifiable, Sendable {
     let id: Int
     let word: String
     let phonetic: String?
@@ -10,9 +10,19 @@ struct Entry: Decodable, Identifiable {
     let partsOfSpeech: [PartOfSpeech]
     let inflections: [Inflection]
 
-    struct Tag: Decodable { let code: String; let name: String? }
-    struct PartOfSpeech: Decodable { let code: String; let name: String; let weightPercent: Int }
-    struct Inflection: Decodable { let type: String; let typeName: String; let form: String }
+    struct Tag: Codable, Sendable { let code: String; let name: String? }
+    struct PartOfSpeech: Codable, Sendable { let code: String; let name: String; let weightPercent: Int }
+    struct Inflection: Codable, Sendable { let type: String; let typeName: String; let form: String }
+}
+
+extension Entry {
+    var estimatedPayloadBytes: Int {
+        func size(_ text: String?) -> Int { text?.utf8.count ?? 0 }
+        return size(word) + size(phonetic) + size(definition) + size(translation)
+            + tags.reduce(0) { $0 + size($1.code) + size($1.name) + 64 }
+            + partsOfSpeech.reduce(0) { $0 + size($1.code) + size($1.name) + 64 }
+            + inflections.reduce(0) { $0 + size($1.type) + size($1.typeName) + size($1.form) + 64 }
+    }
 }
 
 struct Suggestion: Decodable, Identifiable {

@@ -9,6 +9,7 @@ struct AIComposerView: View {
     let changed: (String) -> Void
     let clear: () -> Void
     let close: () -> Void
+    let submit: () -> Void
     @State private var inputHeight: CGFloat = 35
     @State private var editingFocusRequest = UUID()
 
@@ -43,7 +44,7 @@ struct AIComposerView: View {
                     else if model.isInputLocked {
                         model.beginEditingInput()
                         editingFocusRequest = UUID()
-                    } else { model.submit(text) }
+                    } else { submit() }
                 } label: {
                     Label(model.isLoading ? "停止" : model.isInputLocked ? "编辑" : "查询",
                           systemImage: model.isLoading ? "stop.fill" : model.isInputLocked ? "pencil" : "arrow.up")
@@ -72,7 +73,7 @@ struct AIComposerView: View {
                 isEditable: !model.isInputLocked, expandsToFit: model.hasSubmitted || model.isRestoringHistory,
                 changed: { value in if !model.isInputLocked { changed(value) } }, rejected: model.rejectOversizedPaste,
                 measuredHeight: { value in if abs(value - inputHeight) > 0.5 { inputHeight = value } },
-                submit: { if !model.isInputLocked { model.submit(text) } }, cancel: close)
+                submit: { if !model.isInputLocked { submit() } }, cancel: close)
                 .frame(height: max(inputHeight, text.isEmpty ? 64 : 35))
         }.frame(maxWidth: .infinity)
     }

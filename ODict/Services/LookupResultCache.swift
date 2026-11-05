@@ -58,9 +58,6 @@ final class LookupResultCache {
         }
         if let article = result.system { return size(article.word) + size(article.text) + size(article.readingText) }
         guard let entry = result.remote else { return 0 }
-        return size(entry.word) + size(entry.phonetic) + size(entry.definition) + size(entry.translation)
-            + entry.tags.reduce(0) { $0 + size($1.code) + size($1.name) + 64 }
-            + entry.partsOfSpeech.reduce(0) { $0 + size($1.code) + size($1.name) + 64 }
-            + entry.inflections.reduce(0) { $0 + size($1.type) + size($1.typeName) + size($1.form) + 64 }
+        return entry.estimatedPayloadBytes
     }
 }
