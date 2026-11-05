@@ -60,10 +60,37 @@ struct LookupView: View {
 enum CaptureWindowSettings {
     static let closesOnOutsideClickKey = "lookup.capture.closesOnOutsideClick"
     static let fitsContentHeightKey = "lookup.capture.fitsContentHeight"
+    static let defaultWidthKey = "lookup.capture.defaultWidth"
+    static let defaultWidth = 480
+    static let widthRange = 440...1200
+    static let transparencyKey = "lookup.capture.transparency"
+    static let defaultTransparency = 0.0
+    static let transparencyRange = 0.0...50.0
+    static let widthChanged = Notification.Name("CaptureWindowSettings.widthChanged")
+    static let appearanceChanged = Notification.Name("CaptureWindowSettings.appearanceChanged")
     static let maximumHeightKey = "lookup.capture.maximumHeight"
     static let defaultMaximumHeight = 720
     static let maximumHeightRange = 240...1200
     static let changed = Notification.Name("CaptureWindowSettings.changed")
+
+    static func boundedWidth(_ width: Int) -> Int {
+        min(max(width, widthRange.lowerBound), widthRange.upperBound)
+    }
+
+    static func width(in preferences: UserDefaults) -> CGFloat {
+        let saved = preferences.object(forKey: defaultWidthKey) as? Int ?? defaultWidth
+        return CGFloat(boundedWidth(saved))
+    }
+
+    static func boundedTransparency(_ transparency: Double) -> Double {
+        guard transparency.isFinite else { return defaultTransparency }
+        return min(max(transparency, transparencyRange.lowerBound), transparencyRange.upperBound)
+    }
+
+    static func alpha(in preferences: UserDefaults) -> CGFloat {
+        let saved = preferences.object(forKey: transparencyKey) as? Double ?? defaultTransparency
+        return CGFloat(1 - boundedTransparency(saved) / 100)
+    }
 
     static func boundedMaximumHeight(_ height: Int) -> Int {
         min(max(height, maximumHeightRange.lowerBound), maximumHeightRange.upperBound)

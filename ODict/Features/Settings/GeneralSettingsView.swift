@@ -4,6 +4,7 @@ struct GeneralSettingsView: View {
     @AppStorage(CaptureWindowSettings.closesOnOutsideClickKey) private var closesOnOutsideClick = false
     @AppStorage(CaptureWindowSettings.fitsContentHeightKey) private var fitsContentHeight = false
     @AppStorage(CaptureWindowSettings.maximumHeightKey) private var maximumHeight = CaptureWindowSettings.defaultMaximumHeight
+    @AppStorage(CaptureWindowSettings.defaultWidthKey) private var defaultWidth = CaptureWindowSettings.defaultWidth
     @State private var options = LookupSourceSettings().load()
     @State private var available: Set<LookupSource> = [.system]
     @State private var refreshID = UUID()
@@ -73,6 +74,20 @@ struct GeneralSettingsView: View {
     private var captureWindowSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("取词窗口").font(AppTypography.section)
+            HStack {
+                Text("默认宽度")
+                Spacer()
+                Text("\(CaptureWindowSettings.boundedWidth(defaultWidth)) 点")
+                    .monospacedDigit().foregroundColor(.secondary)
+                Stepper("取词窗口默认宽度", value: Binding(
+                    get: { CaptureWindowSettings.boundedWidth(defaultWidth) },
+                    set: { defaultWidth = CaptureWindowSettings.boundedWidth($0) }),
+                    in: CaptureWindowSettings.widthRange, step: 20)
+                    .labelsHidden().fixedSize()
+            }
+            Text("默认 480 点，可调整为 440–1200 点。每次重新打开取词窗口时使用此宽度，也可临时拖动窗口边缘调整；实际宽度受屏幕可用空间限制。")
+                .font(AppTypography.secondary).foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Toggle("点击窗口外部时关闭", isOn: $closesOnOutsideClick)
                 .onChange(of: closesOnOutsideClick) { _ in
                     NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
@@ -100,13 +115,16 @@ struct GeneralSettingsView: View {
                     .font(AppTypography.secondary).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text("根据取词结果调整窗口高度，宽度保持不变；内容超过最大高度时可滚动查看。关闭后使用手动调整的窗口大小。这两项设置仅影响取词窗口。")
+            Text("根据取词结果调整窗口高度，宽度保持不变；内容超过最大高度时可滚动查看。关闭后使用手动调整的窗口大小。以上设置仅影响取词窗口。")
                 .font(AppTypography.secondary).foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(20).frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor)).cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.08)))
+        .onChange(of: defaultWidth) { _ in
+            NotificationCenter.default.post(name: CaptureWindowSettings.widthChanged, object: nil)
+        }
         .onChange(of: maximumHeight) { _ in
             NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
         }

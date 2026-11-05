@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AppearanceSettingsView: View {
     @ObservedObject private var store = ReadingAppearanceStore.shared
+    @AppStorage(CaptureWindowSettings.transparencyKey) private var captureTransparency = CaptureWindowSettings.defaultTransparency
     @State private var editing: FontLanguage?
 
     private enum FontLanguage: String, Identifiable {
@@ -33,6 +34,19 @@ struct AppearanceSettingsView: View {
                     }
                     note("字号和行高用于在线释义及 AI 翻译结果，输入框、历史记录保持固定大小。本地词典的字体和字号由下方开关控制。")
                 }
+                group("取词窗口") {
+                    HStack(spacing: 14) {
+                        Text("透明度")
+                        Slider(value: Binding(
+                            get: { CaptureWindowSettings.boundedTransparency(captureTransparency) },
+                            set: { captureTransparency = CaptureWindowSettings.boundedTransparency($0) }),
+                            in: CaptureWindowSettings.transparencyRange, step: 1)
+                            .accessibilityLabel("取词窗口透明度")
+                        Text("\(Int(CaptureWindowSettings.boundedTransparency(captureTransparency)))%")
+                            .monospacedDigit().frame(width: 52, alignment: .trailing)
+                    }
+                    note("0% 为不透明，数值越大越透明，最高 50%。仅影响取词窗口，文字和窗口背景会一起变透明。")
+                }
                 group("本地词典") {
                     Toggle("使用外观中的字体和字号", isOn: Binding(
                         get: { store.value.useForLocalDictionaries },
@@ -45,9 +59,15 @@ struct AppearanceSettingsView: View {
             HStack {
                 note("更改自动保存并生效。")
                 Spacer()
-                Button("恢复默认") { store.update { $0 = .defaults } }
-                    .disabled(store.value == .defaults)
+                Button("恢复默认") {
+                    store.update { $0 = .defaults }
+                    captureTransparency = CaptureWindowSettings.defaultTransparency
+                }
+                    .disabled(store.value == .defaults && captureTransparency == CaptureWindowSettings.defaultTransparency)
             }
+        }
+        .onChange(of: captureTransparency) { _ in
+            NotificationCenter.default.post(name: CaptureWindowSettings.appearanceChanged, object: nil)
         }
         .sheet(item: $editing) { language in
             InstalledFontPicker(title: language.rawValue,
