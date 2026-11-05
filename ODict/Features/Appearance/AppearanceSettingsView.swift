@@ -39,8 +39,8 @@ struct AppearanceSettingsView: View {
                         Text("透明度")
                         Slider(value: Binding(
                             get: { CaptureWindowSettings.boundedTransparency(captureTransparency) },
-                            set: { captureTransparency = CaptureWindowSettings.boundedTransparency($0) }),
-                            in: CaptureWindowSettings.transparencyRange, step: 1)
+                            set: { captureTransparency = CaptureWindowSettings.boundedTransparency($0.rounded()) }),
+                            in: CaptureWindowSettings.transparencyRange)
                             .accessibilityLabel("取词窗口透明度")
                         Text("\(Int(CaptureWindowSettings.boundedTransparency(captureTransparency)))%")
                             .monospacedDigit().frame(width: 52, alignment: .trailing)

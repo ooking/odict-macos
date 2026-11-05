@@ -24,6 +24,14 @@ final class HoverLookupController {
         set { monitor.onResult = newValue }
     }
     var onFailure: ((String, CGRect) -> Void)?
+    var onRecognizing: ((CGRect) -> Void)? {
+        get { monitor.onRecognizing }
+        set { monitor.onRecognizing = newValue }
+    }
+    var onRecognitionCancelled: (() -> Void)? {
+        get { monitor.onRecognitionCancelled }
+        set { monitor.onRecognitionCancelled = newValue }
+    }
     var onInteraction: (() -> Void)? {
         get { monitor.onInteraction }
         set { monitor.onInteraction = newValue }
@@ -45,7 +53,7 @@ final class HoverLookupController {
             case .screenPermission:
                 message = "自动识别需要屏幕录制权限。请先在设置中授权，再使用截图取词。"
             case .timedOut:
-                message = "悬停取词超时，请重试，或使用截图取词框选文字。"
+                message = "本次取词等待超时。若正在进行首次文字识别或模型重建，可能需要几十秒，请稍后重新触发取词；也可使用选中取词或手动输入。"
             case .captureFailed:
                 message = "无法自动截取鼠标附近的文字，请使用截图取词框选需要查询的内容。"
             case .noText:

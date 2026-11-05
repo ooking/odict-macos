@@ -10,6 +10,8 @@ public final class HoverLookupMonitor {
     public var containsPanel: (CGPoint) -> Bool = { _ in false }
     public var onResult: ((HoverWordHit) -> Void)?
     public var onFailure: ((HoverLookupError, CGRect) -> Void)?
+    public var onRecognizing: ((CGRect) -> Void)?
+    public var onRecognitionCancelled: (() -> Void)?
     public var onInteraction: (() -> Void)?
     public var onDismiss: (() -> Void)?
     public var onDiagnostic: ((HoverDiagnostic) -> Void)? {
@@ -23,6 +25,8 @@ public final class HoverLookupMonitor {
     private var monitoredTrust = false
     private var task: Task<Void, Never>?
     private var dismissal: Task<Void, Never>?
+    private var recognitionNotice: Task<Void, Never>?
+    private var showsRecognitionNotice = false
     private var revision = UUID()
     private var pendingPoint: CGPoint?
     private var currentAnchor: CGRect?
@@ -39,6 +43,7 @@ public final class HoverLookupMonitor {
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         task?.cancel()
         dismissal?.cancel()
+        recognitionNotice?.cancel()
     }
 
     /// Call after preference/permission changes and when the host becomes active.
@@ -101,6 +106,7 @@ public final class HoverLookupMonitor {
 
     private func cancelCapture() {
         revision = UUID()
+        finishRecognitionNotice(cancelled: true)
         task?.cancel()
         task = nil
         pendingPoint = nil
@@ -194,6 +200,7 @@ public final class HoverLookupMonitor {
         task = Task { [weak self] in
             defer {
                 if let self, self.revision == token {
+                    self.finishRecognitionNotice(cancelled: true)
                     self.task = nil; self.pendingPoint = nil; self.extracting = false
                 }
             }
@@ -211,7 +218,10 @@ public final class HoverLookupMonitor {
                 guard HoverWords.valid(rect) else { throw HoverLookupError.captureFailed }
                 let region = ScreenRegion(rect: rect, displayID: display.uint32Value,
                     screenFrame: screen.frame, scale: screen.backingScaleFactor, primaryTop: top)
-                let result = try await self.pipeline.word(in: region, at: point, allowsOCR: CGPreflightScreenCaptureAccess())
+                let result = try await self.pipeline.word(in: region, at: point,
+                    allowsOCR: CGPreflightScreenCaptureAccess(), onRecognizing: { [weak self] in
+                        self?.scheduleRecognitionNotice(token: token, point: point)
+                    })
                 guard self.isCurrent(token, point: point) else { return }
                 guard let result else { throw HoverLookupError.noText }
                 guard self.stability.accepts(result, at: NSEvent.mouseLocation) else {
@@ -221,11 +231,13 @@ public final class HoverLookupMonitor {
                 self.dismissal?.cancel()
                 self.dismissal = nil
                 self.currentAnchor = result.anchor
+                self.finishRecognitionNotice(cancelled: false)
                 self.onResult?(result)
                 self.onDiagnostic?(HoverDiagnostic(.request, .hit, since: started))
             } catch {
                 guard !(error is CancellationError), let self,
                       self.isCurrent(token, point: point, allowsSecureFailure: true) else { return }
+                self.finishRecognitionNotice(cancelled: false)
                 let failure: HoverLookupError
                 if let ocr = error as? OCRFailure { failure = .ocrFailure(ocr) }
                 else if error is FallbackTargetRejection { failure = .fallbackTargetUnavailable }
@@ -256,6 +268,27 @@ public final class HoverLookupMonitor {
         lastBlockReason = reason
         onDiagnostic?(HoverDiagnostic(.request, .blocked,
             since: ProcessInfo.processInfo.systemUptime, reason: reason))
+    }
+
+    private func scheduleRecognitionNotice(token: UUID, point: CGPoint) {
+        recognitionNotice?.cancel()
+        recognitionNotice = Task { [weak self] in
+            do { try await Task.sleep(nanoseconds: 600_000_000) } catch { return }
+            guard let self, self.isCurrent(token, point: point) else { return }
+            self.recognitionNotice = nil
+            self.showsRecognitionNotice = true
+            // A progress card must not become currentAnchor: that would make
+            // normal pointer jitter cancel its own in-flight recognition.
+            self.onRecognizing?(CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6))
+        }
+    }
+
+    private func finishRecognitionNotice(cancelled: Bool) {
+        recognitionNotice?.cancel()
+        recognitionNotice = nil
+        let wasVisible = showsRecognitionNotice
+        showsRecognitionNotice = false
+        if cancelled && wasVisible { onRecognitionCancelled?() }
     }
 
     private func isCurrent(_ token: UUID, point: CGPoint, allowsSecureFailure: Bool = false) -> Bool {

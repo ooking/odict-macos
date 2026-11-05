@@ -69,23 +69,37 @@ enum OCRCacheInspection {
               let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else { return .unknown }
         let root = caches.appendingPathComponent(bundleID, isDirectory: true)
             .appendingPathComponent("com.apple.e5rt.e5bundlecache", isDirectory: true)
+        return state(at: root, fileManager: fileManager)
+    }
+
+    static func state(at root: URL, fileManager: FileManager = .default) -> OCRFailure.CacheState {
+        var unreadable = false
         guard let entries = fileManager.enumerator(at: root,
-            includingPropertiesForKeys: [.isSymbolicLinkKey, .isDirectoryKey], options: [.skipsHiddenFiles]) else { return .unknown }
+            includingPropertiesForKeys: [.isSymbolicLinkKey, .isDirectoryKey], options: [.skipsHiddenFiles],
+            errorHandler: { _, _ in unreadable = true; return false }) else { return .unknown }
         var inspected = 0
         var empty = 0
         var exhausted = false
         for _ in 0..<256 {
             guard let url = entries.nextObject() as? URL else { exhausted = true; break }
-            guard let metadata = try? url.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey]) else { continue }
+            // E5 compilation leaves temporary bundles beside committed models.
+            // Their contents are not evidence about the model used by OCR and
+            // must not consume the recursive scan budget.
+            if url.lastPathComponent.contains(".tmp.") {
+                entries.skipDescendants()
+                continue
+            }
+            guard let metadata = try? url.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey]) else { return .unknown }
             if metadata.isSymbolicLink == true { entries.skipDescendants(); continue }
             guard url.lastPathComponent == "main_ane", metadata.isDirectory == true else { continue }
+            entries.skipDescendants()
             inspected += 1
             guard let children = try? fileManager.contentsOfDirectory(at: url,
                 includingPropertiesForKeys: nil) else { return .unknown }
             if children.isEmpty { empty += 1 }
             else { return .unknown }
         }
-        return exhausted && inspected > 0 && empty == inspected ? .emptyModelDirectory : .unknown
+        return !unreadable && exhausted && inspected > 0 && empty == inspected ? .emptyModelDirectory : .unknown
     }
 }
 

@@ -74,17 +74,7 @@ struct GeneralSettingsView: View {
     private var captureWindowSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("取词窗口").font(AppTypography.section)
-            HStack {
-                Text("默认宽度")
-                Spacer()
-                Text("\(CaptureWindowSettings.boundedWidth(defaultWidth)) 点")
-                    .monospacedDigit().foregroundColor(.secondary)
-                Stepper("取词窗口默认宽度", value: Binding(
-                    get: { CaptureWindowSettings.boundedWidth(defaultWidth) },
-                    set: { defaultWidth = CaptureWindowSettings.boundedWidth($0) }),
-                    in: CaptureWindowSettings.widthRange, step: 20)
-                    .labelsHidden().fixedSize()
-            }
+            windowDimensionSlider("默认宽度", value: $defaultWidth, range: CaptureWindowSettings.widthRange)
             Text("默认 480 点，可调整为 440–1200 点。每次重新打开取词窗口时使用此宽度，也可临时拖动窗口边缘调整；实际宽度受屏幕可用空间限制。")
                 .font(AppTypography.secondary).foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -100,17 +90,7 @@ struct GeneralSettingsView: View {
                     NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
                 }
             if fitsContentHeight {
-                HStack {
-                    Text("最大高度")
-                    Spacer()
-                    Text("\(CaptureWindowSettings.boundedMaximumHeight(maximumHeight)) 点")
-                        .monospacedDigit().foregroundColor(.secondary)
-                    Stepper("最大高度", value: Binding(
-                        get: { CaptureWindowSettings.boundedMaximumHeight(maximumHeight) },
-                        set: { maximumHeight = CaptureWindowSettings.boundedMaximumHeight($0) }),
-                        in: CaptureWindowSettings.maximumHeightRange, step: 40)
-                        .labelsHidden().fixedSize()
-                }
+                windowDimensionSlider("最大高度", value: $maximumHeight, range: CaptureWindowSettings.maximumHeightRange)
                 Text("默认 720 点，可调整为 240–1200 点；实际高度不超过屏幕可用空间。")
                     .font(AppTypography.secondary).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -127,6 +107,20 @@ struct GeneralSettingsView: View {
         }
         .onChange(of: maximumHeight) { _ in
             NotificationCenter.default.post(name: CaptureWindowSettings.changed, object: nil)
+        }
+    }
+
+    private func windowDimensionSlider(_ title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
+        let current = min(max(value.wrappedValue, range.lowerBound), range.upperBound)
+        return HStack(spacing: 14) {
+            Text(title)
+            Slider(value: Binding(
+                get: { Double(min(max(value.wrappedValue, range.lowerBound), range.upperBound)) },
+                set: { value.wrappedValue = min(max(Int($0.rounded()), range.lowerBound), range.upperBound) }),
+                in: Double(range.lowerBound)...Double(range.upperBound))
+                .accessibilityLabel("取词窗口\(title)")
+            Text("\(current) 点")
+                .monospacedDigit().frame(width: 76, alignment: .trailing)
         }
     }
 

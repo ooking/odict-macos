@@ -22,7 +22,8 @@ public final class HoverLookupPipeline {
 
     public func releaseResources() { recognizer = nil }
 
-    public func word(in region: ScreenRegion, at point: CGPoint, allowsOCR: Bool) async throws -> HoverWordHit? {
+    public func word(in region: ScreenRegion, at point: CGPoint, allowsOCR: Bool,
+                     onRecognizing: (() -> Void)? = nil) async throws -> HoverWordHit? {
         var stage = HoverDiagnostic.Stage.accessibility
         var started = ProcessInfo.processInfo.systemUptime
         do {
@@ -81,6 +82,7 @@ public final class HoverLookupPipeline {
             stage = .recognition
             started = ProcessInfo.processInfo.systemUptime
             onDiagnostic?(HoverDiagnostic(stage, .started, since: started))
+            onRecognizing?()
             let result = try await recognitionGate.run(timeout: 3_000_000_000) {
                 try await reader.recognizeWord(screenshot, region: region.rect, point: point)
             }

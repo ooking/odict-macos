@@ -41,6 +41,15 @@ final class ApplicationCoordinator: NSObject {
             self.model.presentCaptureStatus(message, busy: false)
             self.lookup.show(anchor: anchor, hover: true)
         }
+        controller.onRecognizing = { [weak self] anchor in
+            guard let self else { return }
+            self.model.presentCaptureStatus("正在本机识别文字…首次使用或模型重建可能需要几十秒。请保持鼠标位置；使用辅助键时请继续按住。", busy: true)
+            self.lookup.show(anchor: anchor, hover: true)
+        }
+        controller.onRecognitionCancelled = { [weak self] in
+            guard let self, self.lookup.isCapture, !self.capture.isRunning, self.model.captureIsBusy else { return }
+            self.model.presentCaptureStatus("本次取词已暂停。首次使用或模型重建可能需要几十秒，请稍后重新触发取词，并保持鼠标位置及辅助键状态。", busy: false)
+        }
         controller.onInteraction = { [weak self] in self?.lookup.promote() }
         // Hover completion cancels recognition only; the result stays until closed.
         return controller

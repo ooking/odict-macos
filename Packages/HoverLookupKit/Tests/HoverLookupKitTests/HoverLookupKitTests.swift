@@ -29,10 +29,13 @@ final class HoverLookupKitTests: XCTestCase {
             created += 1
             return FixtureOCR()
         })
-        let result = try await pipeline.word(in: Self.region, at: Self.point, allowsOCR: false)
+        var recognitionStarted = false
+        let result = try await pipeline.word(in: Self.region, at: Self.point, allowsOCR: false,
+            onRecognizing: { recognitionStarted = true })
         XCTAssertEqual(result?.text, "echo")
         XCTAssertEqual(image.calls, 0)
         XCTAssertEqual(created, 0)
+        XCTAssertFalse(recognitionStarted, "Direct text reads must not show OCR progress")
     }
 
     @MainActor
@@ -73,7 +76,12 @@ final class HoverLookupKitTests: XCTestCase {
         })
         var stages: [HoverDiagnostic.Stage] = []
         pipeline.onDiagnostic = { if $0.outcome == .started { stages.append($0.stage) } }
-        _ = try await pipeline.word(in: Self.region, at: Self.point, allowsOCR: true)
+        var recognitionStarted = false
+        _ = try await pipeline.word(in: Self.region, at: Self.point, allowsOCR: true, onRecognizing: {
+            XCTAssertEqual(image.calls, 1, "Progress starts only after capture succeeds")
+            recognitionStarted = true
+        })
+        XCTAssertTrue(recognitionStarted)
         _ = try await pipeline.word(in: Self.region, at: Self.point, allowsOCR: true)
         XCTAssertEqual(created, 1)
         XCTAssertEqual(image.calls, 2)
